@@ -80,7 +80,8 @@ installing.
    handles appear on marks and the cursor changes. Drag a callout or text label
    to reposition it, drag an arrow's endpoint handles (or its line) to retarget
    it, drag a highlight's start/end handles to extend or shrink it, and
-   double-click a text label to retype it.
+   double-click a text label to retype it. Dropping a callout, text label, or
+   arrow head over new text re-anchors it there.
 4. Add notes/comments in the panel; delete markers with ✕.
 5. Click **Copy to clipboard** and paste the Markdown + screenshot anywhere.
 

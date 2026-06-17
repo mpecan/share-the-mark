@@ -180,11 +180,17 @@ Existing marks are **editable** in the dedicated **select tool** (edit mode), so
 editing never collides with drawing: drawing tools only create, the select tool
 only edits. Control-point handles render **only in the select tool** (so their
 presence is the affordance), and the cursor changes over marks/handles. In edit
-mode, pressing on a mark drags it — callout/text update their offset, arrows
-expose endpoint handles (and the line moves the whole arrow), and highlights
-expose start/end handles that **re-anchor the text range** (caret hit-test → new
-range → fresh `TextAnchor`) — and double-clicking a text mark retypes it. Edits
-flow out via `onUpdate` and the reducer's `update` action.
+mode, pressing on a mark drags it — callout/text move, arrows expose endpoint
+handles (and the line moves the whole arrow), and highlights expose start/end
+handles — and double-clicking a text mark retypes it. **On drop, a moved mark
+re-anchors to the text under where it landed**: the callout/text point or the
+arrow head is caret-hit-tested and `target`/`anchor`/offsets are recomputed
+against the new character, so the mark stays where dropped *and* tracks the new
+text on reflow; it falls back to keeping the original anchor when the drop point
+isn't over text. The drag preview uses the cheap offset delta (visually
+identical) — the re-anchor runs once on `pointerup`; highlights re-anchor their
+range continuously while a handle is dragged. Edits flow out via `onUpdate` and
+the reducer's `update` action.
 
 ### 5.2 Selector engine (`src/core/selector`) — the differentiator
 

@@ -255,6 +255,71 @@ describe('Overlay — editing', () => {
     expect(updated[0]).toMatchObject({ id: 'c', kind: 'callout', offset: { dx: 30, dy: 25 } });
   });
 
+  it('re-anchors a moved callout to the text under the drop point', () => {
+    const overlay = makeOverlay({ tool: 'select', caretFromPoint: () => caretAt(0) }); // 'T'
+    overlay.setAnnotations([
+      {
+        id: 'c',
+        kind: 'callout',
+        createdAt: 0,
+        index: 1,
+        target: targetFor('#para', 'p'),
+        anchor: anchorOver('brown'),
+        offset: { dx: 0, dy: 0 },
+      },
+    ]);
+    pointerOn(findMark('c'), 'pointerdown', 10, 10);
+    pointer(overlay, 'pointermove', 40, 40);
+    pointer(overlay, 'pointerup', 40, 40);
+    // Anchor moved from 'brown' to the character now under the mark.
+    expect(updated[0]).toMatchObject({ kind: 'callout', anchor: { exact: 'T' } });
+  });
+
+  it('re-anchors an arrow head when its handle is dragged', () => {
+    const overlay = makeOverlay({ tool: 'select', caretFromPoint: () => caretAt(0) }); // 'T'
+    overlay.setAnnotations([
+      {
+        id: 'a',
+        kind: 'arrow',
+        createdAt: 0,
+        from: { dx: 0, dy: 0 },
+        to: { dx: 10, dy: 10 },
+        target: targetFor('#para', 'p'),
+        anchor: anchorOver('brown'),
+      },
+    ]);
+    const handle = container.querySelector(':scope [data-stm-handle="to"]');
+    if (!handle) throw new Error('handle not found');
+    pointerOn(handle, 'pointerdown', 30, 30);
+    pointer(overlay, 'pointermove', 35, 38);
+    pointer(overlay, 'pointerup', 35, 38);
+    expect(updated[0]).toMatchObject({ kind: 'arrow', anchor: { exact: 'T' } });
+  });
+
+  it('keeps the original anchor when the drop point has no text', () => {
+    const overlay = makeOverlay({ tool: 'select', caretFromPoint: () => null });
+    overlay.setAnnotations([
+      {
+        id: 'c',
+        kind: 'callout',
+        createdAt: 0,
+        index: 1,
+        target: targetFor('#para', 'p'),
+        anchor: anchorOver('brown'),
+        offset: { dx: 5, dy: 5 },
+      },
+    ]);
+    pointerOn(findMark('c'), 'pointerdown', 10, 10);
+    pointer(overlay, 'pointermove', 20, 20);
+    pointer(overlay, 'pointerup', 20, 20);
+    // Falls back to a pure offset nudge; the text anchor is preserved.
+    expect(updated[0]).toMatchObject({
+      kind: 'callout',
+      anchor: { exact: 'brown' },
+      offset: { dx: 15, dy: 15 },
+    });
+  });
+
   it('drags an arrow endpoint handle', () => {
     const overlay = makeOverlay({ tool: 'select' });
     overlay.setAnnotations([

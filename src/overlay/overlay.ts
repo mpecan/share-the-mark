@@ -1,4 +1,4 @@
-import { computeSelector, resolveSelector } from '@/src/core/selector';
+import { computeSelector, resolveSelector, type TargetRef } from '@/src/core/selector';
 import { anchorRange, describeRange, resolveGeometry, type ResolvedAnnotation } from '@/src/anchor';
 import type {
   Annotation,
@@ -7,6 +7,7 @@ import type {
   HighlightAnnotation,
   Point,
   Rect,
+  TextAnchor,
   TextAnnotation,
   ToolKind,
 } from '@/src/core/model';
@@ -362,7 +363,7 @@ export class Overlay {
 
   private readonly onPointerUp = (event: PointerEvent): void => {
     if (this.state === 'editing' && this.edit) {
-      const edited = this.computeEdit({ ...this.edit, current: this.pointFrom(event) });
+      const edited = this.editedAnnotation({ ...this.edit, current: this.pointFrom(event) }, true);
       this.state = 'idle';
       this.edit = null;
       this.options.onUpdate?.(edited);
@@ -474,21 +475,93 @@ export class Overlay {
   }
 
   // Substitute the in-progress edit for its committed annotation while dragging.
+  // The live preview uses the cheap offset delta (visually identical); the final
+  // re-anchor (a caret hit-test) runs once on drop — see onPointerUp.
   private draftFor(annotation: Annotation): Annotation {
     const edit = this.edit;
     if (edit?.origin.id !== annotation.id) return annotation;
-    return this.computeEdit(edit);
+    return this.editedAnnotation(edit, false);
   }
 
-  private computeEdit(edit: EditState): Annotation {
+  private editedAnnotation(edit: EditState, shouldReanchor: boolean): Annotation {
     if (edit.origin.kind === 'highlight')
       return this.editedHighlight(edit.origin, edit) ?? edit.origin;
+    if (shouldReanchor) {
+      const reanchored = this.reanchorDraggable(edit);
+      if (reanchored) return reanchored;
+    }
     return applyEdit(
       edit.origin,
       edit.current.x - edit.start.x,
       edit.current.y - edit.start.y,
       edit.handle,
     );
+  }
+
+  // On drop, re-bind a moved mark to the text under where it landed: re-anchor
+  // the callout/text point or the arrow head, recomputing offsets so the mark
+  // stays exactly where dropped. Returns null (→ keep the original anchor) when
+  // the drop point isn't over page text, or for an arrow tail (head unmoved).
+  private reanchorDraggable(edit: EditState): DraggableAnnotation | null {
+    const origin = edit.origin;
+    if (origin.kind === 'highlight') return null;
+    const base = this.anchorBase(origin);
+    if (!base) return null;
+    const dx = edit.current.x - edit.start.x;
+    const dy = edit.current.y - edit.start.y;
+
+    if (origin.kind === 'arrow') {
+      if (edit.handle === 'from') return null; // tail drag leaves the head anchor put
+      const head = { x: base.x + origin.to.dx + dx, y: base.y + origin.to.dy + dy };
+      const tailShift = edit.handle === 'to' ? 0 : 1; // 'move' shifts the tail too
+      const tail = {
+        x: base.x + origin.from.dx + dx * tailShift,
+        y: base.y + origin.from.dy + dy * tailShift,
+      };
+      const re = this.anchorAtPoint(head);
+      if (!re) return null;
+      return {
+        ...origin,
+        target: re.target,
+        anchor: re.anchor,
+        from: { dx: tail.x - re.base.x, dy: tail.y - re.base.y },
+        to: { dx: head.x - re.base.x, dy: head.y - re.base.y },
+      };
+    }
+
+    // callout / text: the mark itself is the anchor point.
+    const at = { x: base.x + origin.offset.dx + dx, y: base.y + origin.offset.dy + dy };
+    const re = this.anchorAtPoint(at);
+    if (!re) return null;
+    return {
+      ...origin,
+      target: re.target,
+      anchor: re.anchor,
+      offset: { dx: at.x - re.base.x, dy: at.y - re.base.y },
+    };
+  }
+
+  // Top-left of the character a mark is currently anchored to (viewport coords).
+  private anchorBase(annotation: DraggableAnnotation): Point | null {
+    const element = resolveSelector(annotation.target, this.doc) ?? this.doc.body;
+    const range = anchorRange(element, annotation.anchor);
+    if (!range) return null;
+    const box = range.getBoundingClientRect();
+    return { x: box.left, y: box.top };
+  }
+
+  // Anchor (target + TextAnchor + char box) for the character under a point.
+  private anchorAtPoint(
+    point: Point,
+  ): { target: TargetRef; anchor: TextAnchor; base: Point } | null {
+    const hit = this.caretAt(point);
+    if (!hit) return null;
+    const box = hit.range.getBoundingClientRect();
+    return {
+      target: computeSelector(hit.element),
+      anchor: describeRange(hit.element, hit.range),
+      base: { x: box.left, y: box.top },
+    };
   }
 
   // Re-anchor a highlight: rebuild its text range from the fixed endpoint to the
