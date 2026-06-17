@@ -460,22 +460,3 @@ implementations (`FileSystemSink` via File System Access API on Chromium;
 `NativeHostSink` / `LocalDaemonSink` for cross-browser folder-write and agent
 dispatch), native side panel, Firefox e2e via `web-ext`. No changes to
 capture/drawing/model — sinks plug into the §5.4 interface.
-
----
-
-## 11. Initializing Claude Code
-
-1. Scaffold with WXT first (React template, pnpm), commit.
-2. Place this file at repo root as `SPEC.md`.
-3. Create a short `CLAUDE.md` that points at it, e.g.:
-   > Build per `SPEC.md`. Obey the §8 quality bar on every commit: strict TS,
-   > zero-warning type-aware ESLint, coverage thresholds, Conventional Commits.
-   > Use `browser.*` (WXT), never `chrome.*`. Keep `src/core` pure and
-   > browser-free. Do M2 work only when explicitly asked.
-4. Kick off, one milestone at a time, e.g.:
-   > Implement Milestone 0 from SPEC.md: wire WXT + the full §8 quality harness
-   > (TS config, flat type-aware ESLint, Prettier, Vitest + coverage thresholds,
-   > Playwright, lefthook, commitlint, size-limit, CI). Add one trivial passing
-   > test and confirm Chrome and Firefox builds. Stop for review before M1.
-
-Review at each milestone boundary before letting it proceed.
