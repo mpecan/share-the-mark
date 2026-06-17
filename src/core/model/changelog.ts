@@ -1,0 +1,150 @@
+import type { TargetRef } from '@/src/core/selector';
+
+// Annotation model and the callout-numbering reducer — SPEC §5.3. Pure and
+// browser-free: ids/timestamps are supplied by callers (the overlay), so this
+// module stays deterministic and exhaustively testable.
+
+export type ToolKind =
+  | 'callout'
+  | 'pencil'
+  | 'arrow'
+  | 'rectangle'
+  | 'ellipse'
+  | 'text'
+  | 'highlight';
+
+export interface Point {
+  x: number;
+  y: number;
+}
+
+export interface Rect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface AnnotationBase {
+  id: string;
+  kind: ToolKind;
+  createdAt: number;
+  /** The label shown in the changelog. */
+  note?: string;
+  /** Present when anchored to an element. */
+  target?: TargetRef;
+}
+
+export interface CalloutAnnotation extends AnnotationBase {
+  kind: 'callout';
+  /** Auto-numbered, 1-based, gap-free — owned by the reducer, never by callers. */
+  index: number;
+  anchor: Point;
+}
+
+export interface PencilAnnotation extends AnnotationBase {
+  kind: 'pencil';
+  path: Point[];
+}
+
+export interface ArrowAnnotation extends AnnotationBase {
+  kind: 'arrow';
+  from: Point;
+  to: Point;
+}
+
+export interface RectangleAnnotation extends AnnotationBase {
+  kind: 'rectangle';
+  rect: Rect;
+}
+
+export interface EllipseAnnotation extends AnnotationBase {
+  kind: 'ellipse';
+  rect: Rect;
+}
+
+export interface TextAnnotation extends AnnotationBase {
+  kind: 'text';
+  position: Point;
+  content: string;
+}
+
+export interface HighlightAnnotation extends AnnotationBase {
+  kind: 'highlight';
+  rects: Rect[];
+}
+
+export type Annotation =
+  | CalloutAnnotation
+  | PencilAnnotation
+  | ArrowAnnotation
+  | RectangleAnnotation
+  | EllipseAnnotation
+  | TextAnnotation
+  | HighlightAnnotation;
+
+export interface Changelog {
+  id: string;
+  url: string;
+  title: string;
+  capturedAt: number;
+  annotations: Annotation[];
+}
+
+export type ChangelogAction =
+  | { type: 'add'; annotation: Annotation }
+  | { type: 'updateNote'; id: string; note: string }
+  | { type: 'remove'; id: string }
+  | { type: 'reorder'; from: number; to: number }
+  | { type: 'replaceAll'; annotations: Annotation[] };
+
+/**
+ * Assign 1-based, contiguous indices to callouts in array order. Non-callout
+ * annotations pass through untouched. This is the single source of truth for
+ * callout numbering, re-run after every mutation.
+ */
+export function renumberCallouts(annotations: readonly Annotation[]): Annotation[] {
+  let next = 1;
+  return annotations.map((annotation) =>
+    annotation.kind === 'callout' ? { ...annotation, index: next++ } : annotation,
+  );
+}
+
+export function changelogReducer(changelog: Changelog, action: ChangelogAction): Changelog {
+  switch (action.type) {
+    case 'add': {
+      return {
+        ...changelog,
+        annotations: renumberCallouts([...changelog.annotations, action.annotation]),
+      };
+    }
+
+    case 'updateNote': {
+      return {
+        ...changelog,
+        annotations: changelog.annotations.map((a) =>
+          a.id === action.id ? { ...a, note: action.note } : a,
+        ),
+      };
+    }
+
+    case 'remove': {
+      return {
+        ...changelog,
+        annotations: renumberCallouts(changelog.annotations.filter((a) => a.id !== action.id)),
+      };
+    }
+
+    case 'reorder': {
+      const annotations = [...changelog.annotations];
+      const [moved] = annotations.splice(action.from, 1);
+      if (moved === undefined) return changelog;
+      annotations.splice(action.to, 0, moved);
+      return { ...changelog, annotations: renumberCallouts(annotations) };
+    }
+
+    case 'replaceAll': {
+      return { ...changelog, annotations: renumberCallouts(action.annotations) };
+    }
+  }
+}
