@@ -97,6 +97,10 @@ export default defineConfig(
     files: ['tests/**'],
     rules: {
       'unicorn/no-top-level-assignment-in-function': 'off',
+      // Deeply nested fixture constructors and literal expected strings (with
+      // significant whitespace) are normal and clearer in tests.
+      'unicorn/max-nested-calls': 'off',
+      'unicorn/prefer-string-repeat': 'off',
     },
   },
 
