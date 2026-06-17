@@ -6,7 +6,10 @@ import { defineExtensionMessaging } from '@webext-core/messaging';
 export interface ProtocolMap {
   activateAnnotationMode: () => void;
   deactivateAnnotationMode: () => void;
+  exportAnnotations: () => void;
   captureVisibleTab: () => string;
+  /** Content scripts cannot read their own tab id; the background supplies it. */
+  getTabId: () => number;
 }
 
 export const { sendMessage, onMessage } = defineExtensionMessaging<ProtocolMap>();
