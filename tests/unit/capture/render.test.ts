@@ -32,6 +32,7 @@ function recorder(): { ctx: DrawContext; ops: Op[] } {
     stroke: record('stroke'),
     fillText: record('fillText'),
     fillRect: record('fillRect'),
+    strokeRect: record('strokeRect'),
   };
   return { ctx, ops };
 }
@@ -71,6 +72,17 @@ describe('drawResolved', () => {
     );
     expect(names(ops).filter((n) => n === 'moveTo')).toHaveLength(3);
     expect(names(ops).filter((n) => n === 'lineTo')).toHaveLength(3);
+  });
+
+  it('strokes an element outline', () => {
+    const { ctx, ops } = recorder();
+    drawResolved(
+      ctx,
+      { id: '1', kind: 'element', rect: { x: 1, y: 2, width: 3, height: 4 } },
+      options,
+    );
+    const strokeRect = ops.find((o) => o.name === 'strokeRect');
+    expect(strokeRect?.args).toEqual([2, 4, 6, 8]); // scaled by 2
   });
 
   it('fills a translucent highlight per rect', () => {

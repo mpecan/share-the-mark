@@ -39,9 +39,10 @@ const ICONS: Record<ToolKind, JSX.Element> = {
       <path d="M2.5 13h11" />
     </>
   ),
+  element: <rect x="2.5" y="2.5" width="11" height="11" rx="1.5" strokeDasharray="3 2" />,
 };
 
-const TOOLS: ToolKind[] = ['callout', 'text', 'arrow', 'highlight'];
+const TOOLS: ToolKind[] = ['callout', 'text', 'arrow', 'highlight', 'element'];
 
 function badge(annotation: Annotation): string {
   return annotation.kind === 'callout' ? String(annotation.index) : '•';

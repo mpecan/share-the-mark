@@ -12,15 +12,23 @@ export type ResolvedAnnotation =
   | { id: string; kind: 'callout'; index: number; at: Point }
   | { id: string; kind: 'text'; content: string; at: Point }
   | { id: string; kind: 'arrow'; from: Point; to: Point }
-  | { id: string; kind: 'highlight'; rects: Rect[] };
+  | { id: string; kind: 'highlight'; rects: Rect[] }
+  | { id: string; kind: 'element'; rect: Rect };
 
 export function toRect(domRect: DOMRect): Rect {
   return { x: domRect.x, y: domRect.y, width: domRect.width, height: domRect.height };
 }
 
 export function resolveGeometry(annotation: Annotation, doc: Document): ResolvedAnnotation | null {
-  const root = resolveSelector(annotation.target, doc) ?? doc.body;
-  const range = anchorRange(root, annotation.anchor);
+  const element = resolveSelector(annotation.target, doc);
+
+  // Element comments anchor to the whole element box, not to text.
+  if (annotation.kind === 'element') {
+    if (!element) return null;
+    return { id: annotation.id, kind: 'element', rect: toRect(element.getBoundingClientRect()) };
+  }
+
+  const range = anchorRange(element ?? doc.body, annotation.anchor);
   if (!range) return null;
 
   const box = range.getBoundingClientRect();

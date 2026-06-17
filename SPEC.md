@@ -365,7 +365,7 @@ No sync storage in M1.
 
 ## 7. Annotation toolset
 
-> **Revision (post-M1):** the toolset is pared to four content-anchored tools
+> **Revision (post-M1):** the toolset is pared to five content-anchored tools
 > (the original seven, with their raster/shape tools, are superseded). Every
 > tool anchors to an element via a `TargetRef`.
 
@@ -375,6 +375,9 @@ No sync storage in M1.
 4. **Highlight** — a real **text-selection** highlight: select text on the page
    and the highlight is anchored to that character range and rendered over its
    live client rects.
+5. **Element** — a design-feedback comment on a whole element: hover to preview
+   the element under the cursor, click to select it, and the comment is the
+   note. Anchored to the element box (its `TargetRef`), no text anchor.
 
 Plus screenshot capture with all annotations composited. Every annotation
 appears in the live changelog the instant it's created; editing its note

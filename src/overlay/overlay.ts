@@ -30,6 +30,8 @@ export interface OverlayOptions {
   promptText?: (current: string) => string | null;
   /** Convert a viewport point to a caret range in page text (injected for tests). */
   caretFromPoint?: (doc: Document, x: number, y: number) => Range | null;
+  /** Resolve the topmost page element at a viewport point (injected for tests). */
+  elementFromPoint?: (doc: Document, x: number, y: number) => Element | null;
 }
 
 function svgEl<K extends keyof SVGElementTagNameMap>(
@@ -82,6 +84,7 @@ export class Overlay {
   private tool: ToolKind;
   private state: OverlayState = 'idle';
   private arrowDraft: { from: Point; to: Point } | null = null;
+  private hoveredElement: Element | null = null;
   private committed: readonly Annotation[] = [];
 
   constructor(options: OverlayOptions) {
@@ -134,6 +137,7 @@ export class Overlay {
   setTool(tool: ToolKind): void {
     this.tool = tool;
     this.arrowDraft = null;
+    this.hoveredElement = null;
     this.state = 'idle';
     this.applyToolPointerMode();
     this.render();
@@ -199,6 +203,21 @@ export class Overlay {
     return { element, range: expandToChar(caret) };
   }
 
+  // Resolve the topmost page element under a point (skipping our own UI).
+  private pageElementAt(point: Point): Element | null {
+    const resolve = this.options.elementFromPoint ?? ((doc, x, y) => doc.elementFromPoint(x, y));
+    const host = this.hostElement();
+    const previousRoot = this.root.style.pointerEvents;
+    const previousHost = host?.style.pointerEvents;
+    this.root.style.pointerEvents = 'none';
+    if (host) host.style.pointerEvents = 'none';
+    const element = resolve(this.doc, point.x, point.y);
+    this.root.style.pointerEvents = previousRoot;
+    if (host) host.style.pointerEvents = previousHost ?? '';
+    if (!element || host?.contains(element) === true) return null;
+    return element;
+  }
+
   private readonly onPointerDown = (event: PointerEvent): void => {
     if (this.state !== 'idle') return;
     const point = this.pointFrom(event);
@@ -214,13 +233,27 @@ export class Overlay {
       this.state = 'drawing';
       this.arrowDraft = { from: point, to: point };
       this.render();
+      return;
+    }
+    if (this.tool === 'element') {
+      this.createElementComment(point);
     }
   };
 
   private readonly onPointerMove = (event: PointerEvent): void => {
-    if (this.state !== 'drawing' || !this.arrowDraft) return;
-    this.arrowDraft = { from: this.arrowDraft.from, to: this.pointFrom(event) };
-    this.render();
+    const point = this.pointFrom(event);
+    if (this.state === 'drawing' && this.arrowDraft) {
+      this.arrowDraft = { from: this.arrowDraft.from, to: point };
+      this.render();
+      return;
+    }
+    if (this.tool === 'element' && this.state === 'idle') {
+      const hovered = this.pageElementAt(point);
+      if (hovered !== this.hoveredElement) {
+        this.hoveredElement = hovered;
+        this.render();
+      }
+    }
   };
 
   private readonly onPointerUp = (event: PointerEvent): void => {
@@ -280,6 +313,18 @@ export class Overlay {
     });
   }
 
+  private createElementComment(point: Point): void {
+    const element = this.pageElementAt(point);
+    if (!element) return;
+    this.hoveredElement = null;
+    this.options.onCreate({
+      id: this.nextId(),
+      kind: 'element',
+      createdAt: this.timestamp(),
+      target: computeSelector(element),
+    });
+  }
+
   private createArrow(from: Point, to: Point): void {
     const anchor = this.caretAt(to);
     if (!anchor) return;
@@ -322,6 +367,23 @@ export class Overlay {
     }
     if (this.arrowDraft) {
       this.layer.append(this.arrowSvg(this.arrowDraft.from, this.arrowDraft.to));
+    }
+    if (this.tool === 'element' && this.hoveredElement) {
+      const box = this.hoveredElement.getBoundingClientRect();
+      this.layer.append(
+        svgEl(this.doc, 'rect', {
+          x: String(box.left),
+          y: String(box.top),
+          width: String(box.width),
+          height: String(box.height),
+          rx: '2',
+          fill: 'none',
+          stroke: this.options.settings.strokeColor,
+          'stroke-width': String(this.options.settings.strokeWidth),
+          'stroke-dasharray': '5 3',
+          'stroke-opacity': '0.5',
+        }),
+      );
     }
   }
 
@@ -433,6 +495,19 @@ export class Overlay {
           );
         }
         return group;
+      }
+      case 'element': {
+        return svgEl(this.doc, 'rect', {
+          x: String(annotation.rect.x),
+          y: String(annotation.rect.y),
+          width: String(annotation.rect.width),
+          height: String(annotation.rect.height),
+          rx: '2',
+          fill: 'none',
+          stroke,
+          'stroke-width': String(this.options.settings.strokeWidth),
+          'stroke-dasharray': '5 3',
+        });
       }
     }
   }

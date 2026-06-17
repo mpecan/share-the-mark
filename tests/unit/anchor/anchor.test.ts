@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { describeRange, resolveGeometry, toRect } from '@/src/anchor';
-import type { ArrowAnnotation, CalloutAnnotation, TextAnchor } from '@/src/core/model';
+import type { Annotation, ArrowAnnotation, CalloutAnnotation, TextAnchor } from '@/src/core/model';
 import type { TargetRef } from '@/src/core/selector';
 
 let container: HTMLElement;
@@ -113,5 +113,25 @@ describe('resolveGeometry', () => {
     };
     // body contains the same text, so it still resolves.
     expect(resolveGeometry(annotation, document)?.kind).toBe('callout');
+  });
+
+  it('resolves an element comment to the element box', () => {
+    const annotation: Annotation = {
+      id: 'e',
+      kind: 'element',
+      createdAt: 0,
+      target: targetFor('#el', 'p'),
+    };
+    expect(resolveGeometry(annotation, document)?.kind).toBe('element');
+  });
+
+  it('returns null for an element comment whose target is gone', () => {
+    const annotation: Annotation = {
+      id: 'e',
+      kind: 'element',
+      createdAt: 0,
+      target: targetFor('#missing', 'p'),
+    };
+    expect(resolveGeometry(annotation, document)).toBeNull();
   });
 });

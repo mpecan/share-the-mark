@@ -9,9 +9,10 @@ the [MIT License](./LICENSE).
 
 ## What it does
 
-Activate annotation mode on any page and mark it up with four focused tools —
-**callout** (auto-numbered marker), **text**, **arrow**, and **highlight** (a
-real text-selection highlight). Every annotation is **content-anchored** using the W3C Web Annotation model
+Activate annotation mode on any page and mark it up with five focused tools —
+**callout** (auto-numbered marker), **text**, **arrow**, **highlight** (a real
+text-selection highlight), and **element** (select a whole element and comment
+on it, for design feedback). Every annotation is **content-anchored** using the W3C Web Annotation model
 (Hypothesis-style text selectors): a text-position offset plus a text-quote with
 surrounding context, scoped to a verified-unique element selector. Resolution
 falls back from position to a fuzzy quote match, so marks track the content as
@@ -72,8 +73,9 @@ installing.
 1. Open a normal http(s) page and click the extension icon → **Start
    annotating**. The changelog panel appears on the right.
 2. Pick a tool from the palette and mark up the page: click to drop a **callout**
-   or place **text** (it prompts for content), drag for an **arrow**, or select
-   text with the **highlight** tool to highlight it.
+   or place **text** (it prompts for content), drag for an **arrow**, select text
+   with the **highlight** tool, or use **element** to hover-and-click a whole
+   element and comment on it.
 3. Add notes in the panel; delete markers with ✕.
 4. Click **Copy to clipboard** and paste the Markdown + screenshot anywhere.
 

@@ -10,7 +10,7 @@ import type { TargetRef } from '@/src/core/selector';
 // derived at render time from the live element, so marks track the content
 // across scroll/resize/reflow.
 
-export type ToolKind = 'callout' | 'text' | 'arrow' | 'highlight';
+export type ToolKind = 'callout' | 'text' | 'arrow' | 'highlight' | 'element';
 
 export interface Point {
   x: number;
@@ -52,39 +52,52 @@ export interface AnnotationBase {
   id: string;
   kind: ToolKind;
   createdAt: number;
-  /** The label shown in the changelog. */
+  /** The label / comment shown in the changelog. */
   note?: string;
-  /** Coarse anchor + export reference: the target element's selector. */
+  /** The target element's selector (anchor element + export reference). */
   target: TargetRef;
-  /** Precise content anchor (text position + quote) within the target element. */
+}
+
+/** Text-anchored kinds carry a precise content anchor within the target. */
+export interface TextAnchoredBase extends AnnotationBase {
   anchor: TextAnchor;
 }
 
-export interface CalloutAnnotation extends AnnotationBase {
+export interface CalloutAnnotation extends TextAnchoredBase {
   kind: 'callout';
   /** Auto-numbered, 1-based, gap-free — owned by the reducer, never by callers. */
   index: number;
   offset: AnchoredPoint;
 }
 
-export interface TextAnnotation extends AnnotationBase {
+export interface TextAnnotation extends TextAnchoredBase {
   kind: 'text';
   content: string;
   offset: AnchoredPoint;
 }
 
-export interface ArrowAnnotation extends AnnotationBase {
+export interface ArrowAnnotation extends TextAnchoredBase {
   kind: 'arrow';
   /** Both endpoints as offsets from the anchored character's box. */
   from: AnchoredPoint;
   to: AnchoredPoint;
 }
 
-export interface HighlightAnnotation extends AnnotationBase {
+export interface HighlightAnnotation extends TextAnchoredBase {
   kind: 'highlight';
 }
 
-export type Annotation = CalloutAnnotation | TextAnnotation | ArrowAnnotation | HighlightAnnotation;
+/** An element-level comment for design feedback: anchored to the element box. */
+export interface ElementAnnotation extends AnnotationBase {
+  kind: 'element';
+}
+
+export type Annotation =
+  | CalloutAnnotation
+  | TextAnnotation
+  | ArrowAnnotation
+  | HighlightAnnotation
+  | ElementAnnotation;
 
 export interface Changelog {
   id: string;

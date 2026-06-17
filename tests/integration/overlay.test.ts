@@ -151,6 +151,34 @@ describe('Overlay — arrow', () => {
   });
 });
 
+describe('Overlay — element comment', () => {
+  it('selects the element under the click', () => {
+    const overlay = makeOverlay({ tool: 'element', elementFromPoint: () => para });
+    pointer(overlay, 'pointerdown', 20, 20);
+    expect(created[0]).toMatchObject({ kind: 'element', target: { selector: '#para' } });
+  });
+
+  it('does not create when no element is under the point', () => {
+    const overlay = makeOverlay({ tool: 'element', elementFromPoint: () => null });
+    pointer(overlay, 'pointerdown', 20, 20);
+    expect(created).toHaveLength(0);
+  });
+
+  it('previews the hovered element', () => {
+    const overlay = makeOverlay({ tool: 'element', elementFromPoint: () => para });
+    pointer(overlay, 'pointermove', 20, 20);
+    expect(container.querySelector(':scope svg rect[stroke-opacity="0.5"]')).not.toBeNull();
+  });
+
+  it('renders a committed element outline', () => {
+    const overlay = makeOverlay();
+    overlay.setAnnotations([
+      { id: 'e', kind: 'element', createdAt: 0, target: targetFor('#para', 'p') },
+    ]);
+    expect(container.querySelector(':scope svg rect[stroke-dasharray]')).not.toBeNull();
+  });
+});
+
 describe('Overlay — highlight', () => {
   it('captures a text selection on mouseup', () => {
     const range = document.createRange();

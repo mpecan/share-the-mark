@@ -34,6 +34,7 @@ function noopContext(): DrawContext {
     lineTo: noop,
     arc: noop,
     fillRect: noop,
+    strokeRect: noop,
     stroke: noop,
     fill: noop,
     fillText: noop,

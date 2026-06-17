@@ -25,6 +25,7 @@ export interface DrawContext {
   stroke: () => void;
   fillText: (text: string, x: number, y: number) => void;
   fillRect: (x: number, y: number, w: number, h: number) => void;
+  strokeRect: (x: number, y: number, w: number, h: number) => void;
 }
 
 export interface RenderOptions {
@@ -101,6 +102,11 @@ export function drawResolved(
       for (const rect of annotation.rects) {
         ctx.fillRect(rect.x * s, rect.y * s, rect.width * s, rect.height * s);
       }
+      break;
+    }
+    case 'element': {
+      const { rect } = annotation;
+      ctx.strokeRect(rect.x * s, rect.y * s, rect.width * s, rect.height * s);
       break;
     }
   }
