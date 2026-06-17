@@ -46,7 +46,8 @@ export default defineContentScript({
     let activeTool: ToolKind = settings.defaultTool;
 
     // External store the panel subscribes to; React owns its own re-renders.
-    let snapshot: PanelSnapshot = { annotations: changelog.annotations, activeTool };
+    const buildSnapshot = (): PanelSnapshot => ({ annotations: changelog.annotations, activeTool });
+    let snapshot: PanelSnapshot = buildSnapshot();
     const listeners = new Set<() => void>();
     const store: PanelStore = {
       subscribe: (listener) => {
@@ -56,7 +57,7 @@ export default defineContentScript({
       getSnapshot: () => snapshot,
     };
     function publish(): void {
-      snapshot = { annotations: changelog.annotations, activeTool };
+      snapshot = buildSnapshot();
       for (const listener of listeners) listener();
     }
 

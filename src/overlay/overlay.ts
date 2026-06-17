@@ -6,6 +6,7 @@ import type {
   CalloutAnnotation,
   HighlightAnnotation,
   Point,
+  Rect,
   TextAnnotation,
   ToolKind,
 } from '@/src/core/model';
@@ -212,12 +213,13 @@ export class Overlay {
   private applyToolPointerMode(): void {
     this.root.style.pointerEvents = this.tool === 'highlight' ? 'none' : 'auto';
     // Drives cursor feedback (panel.css) and signals that handles are live.
-    this.root.toggleAttribute('data-stm-edit', this.tool === 'select');
+    this.root.toggleAttribute('data-stm-edit', this.isEditing);
   }
 
+  // The overlay is position:fixed/inset:0, so viewport coordinates map 1:1 — no
+  // getBoundingClientRect (and its layout flush) needed per pointer event.
   private pointFrom(event: PointerEvent): Point {
-    const rect = this.root.getBoundingClientRect();
-    return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+    return { x: event.clientX, y: event.clientY };
   }
 
   private nextId(): string {
@@ -228,6 +230,15 @@ export class Overlay {
     return (this.options.now ?? (() => Date.now()))();
   }
 
+  private ask(current: string): string | null {
+    return (this.options.promptText ?? ((value) => prompt('Annotation text', value)))(current);
+  }
+
+  // The select tool is edit mode: marks are draggable and control handles show.
+  private get isEditing(): boolean {
+    return this.tool === 'select';
+  }
+
   private hostElement(): HTMLElement | null {
     const rootNode = this.root.getRootNode();
     return rootNode instanceof ShadowRoot && rootNode.host instanceof HTMLElement
@@ -235,20 +246,27 @@ export class Overlay {
       : null;
   }
 
-  // Caret in the page text under a point, hit-tested with our own UI made
-  // non-interactive so the caret lands on the page (not the overlay). Shared by
-  // point-tool creation and highlight-handle editing.
-  private caretRangeAt(point: Point): Range | null {
-    const caretFromPoint = this.options.caretFromPoint ?? defaultCaretFromPoint;
+  // Run a hit-test with our own UI made non-interactive, so points land on the
+  // page beneath the overlay. Shared by caret and element hit-testing.
+  private withPageHitTest<T>(hitTest: (doc: Document) => T): T {
     const host = this.hostElement();
     const previousRoot = this.root.style.pointerEvents;
     const previousHost = host?.style.pointerEvents;
     this.root.style.pointerEvents = 'none';
     if (host) host.style.pointerEvents = 'none';
-    const caret = caretFromPoint(this.doc, point.x, point.y);
-    this.root.style.pointerEvents = previousRoot;
-    if (host) host.style.pointerEvents = previousHost ?? '';
-    return caret;
+    try {
+      return hitTest(this.doc);
+    } finally {
+      this.root.style.pointerEvents = previousRoot;
+      if (host) host.style.pointerEvents = previousHost ?? '';
+    }
+  }
+
+  // Caret in the page text under a point. Shared by point-tool creation and
+  // highlight-handle editing.
+  private caretRangeAt(point: Point): Range | null {
+    const caretFromPoint = this.options.caretFromPoint ?? defaultCaretFromPoint;
+    return this.withPageHitTest((doc) => caretFromPoint(doc, point.x, point.y));
   }
 
   // Anchor to the character at the caret (point-tool creation).
@@ -263,15 +281,8 @@ export class Overlay {
   // Resolve the topmost page element under a point (skipping our own UI).
   private pageElementAt(point: Point): Element | null {
     const resolve = this.options.elementFromPoint ?? ((doc, x, y) => doc.elementFromPoint(x, y));
-    const host = this.hostElement();
-    const previousRoot = this.root.style.pointerEvents;
-    const previousHost = host?.style.pointerEvents;
-    this.root.style.pointerEvents = 'none';
-    if (host) host.style.pointerEvents = 'none';
-    const element = resolve(this.doc, point.x, point.y);
-    this.root.style.pointerEvents = previousRoot;
-    if (host) host.style.pointerEvents = previousHost ?? '';
-    if (!element || host?.contains(element) === true) return null;
+    const element = this.withPageHitTest((doc) => resolve(doc, point.x, point.y));
+    if (!element || this.hostElement()?.contains(element) === true) return null;
     return element;
   }
 
@@ -299,7 +310,7 @@ export class Overlay {
     const point = this.pointFrom(event);
 
     // The select tool edits existing marks and never creates new ones.
-    if (this.tool === 'select') {
+    if (this.isEditing) {
       const hit = this.markUnder(event);
       if (hit) {
         this.edit = { origin: hit.annotation, handle: hit.handle, start: point, current: point };
@@ -371,15 +382,10 @@ export class Overlay {
   };
 
   private readonly onDoubleClick = (event: MouseEvent): void => {
-    if (this.tool !== 'select') return;
-    const target = event.target;
-    if (!(target instanceof SVGElement)) return;
-    const markEl = target.closest('[data-stm-id]');
-    const id = markEl instanceof SVGElement ? markEl.dataset['stmId'] : undefined;
-    const annotation = this.committed.find((a) => a.id === id);
+    if (!this.isEditing) return;
+    const annotation = this.markUnder(event)?.annotation;
     if (annotation?.kind !== 'text') return;
-    const ask = this.options.promptText ?? ((current) => prompt('Annotation text', current));
-    const content = ask(annotation.content);
+    const content = this.ask(annotation.content);
     if (content !== null && content !== '') this.options.onUpdate?.({ ...annotation, content });
   };
 
@@ -411,8 +417,7 @@ export class Overlay {
     const anchor = this.caretAt(point);
     if (!anchor) return;
     this.state = 'placing-text';
-    const ask = this.options.promptText ?? ((current) => prompt('Annotation text', current));
-    const content = ask('');
+    const content = this.ask('');
     this.state = 'idle';
     if (content === null || content === '') return;
     this.options.onCreate({
@@ -530,20 +535,26 @@ export class Overlay {
     if (this.tool === 'element' && this.hoveredElement) {
       const box = this.hoveredElement.getBoundingClientRect();
       this.layer.append(
-        svgEl(this.doc, 'rect', {
-          x: String(box.left),
-          y: String(box.top),
-          width: String(box.width),
-          height: String(box.height),
-          rx: '2',
-          fill: 'none',
-          stroke: this.options.settings.strokeColor,
-          'stroke-width': String(this.options.settings.strokeWidth),
-          'stroke-dasharray': '5 3',
-          'stroke-opacity': '0.5',
-        }),
+        this.dashedRectSvg({ x: box.left, y: box.top, width: box.width, height: box.height }, true),
       );
     }
+  }
+
+  // The dashed outline used for element comments and the element-hover preview.
+  private dashedRectSvg(box: Rect, isPreview = false): SVGElement {
+    const rect = svgEl(this.doc, 'rect', {
+      x: String(box.x),
+      y: String(box.y),
+      width: String(box.width),
+      height: String(box.height),
+      rx: '2',
+      fill: 'none',
+      stroke: this.options.settings.strokeColor,
+      'stroke-width': String(this.options.settings.strokeWidth),
+      'stroke-dasharray': '5 3',
+    });
+    if (isPreview) rect.setAttribute('stroke-opacity', '0.5');
+    return rect;
   }
 
   private sizeTextBackground(group: SVGGElement): void {
@@ -651,7 +662,7 @@ export class Overlay {
       case 'arrow': {
         const group = svgEl(this.doc, 'g', {});
         group.append(this.arrowSvg(annotation.from, annotation.to));
-        if (this.tool === 'select') {
+        if (this.isEditing) {
           group.append(this.handleSvg(annotation.from, 'from'));
           group.append(this.handleSvg(annotation.to, 'to'));
         }
@@ -675,26 +686,16 @@ export class Overlay {
         // shown only in the select (edit) tool.
         const first = annotation.rects[0];
         const last = annotation.rects.at(-1);
-        if (this.tool === 'select' && first) {
+        if (this.isEditing && first) {
           group.append(this.handleSvg({ x: first.x, y: first.y }, 'start'));
         }
-        if (this.tool === 'select' && last) {
+        if (this.isEditing && last) {
           group.append(this.handleSvg({ x: last.x + last.width, y: last.y + last.height }, 'end'));
         }
         return group;
       }
       case 'element': {
-        return svgEl(this.doc, 'rect', {
-          x: String(annotation.rect.x),
-          y: String(annotation.rect.y),
-          width: String(annotation.rect.width),
-          height: String(annotation.rect.height),
-          rx: '2',
-          fill: 'none',
-          stroke,
-          'stroke-width': String(this.options.settings.strokeWidth),
-          'stroke-dasharray': '5 3',
-        });
+        return this.dashedRectSvg(annotation.rect);
       }
     }
   }
