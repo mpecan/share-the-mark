@@ -61,7 +61,7 @@ message, and the test suite on push.
 These keep the codebase portable and testable — don't violate them:
 
 - Use WXT's unified **`browser.*`** global; never reference `chrome.*`.
-- **`src/core/**` is pure and browser-free\*\* (selector engine, model, markdown,
+- `src/core/**` is **pure and browser-free** (selector engine, model, markdown,
   export payload). No extension/DOM-side-effecting APIs there.
 - The drawing **overlay is imperative TypeScript, not React** — it must stay at
   60fps. React is only for static-ish UI (popup, options, changelog panel).

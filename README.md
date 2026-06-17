@@ -20,9 +20,8 @@ On export, the extension composites the annotations onto a screenshot and writes
 **both** a Markdown changelog (`text/plain`) and the annotated PNG (`image/png`)
 to the clipboard as a single item. The Markdown is stable and agent-friendly:
 
-```markdown
+```text
 # Change brief — Example page
-
 Source: https://example.com/page
 Captured: 2026-06-17T00:00:00.000Z
 
