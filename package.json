@@ -4,6 +4,12 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "license": "MIT",
+  "author": "Matjaz Domen Pecan",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mpecan/share-the-mark.git"
+  },
   "packageManager": "pnpm@10.14.0",
   "engines": {
     "node": ">=22"
