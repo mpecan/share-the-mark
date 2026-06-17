@@ -10,13 +10,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Current state
 
-**M0 (scaffold + quality harness) is complete and green.** All §8 gates pass: typecheck, zero-warning lint, tests with coverage thresholds, size budget, Chrome + Firefox builds and zips, and a Chromium e2e that loads the built extension. pnpm + Node 22 are pinned (`.tool-versions`), git hooks are wired (lefthook), and CI runs the full pipeline.
+**M0 (harness) and M1 (annotation core, SPEC §5/§7) are complete and green** on the `m1-annotation-core` branch. All §8 gates pass: typecheck, zero-warning lint, 97 tests at 100% coverage (the per-glob `src/core/**` 100% bar and global thresholds both met), size budget, Chrome + Firefox builds/zips, and a Chromium e2e that draws a callout and asserts the exported Markdown carries the resolved `Element:` selector. pnpm + Node 22 pinned, lefthook hooks wired, CI runs the full pipeline.
 
-What exists so far is the harness, not the product: `src/core/health.ts` is a placeholder so coverage has something to measure, and the popup/entrypoints are minimal stubs with `// M1:` markers pointing at the real work. **M1 (annotation core, SPEC §5/§7) is the next milestone** — selector engine, annotation model, overlay, panel, capture, clipboard export. M2 only when explicitly asked. Stop for review at each milestone boundary.
+What's implemented (all behind `src/`):
+- `core/selector` — `computeSelector`/`resolveSelector` (fast-check round-trip), `core/model` — annotation union + callout-numbering reducer, `core/markdown` — Turndown wrapper, `core/export` — payload + changelog Markdown format.
+- `overlay` — imperative pointer state machine (canvas raster + SVG vector, 7 tools); pure geometry is split into `overlay/geometry.ts`.
+- `capture` — `render` (canvas drawing behind a `DrawContext` interface), `composite` (DI'd canvas/image plumbing; real glue in `composite-surface.ts`, excluded from coverage), `ClipboardSink`, screenshot round-trip.
+- `messaging` (typed `ProtocolMap`), `storage` (settings + per-tab/URL changelog), `panel` (React changelog panel). Entrypoints wire it together: `content.ts` mounts overlay+panel into a closed shadow root on activation; popup toggles mode; options page persists settings.
 
-A couple of harness decisions worth knowing before you touch config:
-- ESLint plugins ship loose flat-config typings: `react-hooks`/`react-refresh` are wired manually (cast to `ESLint.Plugin`), and the import resolver is `eslint-import-resolver-typescript` via `import-x/resolver-next` (import-x's bundled preset has an incompatible interface). See comments in `eslint.config.ts`.
+**M2 only when explicitly asked.** Stop for review at each milestone boundary.
+
+Decisions worth knowing before you touch things:
+- ESLint plugins ship loose flat-config typings: `react-hooks`/`react-refresh` are wired manually (cast to `ESLint.Plugin`), the import resolver is `eslint-import-resolver-typescript` via `import-x/resolver-next`. A `tests/**` override relaxes a few unicorn rules (beforeEach assignment, fixture nesting, literal whitespace).
 - size-limit reads `size-limit.config.ts` only via `--config` (run `pnpm size`); `running: false` keeps it a pure gzip-byte gate with no headless Chrome.
+- `lib.dom` types `Element.textContent`, `Document.body`, and `NodeListOf.item()` as non-null — don't add guards the linter will flag as unnecessary.
+- The overlay/panel live in a **closed** shadow root, so e2e can't query into it: activation/export are driven via the `getTabId`/`exportAnnotations` messages from the service worker, and the content script publishes the exported Markdown to `document.documentElement.dataset.stmLastExport` for assertions. `captureVisibleTab` + clipboard write need a user gesture, so they're best-effort there and unit-tested instead.
 
 ## Commands
 
