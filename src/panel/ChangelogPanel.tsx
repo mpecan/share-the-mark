@@ -3,8 +3,8 @@ import type { Annotation, ToolKind } from '@/src/core/model';
 
 // In-page changelog panel (SPEC §5.8). Rendered with React into the closed
 // shadow root alongside the overlay. Static-ish UI only — the hot drawing path
-// stays imperative (SPEC §5.1). Styling lives in entrypoints/content.css, which
-// WXT injects into the shadow root.
+// stays imperative (SPEC §5.1). Styling lives in src/panel/panel.css, which WXT
+// injects into the shadow root (cssInjectionMode: 'ui').
 
 export interface ChangelogPanelProps {
   annotations: readonly Annotation[];
