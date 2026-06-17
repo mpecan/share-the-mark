@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildExportPayload, changelogToMarkdown } from '@/src/core/export';
-import type { Annotation, CalloutAnnotation, Changelog, PencilAnnotation } from '@/src/core/model';
+import type { Annotation, CalloutAnnotation, Changelog, TextAnnotation } from '@/src/core/model';
 import type { TargetRef } from '@/src/core/selector';
 
 function target(selector: string): TargetRef {
@@ -12,15 +12,31 @@ function callout(
   index: number,
   partial: Partial<CalloutAnnotation> = {},
 ): CalloutAnnotation {
-  return { id, kind: 'callout', createdAt: 0, index, anchor: { x: 0, y: 0 }, ...partial };
+  return {
+    id,
+    kind: 'callout',
+    createdAt: 0,
+    index,
+    at: { dx: 0, dy: 0 },
+    target: target('#default'),
+    ...partial,
+  };
 }
 
-function pencil(
+function text(
   id: string,
   createdAt: number,
-  partial: Partial<PencilAnnotation> = {},
-): PencilAnnotation {
-  return { id, kind: 'pencil', createdAt, path: [], ...partial };
+  partial: Partial<TextAnnotation> = {},
+): TextAnnotation {
+  return {
+    id,
+    kind: 'text',
+    createdAt,
+    at: { dx: 0, dy: 0 },
+    content: '',
+    target: target('#default'),
+    ...partial,
+  };
 }
 
 function changelog(annotations: Annotation[]): Changelog {
@@ -41,7 +57,7 @@ describe('changelogToMarkdown', () => {
     );
   });
 
-  it('numbers annotations and includes the Element line when anchored', () => {
+  it('numbers annotations and includes the resolved Element line', () => {
     const md = changelogToMarkdown(
       changelog([
         callout('a', 1, { note: 'Fix the heading', target: target('#hero h1') }),
@@ -52,32 +68,26 @@ describe('changelogToMarkdown', () => {
     expect(md).toContain('2. Remove this\n   Element: `.cta`');
   });
 
-  it('omits the Element line for annotations without a target', () => {
-    const md = changelogToMarkdown(changelog([pencil('p', 0, { note: 'freeform' })]));
-    expect(md).toContain('1. freeform');
-    expect(md).not.toContain('Element:');
-  });
-
   it('falls back to a kind label when the note is missing or blank', () => {
-    const md = changelogToMarkdown(changelog([callout('a', 1), pencil('p', 1, { note: '   ' })]));
+    const md = changelogToMarkdown(changelog([callout('a', 1), text('t', 1, { note: '   ' })]));
     expect(md).toContain('1. (callout)');
-    expect(md).toContain('2. (pencil)');
+    expect(md).toContain('2. (text)');
   });
 
   it('orders callouts by index, then non-callouts by creation time', () => {
     const md = changelogToMarkdown(
       changelog([
-        pencil('late', 200, { note: 'late pencil' }),
+        text('late', 200, { note: 'late text' }),
         callout('c2', 2, { note: 'second callout' }),
-        pencil('early', 100, { note: 'early pencil' }),
+        text('early', 100, { note: 'early text' }),
         callout('c1', 1, { note: 'first callout' }),
       ]),
     );
-    const order = ['first callout', 'second callout', 'early pencil', 'late pencil'];
+    const order = ['first callout', 'second callout', 'early text', 'late text'];
     const positions = order.map((label) => md.indexOf(label));
     expect(positions).toEqual(positions.toSorted((a, b) => a - b));
     expect(md).toContain('1. first callout');
-    expect(md).toContain('4. late pencil');
+    expect(md).toContain('4. late text');
   });
 });
 

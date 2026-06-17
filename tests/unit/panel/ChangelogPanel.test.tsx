@@ -3,6 +3,14 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ChangelogPanel, type ChangelogPanelProps } from '@/src/panel';
 import type { Annotation } from '@/src/core/model';
+import type { TargetRef } from '@/src/core/selector';
+
+const target: TargetRef = {
+  selector: '#x',
+  fallbacks: [],
+  tag: 'div',
+  rect: { x: 0, y: 0, width: 0, height: 0 },
+};
 
 function callout(id: string, index: number, note?: string): Annotation {
   const annotation: Annotation = {
@@ -10,7 +18,8 @@ function callout(id: string, index: number, note?: string): Annotation {
     kind: 'callout',
     createdAt: 0,
     index,
-    anchor: { x: 0, y: 0 },
+    at: { dx: 0, dy: 0 },
+    target,
   };
   if (note !== undefined) annotation.note = note;
   return annotation;
@@ -54,8 +63,15 @@ describe('ChangelogPanel', () => {
   });
 
   it('lists annotations with callout numbers and a bullet for other kinds', () => {
-    const pencil: Annotation = { id: 'p', kind: 'pencil', createdAt: 0, path: [] };
-    renderPanel({ annotations: [callout('a', 1, 'Fix heading'), pencil] });
+    const note: Annotation = {
+      id: 'n',
+      kind: 'text',
+      createdAt: 0,
+      content: 'x',
+      at: { dx: 0, dy: 0 },
+      target,
+    };
+    renderPanel({ annotations: [callout('a', 1, 'Fix heading'), note] });
     expect(screen.getByText('1')).toBeInTheDocument();
     expect(screen.getByText('•')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Fix heading')).toBeInTheDocument();

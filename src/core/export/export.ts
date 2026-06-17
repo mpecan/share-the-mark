@@ -50,9 +50,10 @@ export function changelogToMarkdown(changelog: Changelog): string {
   ].join('\n');
 
   const items = orderAnnotations(changelog.annotations).map((annotation, i) => {
-    const lines = [`${String(i + 1)}. ${annotationLabel(annotation)}`];
-    if (annotation.target) lines.push(`   Element: \`${annotation.target.selector}\``);
-    return lines.join('\n');
+    return [
+      `${String(i + 1)}. ${annotationLabel(annotation)}`,
+      `   Element: \`${annotation.target.selector}\``,
+    ].join('\n');
   });
 
   return items.length === 0 ? header : `${header}\n\n${items.join('\n')}`;

@@ -41,7 +41,13 @@ describe('PanelApp', () => {
       kind: 'callout',
       createdAt: 0,
       index: 1,
-      anchor: { x: 0, y: 0 },
+      at: { dx: 0, dy: 0 },
+      target: {
+        selector: '#x',
+        fallbacks: [],
+        tag: 'div',
+        rect: { x: 0, y: 0, width: 0, height: 0 },
+      },
     };
     act(() => {
       store.set({ annotations: [callout], activeTool: 'arrow' });

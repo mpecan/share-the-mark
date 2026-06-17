@@ -1,9 +1,11 @@
-import type { Annotation, Point } from '@/src/core/model';
+import type { ResolvedAnnotation } from '@/src/anchor';
+import type { Point } from '@/src/core/model';
 
-// Canvas rendering for annotations — the drawing half of compositing (SPEC
-// §5.4). Written against a minimal `DrawContext` (a structural subset of
-// CanvasRenderingContext2D) so the full drawing logic is unit-testable with a
-// recording stub; happy-dom has no real 2D canvas.
+// Canvas rendering for compositing (SPEC §5.4): draw resolved (absolute)
+// annotation geometry onto the screenshot. Written against a minimal
+// `DrawContext` (a structural subset of CanvasRenderingContext2D) so the
+// drawing logic is unit-testable with a recording stub. The overlay renders the
+// same ResolvedAnnotations as SVG; this is the raster path for export.
 
 export interface DrawContext {
   strokeStyle: string | CanvasGradient | CanvasPattern;
@@ -15,25 +17,14 @@ export interface DrawContext {
   globalAlpha: number;
   save: () => void;
   restore: () => void;
-  clearRect: (x: number, y: number, w: number, h: number) => void;
   beginPath: () => void;
   moveTo: (x: number, y: number) => void;
   lineTo: (x: number, y: number) => void;
   arc: (x: number, y: number, r: number, start: number, end: number) => void;
-  ellipse: (
-    x: number,
-    y: number,
-    rx: number,
-    ry: number,
-    rotation: number,
-    start: number,
-    end: number,
-  ) => void;
-  rect: (x: number, y: number, w: number, h: number) => void;
-  fillRect: (x: number, y: number, w: number, h: number) => void;
-  stroke: () => void;
   fill: () => void;
+  stroke: () => void;
   fillText: (text: string, x: number, y: number) => void;
+  fillRect: (x: number, y: number, w: number, h: number) => void;
 }
 
 export interface RenderOptions {
@@ -46,15 +37,6 @@ export interface RenderOptions {
 
 const CALLOUT_RADIUS = 14;
 const ARROWHEAD = 12;
-
-function strokePath(ctx: DrawContext, points: readonly Point[], scale: number): void {
-  ctx.beginPath();
-  for (const [i, p] of points.entries()) {
-    if (i === 0) ctx.moveTo(p.x * scale, p.y * scale);
-    else ctx.lineTo(p.x * scale, p.y * scale);
-  }
-  ctx.stroke();
-}
 
 function drawArrowhead(ctx: DrawContext, from: Point, to: Point, scale: number): void {
   const angle = Math.atan2(to.y - from.y, to.x - from.x);
@@ -75,86 +57,49 @@ function drawArrowhead(ctx: DrawContext, from: Point, to: Point, scale: number):
   ctx.stroke();
 }
 
-export function drawAnnotation(
+export function drawResolved(
   ctx: DrawContext,
-  annotation: Annotation,
+  annotation: ResolvedAnnotation,
   options: RenderOptions,
 ): void {
-  const { scale } = options;
+  const s = options.scale;
   ctx.save();
   ctx.strokeStyle = options.strokeColor;
   ctx.fillStyle = options.strokeColor;
-  ctx.lineWidth = options.strokeWidth * scale;
+  ctx.lineWidth = options.strokeWidth * s;
 
   switch (annotation.kind) {
     case 'callout': {
       ctx.beginPath();
-      ctx.arc(
-        annotation.anchor.x * scale,
-        annotation.anchor.y * scale,
-        CALLOUT_RADIUS * scale,
-        0,
-        Math.PI * 2,
-      );
+      ctx.arc(annotation.at.x * s, annotation.at.y * s, CALLOUT_RADIUS * s, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = '#ffffff';
-      ctx.font = `${String(Math.round(CALLOUT_RADIUS * 1.2 * scale))}px sans-serif`;
+      ctx.font = `${String(Math.round(CALLOUT_RADIUS * 1.2 * s))}px sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(
-        String(annotation.index),
-        annotation.anchor.x * scale,
-        annotation.anchor.y * scale,
-      );
-      break;
-    }
-    case 'pencil': {
-      strokePath(ctx, annotation.path, scale);
-      break;
-    }
-    case 'arrow': {
-      strokePath(ctx, [annotation.from, annotation.to], scale);
-      drawArrowhead(ctx, annotation.from, annotation.to, scale);
-      break;
-    }
-    case 'rectangle': {
-      const { rect } = annotation;
-      ctx.beginPath();
-      ctx.rect(rect.x * scale, rect.y * scale, rect.width * scale, rect.height * scale);
-      ctx.stroke();
-      break;
-    }
-    case 'ellipse': {
-      const { rect } = annotation;
-      ctx.beginPath();
-      ctx.ellipse(
-        (rect.x + rect.width / 2) * scale,
-        (rect.y + rect.height / 2) * scale,
-        (rect.width / 2) * scale,
-        (rect.height / 2) * scale,
-        0,
-        0,
-        Math.PI * 2,
-      );
-      ctx.stroke();
+      ctx.fillText(String(annotation.index), annotation.at.x * s, annotation.at.y * s);
       break;
     }
     case 'text': {
-      ctx.font = `${String(Math.round(16 * scale))}px sans-serif`;
+      ctx.font = `${String(Math.round(16 * s))}px sans-serif`;
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
-      ctx.fillText(
-        annotation.content,
-        annotation.position.x * scale,
-        annotation.position.y * scale,
-      );
+      ctx.fillText(annotation.content, annotation.at.x * s, annotation.at.y * s);
+      break;
+    }
+    case 'arrow': {
+      ctx.beginPath();
+      ctx.moveTo(annotation.from.x * s, annotation.from.y * s);
+      ctx.lineTo(annotation.to.x * s, annotation.to.y * s);
+      ctx.stroke();
+      drawArrowhead(ctx, annotation.from, annotation.to, s);
       break;
     }
     case 'highlight': {
       ctx.globalAlpha = 0.35;
       ctx.fillStyle = options.highlightColor;
       for (const rect of annotation.rects) {
-        ctx.fillRect(rect.x * scale, rect.y * scale, rect.width * scale, rect.height * scale);
+        ctx.fillRect(rect.x * s, rect.y * s, rect.width * s, rect.height * s);
       }
       break;
     }
@@ -165,8 +110,8 @@ export function drawAnnotation(
 
 export function drawScene(
   ctx: DrawContext,
-  annotations: readonly Annotation[],
+  annotations: readonly ResolvedAnnotation[],
   options: RenderOptions,
 ): void {
-  for (const annotation of annotations) drawAnnotation(ctx, annotation, options);
+  for (const annotation of annotations) drawResolved(ctx, annotation, options);
 }

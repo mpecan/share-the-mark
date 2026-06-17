@@ -7,7 +7,7 @@ import {
   type LoadedImage,
   type RenderOptions,
 } from '@/src/capture';
-import type { Annotation } from '@/src/core/model';
+import type { ResolvedAnnotation } from '@/src/anchor';
 
 const options: RenderOptions = {
   strokeColor: '#000',
@@ -29,13 +29,10 @@ function noopContext(): DrawContext {
     globalAlpha: 1,
     save: noop,
     restore: noop,
-    clearRect: noop,
     beginPath: noop,
     moveTo: noop,
     lineTo: noop,
     arc: noop,
-    ellipse: noop,
-    rect: noop,
     fillRect: noop,
     stroke: noop,
     fill: noop,
@@ -60,8 +57,8 @@ describe('compositeAnnotations', () => {
       createSurface,
     };
 
-    const annotations: Annotation[] = [
-      { id: '1', kind: 'callout', createdAt: 0, index: 1, anchor: { x: 1, y: 1 } },
+    const annotations: ResolvedAnnotation[] = [
+      { id: '1', kind: 'callout', index: 1, at: { x: 1, y: 1 } },
     ];
 
     const result = await compositeAnnotations(

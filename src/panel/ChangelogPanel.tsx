@@ -22,11 +22,8 @@ const ICONS: Record<ToolKind, JSX.Element> = {
       <circle cx="8" cy="8" r="1.6" fill="currentColor" stroke="none" />
     </>
   ),
-  pencil: <path d="M10.5 2.6l2.9 2.9L6 13l-3.5 1 1-3.5 7-7.9z" />,
-  arrow: <path d="M3 13L13 3M7.5 3H13v5.5" />,
-  rectangle: <rect x="2.5" y="3.5" width="11" height="9" rx="1" />,
-  ellipse: <ellipse cx="8" cy="8" rx="6" ry="4.5" />,
   text: <path d="M3 4h10M8 4.5v8M6 12.5h4" />,
+  arrow: <path d="M3 13L13 3M7.5 3H13v5.5" />,
   highlight: (
     <>
       <rect
@@ -44,15 +41,7 @@ const ICONS: Record<ToolKind, JSX.Element> = {
   ),
 };
 
-const TOOLS: ToolKind[] = [
-  'callout',
-  'pencil',
-  'arrow',
-  'rectangle',
-  'ellipse',
-  'text',
-  'highlight',
-];
+const TOOLS: ToolKind[] = ['callout', 'text', 'arrow', 'highlight'];
 
 function badge(annotation: Annotation): string {
   return annotation.kind === 'callout' ? String(annotation.index) : '•';

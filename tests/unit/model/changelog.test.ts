@@ -5,15 +5,23 @@ import {
   type Annotation,
   type CalloutAnnotation,
   type Changelog,
-  type PencilAnnotation,
+  type TextAnnotation,
 } from '@/src/core/model';
+import type { TargetRef } from '@/src/core/selector';
+
+const target: TargetRef = {
+  selector: '#x',
+  fallbacks: [],
+  tag: 'div',
+  rect: { x: 0, y: 0, width: 0, height: 0 },
+};
 
 function callout(id: string, createdAt = 0): CalloutAnnotation {
-  return { id, kind: 'callout', createdAt, index: 0, anchor: { x: 0, y: 0 } };
+  return { id, kind: 'callout', createdAt, target, index: 0, at: { dx: 0, dy: 0 } };
 }
 
-function pencil(id: string, createdAt = 0): PencilAnnotation {
-  return { id, kind: 'pencil', createdAt, path: [] };
+function text(id: string, createdAt = 0): TextAnnotation {
+  return { id, kind: 'text', createdAt, target, at: { dx: 0, dy: 0 }, content: '' };
 }
 
 function changelog(annotations: Annotation[]): Changelog {
@@ -26,7 +34,7 @@ function indices(state: Changelog): [string, number | undefined][] {
 
 describe('renumberCallouts', () => {
   it('numbers callouts 1-based and contiguous, ignoring other kinds', () => {
-    const result = renumberCallouts([callout('a'), pencil('p'), callout('b')]);
+    const result = renumberCallouts([callout('a'), text('t'), callout('b')]);
     expect(result.map((a) => (a.kind === 'callout' ? a.index : null))).toEqual([1, null, 2]);
   });
 
@@ -41,11 +49,11 @@ describe('changelogReducer — add', () => {
   it('assigns sequential callout indices', () => {
     let state = changelog([]);
     state = changelogReducer(state, { type: 'add', annotation: callout('a') });
-    state = changelogReducer(state, { type: 'add', annotation: pencil('p') });
+    state = changelogReducer(state, { type: 'add', annotation: text('t') });
     state = changelogReducer(state, { type: 'add', annotation: callout('b') });
     expect(indices(state)).toEqual([
       ['a', 1],
-      ['p', undefined],
+      ['t', undefined],
       ['b', 2],
     ]);
   });
@@ -53,8 +61,11 @@ describe('changelogReducer — add', () => {
 
 describe('changelogReducer — remove', () => {
   it('renumbers callouts after a middle delete', () => {
-    const state = changelog([callout('a'), callout('b'), callout('c')]);
-    const next = changelogReducer(renumberThrough(state), { type: 'remove', id: 'b' });
+    const state = changelogReducer(changelog([callout('a'), callout('b'), callout('c')]), {
+      type: 'replaceAll',
+      annotations: [callout('a'), callout('b'), callout('c')],
+    });
+    const next = changelogReducer(state, { type: 'remove', id: 'b' });
     expect(indices(next)).toEqual([
       ['a', 1],
       ['c', 2],
@@ -62,8 +73,7 @@ describe('changelogReducer — remove', () => {
   });
 
   it('is a no-op for an unknown id', () => {
-    const state = changelog([callout('a')]);
-    const next = changelogReducer(state, { type: 'remove', id: 'zzz' });
+    const next = changelogReducer(changelog([callout('a')]), { type: 'remove', id: 'zzz' });
     expect(next.annotations).toHaveLength(1);
   });
 });
@@ -77,20 +87,23 @@ describe('changelogReducer — updateNote', () => {
   });
 
   it('is a no-op for an unknown id', () => {
-    const state = changelog([callout('a')]);
-    const next = changelogReducer(state, { type: 'updateNote', id: 'zzz', note: 'x' });
+    const next = changelogReducer(changelog([callout('a')]), {
+      type: 'updateNote',
+      id: 'zzz',
+      note: 'x',
+    });
     expect(next.annotations[0]?.note).toBeUndefined();
   });
 });
 
 describe('changelogReducer — reorder', () => {
   it('moves an annotation and renumbers by new order', () => {
-    const state = changelog([callout('a'), pencil('p'), callout('b')]);
+    const state = changelog([callout('a'), text('t'), callout('b')]);
     const next = changelogReducer(state, { type: 'reorder', from: 2, to: 0 });
     expect(indices(next)).toEqual([
       ['b', 1],
       ['a', 2],
-      ['p', undefined],
+      ['t', undefined],
     ]);
   });
 
@@ -103,8 +116,7 @@ describe('changelogReducer — reorder', () => {
 
 describe('changelogReducer — replaceAll', () => {
   it('replaces the annotation set and renumbers', () => {
-    const state = changelog([callout('a')]);
-    const next = changelogReducer(state, {
+    const next = changelogReducer(changelog([callout('a')]), {
       type: 'replaceAll',
       annotations: [callout('x'), callout('y')],
     });
@@ -122,9 +134,3 @@ it('never mutates the previous state', () => {
   expect(state.annotations).toBe(before);
   expect(state.annotations).toHaveLength(1);
 });
-
-// Helper: run a no-op reorder to force the initial numbering, mirroring how the
-// reducer keeps indices authoritative regardless of caller-supplied values.
-function renumberThrough(state: Changelog): Changelog {
-  return changelogReducer(state, { type: 'replaceAll', annotations: state.annotations });
-}

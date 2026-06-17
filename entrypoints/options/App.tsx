@@ -4,15 +4,7 @@ import type { ToolKind } from '@/src/core/model';
 
 // Options page (SPEC §5.8): default tool, stroke defaults, and Markdown
 // extraction preferences, persisted to storage.local.
-const TOOLS: ToolKind[] = [
-  'callout',
-  'pencil',
-  'arrow',
-  'rectangle',
-  'ellipse',
-  'text',
-  'highlight',
-];
+const TOOLS: ToolKind[] = ['callout', 'text', 'arrow', 'highlight'];
 
 export default function App() {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);

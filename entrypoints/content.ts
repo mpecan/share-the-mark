@@ -13,13 +13,14 @@ import {
 } from '@/src/core/model';
 import { buildExportPayload, changelogToMarkdown } from '@/src/core/export';
 import { getSettings, loadChangelog, saveChangelog } from '@/src/storage';
+import { resolveGeometry } from '@/src/anchor';
 import {
   ClipboardSink,
   compositeAnnotations,
   requestScreenshot,
   type RenderOptions,
 } from '@/src/capture';
-import type { TargetRef } from '@/src/core/selector';
+import type { ResolvedTarget } from '@/src/overlay';
 import '@/src/panel/panel.css';
 
 export default defineContentScript({
@@ -65,11 +66,11 @@ export default defineContentScript({
     // Filled once the shadow host exists; read lazily during hit-testing.
     const refs: { shadowHost?: Element } = {};
 
-    function targetAt(point: Point): TargetRef | undefined {
+    function targetAt(point: Point): ResolvedTarget | undefined {
       const element = document
         .elementsFromPoint(point.x, point.y)
         .find((el) => el !== refs.shadowHost && refs.shadowHost?.contains(el) !== true);
-      return element ? computeSelector(element) : undefined;
+      return element ? { target: computeSelector(element), element } : undefined;
     }
 
     const ui = await createShadowRootUi(ctx, {
@@ -143,7 +144,10 @@ export default defineContentScript({
         // action) and the clipboard write needs a user gesture (the panel
         // button provides one). Best-effort: the Markdown is already published.
         const screenshot = await requestScreenshot();
-        const image = await compositeAnnotations(screenshot, captured.annotations, renderOptions);
+        const resolved = captured.annotations
+          .map((annotation) => resolveGeometry(annotation, document))
+          .filter((value) => value !== null);
+        const image = await compositeAnnotations(screenshot, resolved, renderOptions);
         const payload = await buildExportPayload(captured, image);
         const sink = new ClipboardSink();
         if (await sink.isAvailable()) await sink.write(payload);

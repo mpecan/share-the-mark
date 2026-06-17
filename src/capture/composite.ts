@@ -1,6 +1,6 @@
 import { drawScene, type DrawContext, type RenderOptions } from './render';
 import { defaultCompositeDeps } from './composite-surface';
-import type { Annotation } from '@/src/core/model';
+import type { ResolvedAnnotation } from '@/src/anchor';
 
 // Composite annotations onto a screenshot into a PNG Blob (SPEC §5.4). The
 // canvas/image plumbing is injected (see composite-surface) so the
@@ -25,7 +25,7 @@ export interface CompositeDeps {
 
 export async function compositeAnnotations(
   screenshot: string,
-  annotations: readonly Annotation[],
+  annotations: readonly ResolvedAnnotation[],
   options: RenderOptions,
   deps: CompositeDeps = defaultCompositeDeps,
 ): Promise<Blob> {
