@@ -1,5 +1,5 @@
 import type { JSX } from 'react';
-import type { Annotation } from '@/src/core/model';
+import type { Annotation, ToolKind } from '@/src/core/model';
 
 // In-page changelog panel (SPEC §5.8). Rendered with React into the closed
 // shadow root alongside the overlay. Static-ish UI only — the hot drawing path
@@ -7,10 +7,22 @@ import type { Annotation } from '@/src/core/model';
 
 export interface ChangelogPanelProps {
   annotations: readonly Annotation[];
+  activeTool: ToolKind;
+  onSelectTool: (tool: ToolKind) => void;
   onEditNote: (id: string, note: string) => void;
   onDelete: (id: string) => void;
   onExport: () => void;
 }
+
+const TOOLS: { kind: ToolKind; glyph: string }[] = [
+  { kind: 'callout', glyph: '①' },
+  { kind: 'pencil', glyph: '✏' },
+  { kind: 'arrow', glyph: '↗' },
+  { kind: 'rectangle', glyph: '▭' },
+  { kind: 'ellipse', glyph: '◯' },
+  { kind: 'text', glyph: 'T' },
+  { kind: 'highlight', glyph: '▒' },
+];
 
 function badge(annotation: Annotation): string {
   return annotation.kind === 'callout' ? String(annotation.index) : '•';
@@ -18,6 +30,8 @@ function badge(annotation: Annotation): string {
 
 export function ChangelogPanel({
   annotations,
+  activeTool,
+  onSelectTool,
   onEditNote,
   onDelete,
   onExport,
@@ -31,8 +45,26 @@ export function ChangelogPanel({
         </button>
       </header>
 
+      <div className="stm-panel__tools" role="toolbar" aria-label="Annotation tools">
+        {TOOLS.map(({ kind, glyph }) => (
+          <button
+            key={kind}
+            type="button"
+            className="stm-panel__tool"
+            aria-label={kind}
+            aria-pressed={kind === activeTool}
+            title={kind}
+            onClick={() => {
+              onSelectTool(kind);
+            }}
+          >
+            {glyph}
+          </button>
+        ))}
+      </div>
+
       {annotations.length === 0 ? (
-        <p className="stm-panel__empty">No annotations yet. Draw on the page to begin.</p>
+        <p className="stm-panel__empty">No annotations yet. Pick a tool and draw on the page.</p>
       ) : (
         <ol className="stm-panel__list">
           {annotations.map((annotation) => (

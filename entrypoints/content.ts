@@ -9,6 +9,7 @@ import {
   type Changelog,
   type ChangelogAction,
   type Point,
+  type ToolKind,
 } from '@/src/core/model';
 import { buildExportPayload, changelogToMarkdown } from '@/src/core/export';
 import { getSettings, loadChangelog, saveChangelog } from '@/src/storage';
@@ -41,6 +42,8 @@ export default defineContentScript({
       capturedAt: Date.now(),
       annotations: [],
     };
+
+    let activeTool: ToolKind = settings.defaultTool;
 
     // Filled once the shadow host exists; read lazily during hit-testing.
     const refs: { shadowHost?: Element } = {};
@@ -81,6 +84,12 @@ export default defineContentScript({
           panelRoot.render(
             createElement(ChangelogPanel, {
               annotations: changelog.annotations,
+              activeTool,
+              onSelectTool: (tool) => {
+                activeTool = tool;
+                overlay.setTool(tool);
+                renderPanel();
+              },
               onEditNote: (id, note) => {
                 dispatch({ type: 'updateNote', id, note });
               },
