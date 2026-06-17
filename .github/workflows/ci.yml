@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .tool-versions
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Prepare WXT
+        run: pnpm prepare
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test (coverage)
+        run: pnpm test:coverage
+
+      - name: Build (Chrome)
+        run: pnpm build
+
+      - name: Build (Firefox)
+        run: pnpm build:firefox
+
+      - name: Size budget
+        run: pnpm size
+
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: End-to-end (Chromium)
+        run: pnpm e2e
+
+      - name: Package (Chrome + Firefox)
+        run: |
+          pnpm zip
+          pnpm zip:firefox
+
+      - name: Upload extension artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-zips
+          path: .output/*.zip
+          if-no-files-found: warn

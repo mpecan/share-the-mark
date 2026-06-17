@@ -1,9 +1,20 @@
 {
-  "name": "wxt-react-starter",
-  "description": "manifest.json description",
+  "name": "share-the-mark",
+  "description": "Annotate live web pages and export a Markdown changelog plus an annotated screenshot.",
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "packageManager": "pnpm@10.14.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "lefthook",
+      "unrs-resolver"
+    ]
+  },
   "scripts": {
     "dev": "wxt",
     "dev:firefox": "wxt -b firefox",
@@ -11,18 +22,54 @@
     "build:firefox": "wxt build -b firefox",
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox",
-    "compile": "tsc --noEmit",
-    "postinstall": "wxt prepare"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings=0",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "e2e": "playwright test",
+    "size": "size-limit --config size-limit.config.ts",
+    "prepare": "wxt prepare"
   },
   "dependencies": {
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "@webext-core/messaging": "^3.0.2",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "turndown": "^7.2.4"
   },
   "devDependencies": {
-    "@types/react": "^19.2.14",
+    "@commitlint/cli": "^21.0.2",
+    "@commitlint/config-conventional": "^21.0.2",
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.61.0",
+    "@size-limit/preset-app": "^12.1.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "@wxt-dev/module-react": "^1.1.5",
+    "@types/turndown": "^5.0.6",
+    "@vitest/coverage-v8": "^4.1.9",
+    "@wxt-dev/module-react": "^1.2.2",
+    "eslint": "^10.5.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-import-resolver-typescript": "^4.4.5",
+    "eslint-plugin-import-x": "^4.16.2",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.3",
+    "eslint-plugin-unicorn": "^67.0.0",
+    "fast-check": "^4.8.0",
+    "globals": "^17.6.0",
+    "happy-dom": "^20.10.5",
+    "jiti": "^2.7.0",
+    "lefthook": "^2.1.9",
+    "prettier": "^3.8.4",
+    "size-limit": "^12.1.0",
     "typescript": "^5.9.3",
+    "typescript-eslint": "^8.61.1",
+    "vitest": "^4.1.9",
     "wxt": "^0.20.26"
   }
 }

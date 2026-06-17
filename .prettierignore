@@ -1,0 +1,11 @@
+.wxt
+.output
+coverage
+playwright-report
+test-results
+pnpm-lock.yaml
+stats.html
+
+# Authored documents — keep their hand-tuned wrapping out of the formatter.
+SPEC.md
+CLAUDE.md
