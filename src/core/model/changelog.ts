@@ -10,7 +10,8 @@ import type { TargetRef } from '@/src/core/selector';
 // derived at render time from the live element, so marks track the content
 // across scroll/resize/reflow.
 
-export type ToolKind = 'callout' | 'text' | 'arrow' | 'highlight' | 'element';
+// 'select' is the edit mode (move/resize existing marks), not a drawing tool.
+export type ToolKind = 'select' | 'callout' | 'text' | 'arrow' | 'highlight' | 'element';
 
 export interface Point {
   x: number;

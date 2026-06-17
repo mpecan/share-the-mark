@@ -176,12 +176,15 @@ Pointer handling supports mouse and pen/touch (`PointerEvent`). The **highlight*
 tool drops the overlay's `pointer-events` so native text selection works on the
 page, and captures the selection `Range` on `mouseup`.
 
-Existing marks are **editable** (the `editing` state): pressing on a mark drags
-it — callout/text update their offset, arrows expose endpoint handles (and the
-line moves the whole arrow), and highlights expose start/end handles that
-**re-anchor the text range** (caret hit-test → new range → fresh `TextAnchor`) —
-and double-clicking a text mark retypes it. Edits flow out via `onUpdate` and the
-reducer's `update` action.
+Existing marks are **editable** in the dedicated **select tool** (edit mode), so
+editing never collides with drawing: drawing tools only create, the select tool
+only edits. Control-point handles render **only in the select tool** (so their
+presence is the affordance), and the cursor changes over marks/handles. In edit
+mode, pressing on a mark drags it — callout/text update their offset, arrows
+expose endpoint handles (and the line moves the whole arrow), and highlights
+expose start/end handles that **re-anchor the text range** (caret hit-test → new
+range → fresh `TextAnchor`) — and double-clicking a text mark retypes it. Edits
+flow out via `onUpdate` and the reducer's `update` action.
 
 ### 5.2 Selector engine (`src/core/selector`) — the differentiator
 
@@ -372,9 +375,10 @@ No sync storage in M1.
 
 ## 7. Annotation toolset
 
-> **Revision (post-M1):** the toolset is pared to five content-anchored tools
-> (the original seven, with their raster/shape tools, are superseded). Every
-> tool anchors to an element via a `TargetRef`.
+> **Revision (post-M1):** the toolset is pared to five content-anchored drawing
+> tools (the original seven, with their raster/shape tools, are superseded), plus
+> a **select** tool that switches to edit mode (move/resize existing marks).
+> Every tool anchors to an element via a `TargetRef`.
 
 1. **Callout** — auto-numbered marker (dot) anchored at a point on an element.
 2. **Text** — a text label anchored at a point on an element.
@@ -385,6 +389,8 @@ No sync storage in M1.
 5. **Element** — a design-feedback comment on a whole element: hover to preview
    the element under the cursor, click to select it, and the comment is the
    note. Anchored to the element box (its `TargetRef`), no text anchor.
+6. **Select** — edit mode (not a drawing tool): move marks, drag arrow/highlight
+   control-point handles, and double-click a text mark to retype it.
 
 Plus screenshot capture with all annotations composited. Every annotation
 appears in the live changelog the instant it's created; editing its note

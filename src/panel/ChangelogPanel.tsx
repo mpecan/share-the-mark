@@ -16,6 +16,7 @@ export interface ChangelogPanelProps {
 }
 
 const ICONS: Record<ToolKind, JSX.Element> = {
+  select: <path d="M3 2l9 4.5-3.7 1.2L7 12 3 2z" fill="currentColor" stroke="none" />,
   callout: (
     <>
       <circle cx="8" cy="8" r="5.5" />
@@ -42,7 +43,7 @@ const ICONS: Record<ToolKind, JSX.Element> = {
   element: <rect x="2.5" y="2.5" width="11" height="11" rx="1.5" strokeDasharray="3 2" />,
 };
 
-const TOOLS: ToolKind[] = ['callout', 'text', 'arrow', 'highlight', 'element'];
+const TOOLS: ToolKind[] = ['select', 'callout', 'text', 'arrow', 'highlight', 'element'];
 
 function badge(annotation: Annotation): string {
   return annotation.kind === 'callout' ? String(annotation.index) : '•';

@@ -211,6 +211,8 @@ export class Overlay {
 
   private applyToolPointerMode(): void {
     this.root.style.pointerEvents = this.tool === 'highlight' ? 'none' : 'auto';
+    // Drives cursor feedback (panel.css) and signals that handles are live.
+    this.root.toggleAttribute('data-stm-edit', this.tool === 'select');
   }
 
   private pointFrom(event: PointerEvent): Point {
@@ -290,12 +292,14 @@ export class Overlay {
     if (this.state !== 'idle') return;
     const point = this.pointFrom(event);
 
-    // Dragging an existing mark takes precedence over creating a new one.
-    const hit = this.markUnder(event);
-    if (hit) {
-      this.edit = { origin: hit.annotation, handle: hit.handle, start: point, current: point };
-      this.state = 'editing';
-      this.render();
+    // The select tool edits existing marks and never creates new ones.
+    if (this.tool === 'select') {
+      const hit = this.markUnder(event);
+      if (hit) {
+        this.edit = { origin: hit.annotation, handle: hit.handle, start: point, current: point };
+        this.state = 'editing';
+        this.render();
+      }
       return;
     }
 
@@ -361,6 +365,7 @@ export class Overlay {
   };
 
   private readonly onDoubleClick = (event: MouseEvent): void => {
+    if (this.tool !== 'select') return;
     const target = event.target;
     if (!(target instanceof SVGElement)) return;
     const markEl = target.closest('[data-stm-id]');
@@ -641,8 +646,10 @@ export class Overlay {
       case 'arrow': {
         const group = svgEl(this.doc, 'g', {});
         group.append(this.arrowSvg(annotation.from, annotation.to));
-        group.append(this.handleSvg(annotation.from, 'from'));
-        group.append(this.handleSvg(annotation.to, 'to'));
+        if (this.tool === 'select') {
+          group.append(this.handleSvg(annotation.from, 'from'));
+          group.append(this.handleSvg(annotation.to, 'to'));
+        }
         return group;
       }
       case 'highlight': {
@@ -659,11 +666,14 @@ export class Overlay {
             }),
           );
         }
-        // Handles at the start (first rect) and end (last rect) to re-anchor it.
+        // Handles at the start (first rect) and end (last rect) to re-anchor it,
+        // shown only in the select (edit) tool.
         const first = annotation.rects[0];
         const last = annotation.rects.at(-1);
-        if (first) group.append(this.handleSvg({ x: first.x, y: first.y }, 'start'));
-        if (last) {
+        if (this.tool === 'select' && first) {
+          group.append(this.handleSvg({ x: first.x, y: first.y }, 'start'));
+        }
+        if (this.tool === 'select' && last) {
           group.append(this.handleSvg({ x: last.x + last.width, y: last.y + last.height }, 'end'));
         }
         return group;

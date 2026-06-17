@@ -21,6 +21,24 @@
   fill-opacity: 0;
 }
 
+/* Edit (select) mode: marks are movable, control-point handles are grabbable. */
+[data-stm-edit] [data-stm-id] {
+  cursor: move;
+}
+
+[data-stm-handle] {
+  cursor: grab;
+  transition: fill-opacity 100ms ease;
+}
+
+[data-stm-handle]:hover {
+  fill-opacity: 1;
+}
+
+[data-stm-handle]:active {
+  cursor: grabbing;
+}
+
 .stm-host {
   position: fixed;
   top: 16px;

@@ -228,8 +228,15 @@ describe('Overlay — highlight', () => {
 });
 
 describe('Overlay — editing', () => {
+  it('never creates anything in select mode', () => {
+    const overlay = makeOverlay({ tool: 'select' });
+    pointer(overlay, 'pointerdown', 5, 5);
+    pointer(overlay, 'pointerup', 5, 5);
+    expect(created).toHaveLength(0);
+  });
+
   it('moves a callout by dragging it (updates the offset)', () => {
-    const overlay = makeOverlay();
+    const overlay = makeOverlay({ tool: 'select' });
     overlay.setAnnotations([
       {
         id: 'c',
@@ -249,7 +256,7 @@ describe('Overlay — editing', () => {
   });
 
   it('drags an arrow endpoint handle', () => {
-    const overlay = makeOverlay();
+    const overlay = makeOverlay({ tool: 'select' });
     overlay.setAnnotations([
       {
         id: 'a',
@@ -274,7 +281,7 @@ describe('Overlay — editing', () => {
   });
 
   it('moves a whole arrow by dragging its line', () => {
-    const overlay = makeOverlay();
+    const overlay = makeOverlay({ tool: 'select' });
     overlay.setAnnotations([
       {
         id: 'a',
@@ -302,7 +309,7 @@ describe('Overlay — editing', () => {
     const spy = vi
       .spyOn(Range.prototype, 'getClientRects')
       .mockReturnValue([{ x: 0, y: 0, width: 10, height: 4 } as DOMRect] as unknown as DOMRectList);
-    const overlay = makeOverlay({ caretFromPoint: () => caretAt(19) }); // end of the text
+    const overlay = makeOverlay({ tool: 'select', caretFromPoint: () => caretAt(19) }); // end of the text
     overlay.setAnnotations([
       {
         id: 'h',
@@ -325,7 +332,7 @@ describe('Overlay — editing', () => {
     const spy = vi
       .spyOn(Range.prototype, 'getClientRects')
       .mockReturnValue([{ x: 0, y: 0, width: 10, height: 4 } as DOMRect] as unknown as DOMRectList);
-    const overlay = makeOverlay({ caretFromPoint: () => caretAt(0) }); // start of the text
+    const overlay = makeOverlay({ tool: 'select', caretFromPoint: () => caretAt(0) }); // start of the text
     overlay.setAnnotations([
       {
         id: 'h',
@@ -348,7 +355,7 @@ describe('Overlay — editing', () => {
     const spy = vi
       .spyOn(Range.prototype, 'getClientRects')
       .mockReturnValue([{ x: 0, y: 0, width: 10, height: 4 } as DOMRect] as unknown as DOMRectList);
-    const overlay = makeOverlay({ caretFromPoint: () => null });
+    const overlay = makeOverlay({ tool: 'select', caretFromPoint: () => null });
     overlay.setAnnotations([
       {
         id: 'h',
@@ -371,7 +378,7 @@ describe('Overlay — editing', () => {
       .spyOn(Range.prototype, 'getClientRects')
       .mockReturnValue([{ x: 0, y: 0, width: 10, height: 4 } as DOMRect] as unknown as DOMRectList);
     // Dragging the end handle before the start collapses the range.
-    const overlay = makeOverlay({ caretFromPoint: () => caretAt(2) });
+    const overlay = makeOverlay({ tool: 'select', caretFromPoint: () => caretAt(2) });
     overlay.setAnnotations([
       {
         id: 'h',
@@ -390,7 +397,7 @@ describe('Overlay — editing', () => {
   });
 
   it('ignores double-clicks on non-text marks', () => {
-    const overlay = makeOverlay();
+    const overlay = makeOverlay({ tool: 'select' });
     overlay.setAnnotations([
       {
         id: 'c',
@@ -407,7 +414,7 @@ describe('Overlay — editing', () => {
   });
 
   it('re-types a text annotation on double-click', () => {
-    const overlay = makeOverlay({ promptText: () => 'new content' });
+    const overlay = makeOverlay({ tool: 'select', promptText: () => 'new content' });
     overlay.setAnnotations([
       {
         id: 't',
