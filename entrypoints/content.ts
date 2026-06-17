@@ -20,10 +20,12 @@ import {
   type RenderOptions,
 } from '@/src/capture';
 import type { TargetRef } from '@/src/core/selector';
+import '@/src/panel/panel.css';
 
 export default defineContentScript({
   matches: ['<all_urls>'],
   runAt: 'document_idle',
+  cssInjectionMode: 'ui',
 
   async main(ctx) {
     const settings = await getSettings();
@@ -63,10 +65,7 @@ export default defineContentScript({
       mode: 'closed',
       onMount: (container) => {
         const panelHost = document.createElement('div');
-        panelHost.style.cssText =
-          'position:fixed;top:0;right:0;width:320px;max-height:100%;overflow:auto;' +
-          'z-index:2147483647;background:#fff;color:#111;font:14px/1.4 system-ui,sans-serif;' +
-          'padding:8px;box-shadow:-2px 0 8px rgba(0,0,0,0.2);';
+        panelHost.className = 'stm-host';
         container.append(panelHost);
         const panelRoot = createRoot(panelHost);
 

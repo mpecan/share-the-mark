@@ -91,7 +91,24 @@ export class Overlay {
     this.root.addEventListener('pointerdown', this.onPointerDown);
     this.root.addEventListener('pointermove', this.onPointerMove);
     this.root.addEventListener('pointerup', this.onPointerUp);
+    addEventListener('resize', this.onResize);
+    this.resize();
   }
+
+  // The canvas backing store must match the viewport (scaled by devicePixelRatio)
+  // or raster tools (pencil, highlight) draw off-buffer and never appear.
+  private resize(): void {
+    const dpr = this.options.settings.scale || 1;
+    const width = this.doc.documentElement.clientWidth;
+    const height = this.doc.documentElement.clientHeight;
+    this.canvas.width = Math.max(1, Math.round(width * dpr));
+    this.canvas.height = Math.max(1, Math.round(height * dpr));
+    this.render();
+  }
+
+  private readonly onResize = (): void => {
+    this.resize();
+  };
 
   get element(): HTMLElement {
     return this.root;
@@ -114,6 +131,7 @@ export class Overlay {
     this.root.removeEventListener('pointerdown', this.onPointerDown);
     this.root.removeEventListener('pointermove', this.onPointerMove);
     this.root.removeEventListener('pointerup', this.onPointerUp);
+    removeEventListener('resize', this.onResize);
     this.root.remove();
   }
 
@@ -196,7 +214,8 @@ export class Overlay {
     if (this.ctx) {
       this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
       const raster = all.filter((a) => !isVector(a));
-      drawScene(this.ctx, raster, { ...this.options.settings, scale: 1 });
+      // settings.scale carries devicePixelRatio so raster pixels land crisply.
+      drawScene(this.ctx, raster, this.options.settings);
     }
   }
 

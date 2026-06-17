@@ -203,6 +203,23 @@ describe('Overlay — rendering', () => {
     expect(ops).toContain('stroke');
   });
 
+  it('re-renders the canvas on viewport resize', () => {
+    const ops: string[] = [];
+    const recordingContext = new Proxy({} as DrawContext, {
+      get: (_t, prop) =>
+        typeof prop === 'string'
+          ? (): void => {
+              ops.push(prop);
+            }
+          : undefined,
+      set: () => true,
+    });
+    makeOverlay({ getContext: () => recordingContext });
+    const before = ops.length;
+    dispatchEvent(new Event('resize'));
+    expect(ops.length).toBeGreaterThan(before);
+  });
+
   it('uses real id/clock defaults when not injected', () => {
     const overlay = new Overlay({
       container,
