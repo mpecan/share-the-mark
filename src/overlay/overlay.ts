@@ -235,9 +235,10 @@ export class Overlay {
       : null;
   }
 
-  // Hit-test page text beneath the overlay by momentarily dropping our own
-  // pointer-events, then anchor to the character at the caret.
-  private caretAt(point: Point): { element: Element; range: Range } | undefined {
+  // Caret in the page text under a point, hit-tested with our own UI made
+  // non-interactive so the caret lands on the page (not the overlay). Shared by
+  // point-tool creation and highlight-handle editing.
+  private caretRangeAt(point: Point): Range | null {
     const caretFromPoint = this.options.caretFromPoint ?? defaultCaretFromPoint;
     const host = this.hostElement();
     const previousRoot = this.root.style.pointerEvents;
@@ -247,10 +248,15 @@ export class Overlay {
     const caret = caretFromPoint(this.doc, point.x, point.y);
     this.root.style.pointerEvents = previousRoot;
     if (host) host.style.pointerEvents = previousHost ?? '';
+    return caret;
+  }
 
+  // Anchor to the character at the caret (point-tool creation).
+  private caretAt(point: Point): { element: Element; range: Range } | undefined {
+    const caret = this.caretRangeAt(point);
     if (!caret) return undefined;
     const element = elementOf(caret.startContainer);
-    if (!element || host?.contains(element) === true) return undefined;
+    if (!element || this.hostElement()?.contains(element) === true) return undefined;
     return { element, range: expandToChar(caret) };
   }
 
@@ -489,8 +495,7 @@ export class Overlay {
     const element = resolveSelector(origin.target, this.doc) ?? this.doc.body;
     const current = anchorRange(element, origin.anchor);
     if (!current) return null;
-    const caretFromPoint = this.options.caretFromPoint ?? defaultCaretFromPoint;
-    const caret = caretFromPoint(this.doc, edit.current.x, edit.current.y);
+    const caret = this.caretRangeAt(edit.current);
     if (!caret) return null;
     const range = this.doc.createRange();
     try {
