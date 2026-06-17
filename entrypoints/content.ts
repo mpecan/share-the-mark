@@ -2,7 +2,7 @@ import { createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { onMessage, sendMessage } from '@/src/messaging';
 import { Overlay } from '@/src/overlay';
-import { ChangelogPanel } from '@/src/panel';
+import { PanelApp, type PanelSnapshot, type PanelStore } from '@/src/panel';
 import { computeSelector } from '@/src/core/selector';
 import {
   changelogReducer,
@@ -47,6 +47,21 @@ export default defineContentScript({
 
     let activeTool: ToolKind = settings.defaultTool;
 
+    // External store the panel subscribes to; React owns its own re-renders.
+    let snapshot: PanelSnapshot = { annotations: changelog.annotations, activeTool };
+    const listeners = new Set<() => void>();
+    const store: PanelStore = {
+      subscribe: (listener) => {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+      getSnapshot: () => snapshot,
+    };
+    function publish(): void {
+      snapshot = { annotations: changelog.annotations, activeTool };
+      for (const listener of listeners) listener();
+    }
+
     // Filled once the shadow host exists; read lazily during hit-testing.
     const refs: { shadowHost?: Element } = {};
 
@@ -79,38 +94,35 @@ export default defineContentScript({
           resolveTarget: targetAt,
         });
 
-        function renderPanel(): void {
-          panelRoot.render(
-            createElement(ChangelogPanel, {
-              annotations: changelog.annotations,
-              activeTool,
-              onSelectTool: (tool) => {
-                activeTool = tool;
-                overlay.setTool(tool);
-                renderPanel();
-              },
-              onEditNote: (id, note) => {
-                dispatch({ type: 'updateNote', id, note });
-              },
-              onDelete: (id) => {
-                dispatch({ type: 'remove', id });
-              },
-              onExport: () => {
-                void exportChangelog();
-              },
-            }),
-          );
-        }
-
         function dispatch(action: ChangelogAction): void {
           changelog = changelogReducer(changelog, action);
           overlay.setAnnotations(changelog.annotations);
           void saveChangelog(tabId, changelog);
-          renderPanel();
+          publish();
         }
 
+        panelRoot.render(
+          createElement(PanelApp, {
+            store,
+            onSelectTool: (tool) => {
+              activeTool = tool;
+              overlay.setTool(tool);
+              publish();
+            },
+            onEditNote: (id, note) => {
+              dispatch({ type: 'updateNote', id, note });
+            },
+            onDelete: (id) => {
+              dispatch({ type: 'remove', id });
+            },
+            onExport: () => {
+              void exportChangelog();
+            },
+          }),
+        );
+
         overlay.setAnnotations(changelog.annotations);
-        renderPanel();
+        publish();
         return { overlay, panelRoot };
       },
       onRemove: (mounted) => {
