@@ -110,6 +110,7 @@ export interface Changelog {
 export type ChangelogAction =
   | { type: 'add'; annotation: Annotation }
   | { type: 'updateNote'; id: string; note: string }
+  | { type: 'update'; annotation: Annotation }
   | { type: 'remove'; id: string }
   | { type: 'reorder'; from: number; to: number }
   | { type: 'replaceAll'; annotations: Annotation[] };
@@ -140,6 +141,15 @@ export function changelogReducer(changelog: Changelog, action: ChangelogAction):
         ...changelog,
         annotations: changelog.annotations.map((a) =>
           a.id === action.id ? { ...a, note: action.note } : a,
+        ),
+      };
+    }
+
+    case 'update': {
+      return {
+        ...changelog,
+        annotations: changelog.annotations.map((a) =>
+          a.id === action.annotation.id ? action.annotation : a,
         ),
       };
     }

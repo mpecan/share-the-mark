@@ -14,6 +14,7 @@ let container: HTMLElement;
 let para: Element;
 let textNode: Text;
 let created: Annotation[];
+let updated: Annotation[];
 
 beforeEach(() => {
   container = document.createElement('div');
@@ -24,6 +25,7 @@ beforeEach(() => {
   para = p;
   textNode = p.firstChild as Text;
   created = [];
+  updated = [];
 });
 
 afterEach(() => {
@@ -54,6 +56,9 @@ function makeOverlay(overrides: Partial<OverlayOptions> = {}): Overlay {
     onCreate: (a) => {
       created.push(a);
     },
+    onUpdate: (a) => {
+      updated.push(a);
+    },
     createId: () => `id-${String(++counter)}`,
     now: () => 1000,
     promptText: () => 'typed text',
@@ -62,10 +67,24 @@ function makeOverlay(overrides: Partial<OverlayOptions> = {}): Overlay {
   });
 }
 
-function pointer(overlay: Overlay, type: string, x: number, y: number): void {
+function makeEvent(type: string, x: number, y: number): Event {
   const event = new Event(type, { bubbles: true });
   Object.defineProperties(event, { clientX: { value: x }, clientY: { value: y } });
-  overlay.element.dispatchEvent(event);
+  return event;
+}
+
+function pointer(overlay: Overlay, type: string, x: number, y: number): void {
+  overlay.element.dispatchEvent(makeEvent(type, x, y));
+}
+
+function pointerOn(el: Element, type: string, x: number, y: number): void {
+  el.dispatchEvent(makeEvent(type, x, y));
+}
+
+function findMark(id: string): Element {
+  const mark = container.querySelector(`[data-stm-id="${CSS.escape(id)}"]`);
+  if (!mark) throw new Error('mark not found');
+  return mark;
 }
 
 describe('Overlay — mounting', () => {
@@ -205,6 +224,112 @@ describe('Overlay — highlight', () => {
     expect(overlay.element.style.pointerEvents).toBe('none');
     overlay.setTool('callout');
     expect(overlay.element.style.pointerEvents).toBe('auto');
+  });
+});
+
+describe('Overlay — editing', () => {
+  it('moves a callout by dragging it (updates the offset)', () => {
+    const overlay = makeOverlay();
+    overlay.setAnnotations([
+      {
+        id: 'c',
+        kind: 'callout',
+        createdAt: 0,
+        index: 1,
+        target: targetFor('#para', 'p'),
+        anchor: anchorOver('brown'),
+        offset: { dx: 10, dy: 10 },
+      },
+    ]);
+    pointerOn(findMark('c'), 'pointerdown', 50, 50);
+    expect(overlay.getState()).toBe('editing');
+    pointer(overlay, 'pointermove', 70, 65);
+    pointer(overlay, 'pointerup', 70, 65);
+    expect(updated[0]).toMatchObject({ id: 'c', kind: 'callout', offset: { dx: 30, dy: 25 } });
+  });
+
+  it('drags an arrow endpoint handle', () => {
+    const overlay = makeOverlay();
+    overlay.setAnnotations([
+      {
+        id: 'a',
+        kind: 'arrow',
+        createdAt: 0,
+        from: { dx: 0, dy: 0 },
+        to: { dx: 10, dy: 10 },
+        target: targetFor('#para', 'p'),
+        anchor: anchorOver('brown'),
+      },
+    ]);
+    const handle = container.querySelector(':scope [data-stm-handle="to"]');
+    if (!handle) throw new Error('handle not found');
+    pointerOn(handle, 'pointerdown', 30, 30);
+    pointer(overlay, 'pointermove', 35, 38);
+    pointer(overlay, 'pointerup', 35, 38);
+    expect(updated[0]).toMatchObject({
+      kind: 'arrow',
+      from: { dx: 0, dy: 0 },
+      to: { dx: 15, dy: 18 },
+    });
+  });
+
+  it('moves a whole arrow by dragging its line', () => {
+    const overlay = makeOverlay();
+    overlay.setAnnotations([
+      {
+        id: 'a',
+        kind: 'arrow',
+        createdAt: 0,
+        from: { dx: 0, dy: 0 },
+        to: { dx: 10, dy: 10 },
+        target: targetFor('#para', 'p'),
+        anchor: anchorOver('brown'),
+      },
+    ]);
+    const line = container.querySelector(':scope [data-stm-id="a"] line');
+    if (!line) throw new Error('line not found');
+    pointerOn(line, 'pointerdown', 20, 20);
+    pointer(overlay, 'pointermove', 25, 27);
+    pointer(overlay, 'pointerup', 25, 27);
+    expect(updated[0]).toMatchObject({
+      kind: 'arrow',
+      from: { dx: 5, dy: 7 },
+      to: { dx: 15, dy: 17 },
+    });
+  });
+
+  it('ignores double-clicks on non-text marks', () => {
+    const overlay = makeOverlay();
+    overlay.setAnnotations([
+      {
+        id: 'c',
+        kind: 'callout',
+        createdAt: 0,
+        index: 1,
+        target: targetFor('#para', 'p'),
+        anchor: anchorOver('brown'),
+        offset: { dx: 0, dy: 0 },
+      },
+    ]);
+    pointerOn(findMark('c'), 'dblclick', 0, 0);
+    expect(updated).toHaveLength(0);
+  });
+
+  it('re-types a text annotation on double-click', () => {
+    const overlay = makeOverlay({ promptText: () => 'new content' });
+    overlay.setAnnotations([
+      {
+        id: 't',
+        kind: 'text',
+        createdAt: 0,
+        content: 'old',
+        target: targetFor('#para', 'p'),
+        anchor: anchorOver('quick'),
+        offset: { dx: 0, dy: 0 },
+      },
+    ]);
+    pointerOn(findMark('t'), 'dblclick', 0, 0);
+    expect(updated[0]).toMatchObject({ id: 't', kind: 'text', content: 'new content' });
   });
 });
 

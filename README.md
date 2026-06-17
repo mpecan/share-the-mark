@@ -76,8 +76,11 @@ installing.
    or place **text** (it prompts for content), drag for an **arrow**, select text
    with the **highlight** tool, or use **element** to hover-and-click a whole
    element and comment on it.
-3. Add notes in the panel; delete markers with ✕.
-4. Click **Copy to clipboard** and paste the Markdown + screenshot anywhere.
+3. Adjust marks: drag a callout or text label to reposition it, drag an arrow's
+   endpoint handles (or its line) to retarget it, and double-click a text label
+   to retype it.
+4. Add notes/comments in the panel; delete markers with ✕.
+5. Click **Copy to clipboard** and paste the Markdown + screenshot anywhere.
 
 ## Permissions
 

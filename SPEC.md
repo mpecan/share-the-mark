@@ -176,6 +176,11 @@ Pointer handling supports mouse and pen/touch (`PointerEvent`). The **highlight*
 tool drops the overlay's `pointer-events` so native text selection works on the
 page, and captures the selection `Range` on `mouseup`.
 
+Existing marks are **editable** (the `editing` state): pressing on a mark drags
+it — callout/text update their offset, arrows expose endpoint handles (and the
+line moves the whole arrow) — and double-clicking a text mark retypes it. Edits
+flow out via `onUpdate` and the reducer's `update` action.
+
 ### 5.2 Selector engine (`src/core/selector`) — the differentiator
 
 Pure functions, no extension APIs.

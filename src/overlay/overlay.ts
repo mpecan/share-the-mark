@@ -1,18 +1,58 @@
 import { computeSelector } from '@/src/core/selector';
 import { describeRange, resolveGeometry, type ResolvedAnnotation } from '@/src/anchor';
-import type { Annotation, Point, ToolKind } from '@/src/core/model';
+import type {
+  Annotation,
+  ArrowAnnotation,
+  CalloutAnnotation,
+  Point,
+  TextAnnotation,
+  ToolKind,
+} from '@/src/core/model';
 
 // Imperative drawing overlay (SPEC §5.1). Plain TypeScript, not React. SVG-only:
 // annotations are content-anchored (text position + quote) and resolved to
 // absolute geometry at render time, so marks track the content across
-// scroll/resize/reflow. Four tools: callout (click), text (click + prompt),
-// arrow (drag), highlight (native text selection).
+// scroll/resize/reflow. Five tools: callout, text, arrow, highlight, element.
+// Existing marks are editable: drag to move (callout/text/arrow endpoints),
+// double-click text to retype it.
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const ARROW_MARKER = 'stm-arrowhead';
 const TEXT_PADDING = 4;
 
 export type OverlayState = 'idle' | 'drawing' | 'editing' | 'placing-text';
+
+type DraggableAnnotation = CalloutAnnotation | TextAnnotation | ArrowAnnotation;
+type EditHandle = 'from' | 'to' | 'move';
+
+interface EditState {
+  origin: DraggableAnnotation;
+  handle: EditHandle;
+  start: Point;
+  current: Point;
+}
+
+const DRAGGABLE_KINDS = new Set<ToolKind>(['callout', 'text', 'arrow']);
+
+function isDraggable(annotation: Annotation): annotation is DraggableAnnotation {
+  return DRAGGABLE_KINDS.has(annotation.kind);
+}
+
+// Apply a drag delta to the edited annotation: moving updates the offset(s);
+// dragging an arrow endpoint updates just that endpoint.
+function applyEdit(edit: EditState): DraggableAnnotation {
+  const dx = edit.current.x - edit.start.x;
+  const dy = edit.current.y - edit.start.y;
+  const origin = edit.origin;
+  if (origin.kind === 'arrow') {
+    const from =
+      edit.handle === 'to' ? origin.from : { dx: origin.from.dx + dx, dy: origin.from.dy + dy };
+    const to =
+      edit.handle === 'from' ? origin.to : { dx: origin.to.dx + dx, dy: origin.to.dy + dy };
+    return { ...origin, from, to };
+  }
+  return { ...origin, offset: { dx: origin.offset.dx + dx, dy: origin.offset.dy + dy } };
+}
 
 export interface OverlaySettings {
   strokeColor: string;
@@ -25,6 +65,7 @@ export interface OverlayOptions {
   tool: ToolKind;
   settings: OverlaySettings;
   onCreate: (annotation: Annotation) => void;
+  onUpdate?: (annotation: Annotation) => void;
   createId?: () => string;
   now?: () => number;
   promptText?: (current: string) => string | null;
@@ -85,6 +126,7 @@ export class Overlay {
   private state: OverlayState = 'idle';
   private arrowDraft: { from: Point; to: Point } | null = null;
   private hoveredElement: Element | null = null;
+  private edit: EditState | null = null;
   private committed: readonly Annotation[] = [];
 
   constructor(options: OverlayOptions) {
@@ -110,6 +152,7 @@ export class Overlay {
     this.root.addEventListener('pointerdown', this.onPointerDown);
     this.root.addEventListener('pointermove', this.onPointerMove);
     this.root.addEventListener('pointerup', this.onPointerUp);
+    this.root.addEventListener('dblclick', this.onDoubleClick);
     this.doc.addEventListener('mouseup', this.onDocumentMouseUp);
     addEventListener('scroll', this.scheduleRender, { capture: true, passive: true });
     addEventListener('resize', this.scheduleRender);
@@ -152,6 +195,7 @@ export class Overlay {
     this.root.removeEventListener('pointerdown', this.onPointerDown);
     this.root.removeEventListener('pointermove', this.onPointerMove);
     this.root.removeEventListener('pointerup', this.onPointerUp);
+    this.root.removeEventListener('dblclick', this.onDoubleClick);
     this.doc.removeEventListener('mouseup', this.onDocumentMouseUp);
     removeEventListener('scroll', this.scheduleRender, { capture: true });
     removeEventListener('resize', this.scheduleRender);
@@ -218,9 +262,32 @@ export class Overlay {
     return element;
   }
 
+  // Find the existing mark (and arrow handle, if any) under an event.
+  private markUnder(event: Event): { annotation: DraggableAnnotation; handle: EditHandle } | null {
+    const target = event.target;
+    if (!(target instanceof SVGElement)) return null;
+    const markEl = target.closest('[data-stm-id]');
+    if (!(markEl instanceof SVGElement)) return null;
+    const annotation = this.committed.find((a) => a.id === markEl.dataset['stmId']);
+    if (!annotation || !isDraggable(annotation)) return null;
+    const handleAttr = target.dataset['stmHandle'];
+    const handle: EditHandle = handleAttr === 'from' || handleAttr === 'to' ? handleAttr : 'move';
+    return { annotation, handle };
+  }
+
   private readonly onPointerDown = (event: PointerEvent): void => {
     if (this.state !== 'idle') return;
     const point = this.pointFrom(event);
+
+    // Dragging an existing mark takes precedence over creating a new one.
+    const hit = this.markUnder(event);
+    if (hit) {
+      this.edit = { origin: hit.annotation, handle: hit.handle, start: point, current: point };
+      this.state = 'editing';
+      this.render();
+      return;
+    }
+
     if (this.tool === 'text') {
       this.placeText(point);
       return;
@@ -242,6 +309,11 @@ export class Overlay {
 
   private readonly onPointerMove = (event: PointerEvent): void => {
     const point = this.pointFrom(event);
+    if (this.state === 'editing' && this.edit) {
+      this.edit = { ...this.edit, current: point };
+      this.render();
+      return;
+    }
     if (this.state === 'drawing' && this.arrowDraft) {
       this.arrowDraft = { from: this.arrowDraft.from, to: point };
       this.render();
@@ -257,6 +329,13 @@ export class Overlay {
   };
 
   private readonly onPointerUp = (event: PointerEvent): void => {
+    if (this.state === 'editing' && this.edit) {
+      const edited = applyEdit({ ...this.edit, current: this.pointFrom(event) });
+      this.state = 'idle';
+      this.edit = null;
+      this.options.onUpdate?.(edited);
+      return;
+    }
     if (this.state !== 'drawing' || !this.arrowDraft) return;
     const from = this.arrowDraft.from;
     const to = this.pointFrom(event);
@@ -268,6 +347,18 @@ export class Overlay {
   private readonly onDocumentMouseUp = (): void => {
     if (this.tool !== 'highlight') return;
     this.captureSelection();
+  };
+
+  private readonly onDoubleClick = (event: MouseEvent): void => {
+    const target = event.target;
+    if (!(target instanceof SVGElement)) return;
+    const markEl = target.closest('[data-stm-id]');
+    const id = markEl instanceof SVGElement ? markEl.dataset['stmId'] : undefined;
+    const annotation = this.committed.find((a) => a.id === id);
+    if (annotation?.kind !== 'text') return;
+    const ask = this.options.promptText ?? ((current) => prompt('Annotation text', current));
+    const content = ask(annotation.content);
+    if (content !== null && content !== '') this.options.onUpdate?.({ ...annotation, content });
   };
 
   private readonly scheduleRender = (): void => {
@@ -355,12 +446,20 @@ export class Overlay {
     selection.removeAllRanges();
   }
 
+  // Substitute the in-progress edit for its committed annotation while dragging.
+  private draftFor(annotation: Annotation): Annotation {
+    const edit = this.edit;
+    if (edit === null) return annotation;
+    return edit.origin.id === annotation.id ? applyEdit(edit) : annotation;
+  }
+
   private render(): void {
     this.layer.replaceChildren();
     for (const annotation of this.committed) {
-      const resolved = resolveGeometry(annotation, this.doc);
+      const resolved = resolveGeometry(this.draftFor(annotation), this.doc);
       if (!resolved) continue;
       const node = this.toSvg(resolved);
+      node.dataset['stmId'] = resolved.id;
       this.layer.append(node);
       // The text chip's background must be measured once the label is in the DOM.
       if (resolved.kind === 'text' && node instanceof SVGGElement) this.sizeTextBackground(node);
@@ -421,6 +520,18 @@ export class Overlay {
     return defs;
   }
 
+  private handleSvg(point: Point, handle: 'from' | 'to'): SVGElement {
+    const circle = svgEl(this.doc, 'circle', {
+      cx: String(point.x),
+      cy: String(point.y),
+      r: '5',
+      fill: this.options.settings.strokeColor,
+      'fill-opacity': '0.6',
+    });
+    circle.dataset['stmHandle'] = handle;
+    return circle;
+  }
+
   private arrowSvg(from: Point, to: Point): SVGElement {
     return svgEl(this.doc, 'line', {
       x1: String(from.x),
@@ -478,7 +589,11 @@ export class Overlay {
         return group;
       }
       case 'arrow': {
-        return this.arrowSvg(annotation.from, annotation.to);
+        const group = svgEl(this.doc, 'g', {});
+        group.append(this.arrowSvg(annotation.from, annotation.to));
+        group.append(this.handleSvg(annotation.from, 'from'));
+        group.append(this.handleSvg(annotation.to, 'to'));
+        return group;
       }
       case 'highlight': {
         const group = svgEl(this.doc, 'g', {});

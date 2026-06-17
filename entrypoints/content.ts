@@ -79,6 +79,9 @@ export default defineContentScript({
           onCreate: (annotation) => {
             dispatch({ type: 'add', annotation });
           },
+          onUpdate: (annotation) => {
+            dispatch({ type: 'update', annotation });
+          },
         });
 
         function dispatch(action: ChangelogAction): void {

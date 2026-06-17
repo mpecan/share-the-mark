@@ -112,6 +112,15 @@ describe('changelogReducer — updateNote', () => {
   });
 });
 
+describe('changelogReducer — update', () => {
+  it('replaces an annotation by id', () => {
+    const state = changelog([callout('a'), callout('b')]);
+    const moved: Annotation = { ...callout('a'), offset: { dx: 9, dy: 9 } };
+    const next = changelogReducer(state, { type: 'update', annotation: moved });
+    expect(next.annotations.find((a) => a.id === 'a')).toMatchObject({ offset: { dx: 9, dy: 9 } });
+  });
+});
+
 describe('changelogReducer — reorder', () => {
   it('moves an annotation and renumbers by new order', () => {
     const state = changelog([callout('a'), text('t'), callout('b')]);
