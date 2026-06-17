@@ -147,22 +147,29 @@ share-the-mark/
 
 ### 5.1 Drawing overlay (`src/overlay`)
 
+> **Revision (post-M1):** annotations are now **content-anchored** rather than
+> positioned in viewport coordinates, and the toolset is pared to four tools
+> (callout, text, arrow, **text-selection** highlight). The overlay is **SVG
+> only** — every annotation is anchored to a DOM element and resolved to
+> absolute geometry at render time (`src/anchor`), so marks track the content
+> across scroll/resize/reflow. This supersedes the original raster/7-tool
+> design described below in §5.3/§7.
+
 Mounted by the content script into a **closed shadow root** (via WXT
 `createShadowRootUi`) so host-page CSS cannot bleed in and the extension UI
-cannot leak out. Two stacked layers:
-
-- A `<canvas>` for raster tools: **pencil** (freeform) and **highlight**.
-- An SVG layer for vector tools: **arrow**, **rectangle**, **ellipse**,
-  **callout** (auto-numbered marker), and **text**.
+cannot leak out. A single SVG layer renders every tool; there is no raster
+canvas in the live overlay (compositing for export still rasterises onto the
+screenshot, §5.4).
 
 The overlay is plain TypeScript with an explicit state machine
 (`idle | drawing | editing | placing-text`). No React in this path: drawing is
-pointer-event-driven and must stay at 60fps. The overlay emits model events
-(`onAnnotationCreated`, `onAnnotationUpdated`, `onAnnotationDeleted`) consumed
-by the panel and storage.
+pointer-event-driven and must stay at 60fps. The overlay emits a creation event
+(`onCreate`) consumed by the content script, which reduces the changelog and
+feeds the committed set back for rendering.
 
-Pointer handling must support mouse and pen/touch (`PointerEvent`), with
-pressure mapped to stroke width where available.
+Pointer handling supports mouse and pen/touch (`PointerEvent`). The **highlight**
+tool drops the overlay's `pointer-events` so native text selection works on the
+page, and captures the selection `Range` on `mouseup`.
 
 ### 5.2 Selector engine (`src/core/selector`) — the differentiator
 
@@ -198,28 +205,31 @@ assert uniqueness of the primary selector.
 
 ### 5.3 Annotation model (`src/core/model`)
 
-```ts
-type ToolKind =
-  | 'callout' | 'pencil' | 'arrow'
-  | 'rectangle' | 'ellipse' | 'text' | 'highlight';
+**Revised, content-anchored model.** Every annotation is anchored to a DOM
+element (`target`, now required). Markers/arrows store an offset from the
+element's box; highlights store a character range within its text. Absolute
+positions are derived at render time (`src/anchor`).
 
-interface Point { x: number; y: number }
+```ts
+type ToolKind = 'callout' | 'text' | 'arrow' | 'highlight';
+
+interface AnchoredPoint { dx: number; dy: number } // offset from target's box
 
 interface AnnotationBase {
   id: string;              // crypto.randomUUID()
   kind: ToolKind;
   createdAt: number;
   note?: string;           // the label shown in the changelog
-  target?: TargetRef;      // present when anchored to an element
+  target: TargetRef;       // required — everything is anchored
 }
 
 interface CalloutAnnotation extends AnnotationBase {
   kind: 'callout';
   index: number;           // auto-numbered, 1-based, gap-free
-  anchor: Point;
+  at: AnchoredPoint;
 }
-// ...pencil(path: Point[]), arrow(from,to), rectangle/ellipse(rect),
-//    text(position, content), highlight(rects: Rect[])
+// text(at, content), arrow(from, to: AnchoredPoint),
+// highlight(startOffset, endOffset, quote)  // char range in target's text
 
 type Annotation = CalloutAnnotation | /* …union of all kinds */;
 
@@ -343,22 +353,23 @@ No sync storage in M1.
 
 ---
 
-## 7. Annotation toolset (M1 acceptance surface)
+## 7. Annotation toolset
 
-All seven, each anchorable to an element (capturing a `TargetRef`) where it
-makes sense:
+> **Revision (post-M1):** the toolset is pared to four content-anchored tools
+> (the original seven, with their raster/shape tools, are superseded). Every
+> tool anchors to an element via a `TargetRef`.
 
-1. **Callout** — auto-numbered circular marker + label; primary anchored tool.
-2. **Pencil** — freeform raster stroke.
-3. **Arrow** — straight arrow, draggable endpoints.
-4. **Rectangle** — outline box.
-5. **Ellipse** — outline ellipse.
-6. **Text** — free-floating text box.
-7. **Highlight** — translucent raster highlight.
+1. **Callout** — auto-numbered marker (dot) anchored at a point on an element.
+2. **Text** — a text label anchored at a point on an element.
+3. **Arrow** — straight arrow whose endpoints are offsets from an element's box.
+4. **Highlight** — a real **text-selection** highlight: select text on the page
+   and the highlight is anchored to that character range and rendered over its
+   live client rects.
 
 Plus screenshot capture with all annotations composited. Every annotation
 appears in the live changelog the instant it's created; editing its note
-updates the changelog in place; deleting it renumbers callouts.
+updates the changelog in place; deleting it renumbers callouts. Because
+annotations are content-anchored, they track the page across scroll/resize.
 
 ---
 

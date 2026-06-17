@@ -9,12 +9,14 @@ the [MIT License](./LICENSE).
 
 ## What it does
 
-Activate annotation mode on any page and draw directly over the live DOM with
-seven tools — **callout** (auto-numbered marker), **pencil**, **arrow**,
-**rectangle**, **ellipse**, **text**, and **highlight**. Each annotation is
-anchored to a real element via a robust, verified-unique CSS selector. A live
-changelog panel tracks every marker; you can edit notes and delete markers
-(callouts renumber automatically).
+Activate annotation mode on any page and mark it up with four focused tools —
+**callout** (auto-numbered marker), **text**, **arrow**, and **highlight** (a
+real text-selection highlight). Every annotation is **content-anchored**: it
+attaches to a real element via a robust, verified-unique CSS selector and stores
+its position relative to that element (or, for highlights, a character range in
+the text), so marks track the content as the page scrolls, resizes, or reflows.
+A live changelog panel tracks every marker; you can switch tools, edit notes,
+and delete markers (callouts renumber automatically).
 
 On export, the extension composites the annotations onto a screenshot and writes
 **both** a Markdown changelog (`text/plain`) and the annotated PNG (`image/png`)
@@ -68,8 +70,9 @@ installing.
 
 1. Open a normal http(s) page and click the extension icon → **Start
    annotating**. The changelog panel appears on the right.
-2. Draw on the page. Click to drop a callout; drag for shapes; the text tool
-   prompts for content.
+2. Pick a tool from the palette and mark up the page: click to drop a **callout**
+   or place **text** (it prompts for content), drag for an **arrow**, or select
+   text with the **highlight** tool to highlight it.
 3. Add notes in the panel; delete markers with ✕.
 4. Click **Copy to clipboard** and paste the Markdown + screenshot anywhere.
 

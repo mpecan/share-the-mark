@@ -10,13 +10,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Current state
 
-**M0 (harness) and M1 (annotation core, SPEC §5/§7) are complete and green** on the `m1-annotation-core` branch. All §8 gates pass: typecheck, zero-warning lint, 97 tests at 100% coverage (the per-glob `src/core/**` 100% bar and global thresholds both met), size budget, Chrome + Firefox builds/zips, and a Chromium e2e that draws a callout and asserts the exported Markdown carries the resolved `Element:` selector. pnpm + Node 22 pinned, lefthook hooks wired, CI runs the full pipeline.
+**M0 (harness) and M1 (annotation core) are complete and green** on the `m1-annotation-core` branch, plus a **post-M1 redesign to content-anchored annotations** (SPEC §5.1/§5.3/§7 carry revision notes). All §8 gates pass: typecheck, zero-warning lint, ~100 tests (the per-glob `src/core/**` 100% bar and global thresholds both met), size budget, Chrome + Firefox builds/zips, and a Chromium e2e that draws a callout and asserts the exported Markdown carries the resolved `Element:` selector. pnpm + Node 22 pinned, lefthook hooks wired, CI runs the full pipeline.
+
+**Annotations are content-anchored, not viewport-positioned.** Each stores its `target` (required) plus an offset from the element's box (callout/text/arrow) or a character range in its text (highlight). `src/anchor` resolves a `ResolvedAnnotation` (absolute geometry) from the live DOM, so marks track scroll/resize/reflow. The toolset is four tools: **callout, text, arrow, highlight** (a real text-selection highlight).
 
 What's implemented (all behind `src/`):
-- `core/selector` — `computeSelector`/`resolveSelector` (fast-check round-trip), `core/model` — annotation union + callout-numbering reducer, `core/markdown` — Turndown wrapper, `core/export` — payload + changelog Markdown format.
-- `overlay` — imperative pointer state machine (canvas raster + SVG vector, 7 tools); pure geometry is split into `overlay/geometry.ts`.
-- `capture` — `render` (canvas drawing behind a `DrawContext` interface), `composite` (DI'd canvas/image plumbing; real glue in `composite-surface.ts`, excluded from coverage), `ClipboardSink`, screenshot round-trip.
-- `messaging` (typed `ProtocolMap`), `storage` (settings + per-tab/URL changelog), `panel` (React changelog panel). Entrypoints wire it together: `content.ts` mounts overlay+panel into a closed shadow root on activation; popup toggles mode; options page persists settings.
+- `core/selector` — `computeSelector`/`resolveSelector` (fast-check round-trip), `core/model` — anchored annotation union + callout-numbering reducer, `core/markdown` — Turndown wrapper, `core/export` — payload + changelog Markdown format.
+- `anchor` — `resolveGeometry` (target → absolute geometry via `getBoundingClientRect`/`Range`), shared by overlay and compositor.
+- `overlay` — imperative, **SVG-only** pointer state machine; re-renders on scroll/resize; the highlight tool drops `pointer-events` and captures the page selection on `mouseup`.
+- `capture` — `render` (canvas drawing of `ResolvedAnnotation` behind a `DrawContext`), `composite` (DI'd canvas/image plumbing; real glue in `composite-surface.ts`, excluded from coverage), `ClipboardSink`, screenshot round-trip.
+- `messaging` (typed `ProtocolMap`), `storage` (settings + per-tab/URL changelog, keyed `v2:` after the anchoring change), `panel` (React changelog panel behind an external store + error boundary; tool palette). Entrypoints wire it together: `content.ts` mounts overlay+panel into a closed shadow root on activation and provides `resolveTarget`; popup toggles mode; options page persists settings.
 
 **M2 only when explicitly asked.** Stop for review at each milestone boundary.
 
@@ -55,7 +58,7 @@ TS strictness beyond `strict`: `noUncheckedIndexedAccess`, `exactOptionalPropert
 
 - **Cross-browser via WXT's unified `browser.*` global — never reference `chrome.*`.** One MV3 source for all targets.
 - **`src/core/**` is pure and browser-free** (selector engine, annotation model, markdown, export payload builder). No extension APIs there — it's the ~100%-covered, unit-testable bulk of the logic. Keep side effects and `browser.*` out.
-- **The drawing overlay (`src/overlay`) is plain imperative TypeScript, NOT React.** It's a pointer-event state machine (`idle | drawing | editing | placing-text`) on stacked `<canvas>` (raster: pencil, highlight) + SVG (vector: arrow, rectangle, ellipse, callout, text) and must stay at 60fps. React is only for static-ish UI (popup, options, changelog panel).
+- **The drawing overlay (`src/overlay`) is plain imperative TypeScript, NOT React.** It's a pointer-event state machine (`idle | drawing | editing | placing-text`) rendering **SVG only** (callout, text, arrow, highlight), resolved from the live DOM each render, and must stay at 60fps. React is only for static-ish UI (popup, options, changelog panel).
 - **UI mounts into a closed shadow root** (WXT `createShadowRootUi`) so host-page CSS can't bleed in or out. The changelog panel is in-page (shadow root), not a native side panel — that keeps M1 identical across browsers (`sidePanel` is deferred M2).
 - **Export is behind the `ExportSink` interface** (§5.4). M1 ships exactly one sink: `ClipboardSink`, which writes a single `ClipboardItem` (`text/plain` Markdown + `image/png`). It **must run in the content-script context under a user gesture** — service workers cannot touch `navigator.clipboard`. M2 adds sinks without touching capture/drawing/model.
 - **`captureVisibleTab` is the only message that must round-trip to the background service worker** (`tabs.captureVisibleTab` is unavailable in content scripts). Treat the MV3 service worker as ephemeral: hold no in-memory state across invocations; rehydrate from storage.
