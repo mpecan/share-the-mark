@@ -11,10 +11,11 @@ the [MIT License](./LICENSE).
 
 Activate annotation mode on any page and mark it up with four focused tools —
 **callout** (auto-numbered marker), **text**, **arrow**, and **highlight** (a
-real text-selection highlight). Every annotation is **content-anchored**: it
-attaches to a real element via a robust, verified-unique CSS selector and stores
-its position relative to that element (or, for highlights, a character range in
-the text), so marks track the content as the page scrolls, resizes, or reflows.
+real text-selection highlight). Every annotation is **content-anchored** using the W3C Web Annotation model
+(Hypothesis-style text selectors): a text-position offset plus a text-quote with
+surrounding context, scoped to a verified-unique element selector. Resolution
+falls back from position to a fuzzy quote match, so marks track the content as
+the page scrolls, resizes, reflows, or re-renders — not just on resize.
 A live changelog panel tracks every marker; you can switch tools, edit notes,
 and delete markers (callouts renumber automatically).
 

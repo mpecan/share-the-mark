@@ -150,10 +150,15 @@ share-the-mark/
 > **Revision (post-M1):** annotations are now **content-anchored** rather than
 > positioned in viewport coordinates, and the toolset is pared to four tools
 > (callout, text, arrow, **text-selection** highlight). The overlay is **SVG
-> only** — every annotation is anchored to a DOM element and resolved to
-> absolute geometry at render time (`src/anchor`), so marks track the content
-> across scroll/resize/reflow. This supersedes the original raster/7-tool
-> design described below in §5.3/§7.
+> only**. Anchoring follows the **W3C Web Annotation model** (Hypothesis-style):
+> each annotation stores a **TextPosition** (character offsets) and a
+> **TextQuote** (exact text + prefix/suffix context) within its target element,
+> via `dom-anchor-text-position` / `dom-anchor-text-quote` (the latter brings
+> `diff-match-patch`). On resolve we try the position selector, verify it against
+> the stored quote, then fall back to a fuzzy quote search — so marks survive
+> reflow and node-replacing re-renders, not just resize. Positions are recomputed
+> each render (`src/anchor`) and on ResizeObserver + MutationObserver + scroll.
+> This supersedes the original raster/7-tool design described below in §5.3/§7.
 
 Mounted by the content script into a **closed shadow root** (via WXT
 `createShadowRootUi`) so host-page CSS cannot bleed in and the extension UI
@@ -205,31 +210,36 @@ assert uniqueness of the primary selector.
 
 ### 5.3 Annotation model (`src/core/model`)
 
-**Revised, content-anchored model.** Every annotation is anchored to a DOM
-element (`target`, now required). Markers/arrows store an offset from the
-element's box; highlights store a character range within its text. Absolute
-positions are derived at render time (`src/anchor`).
+**Revised, content-anchored model.** Every annotation carries a `target`
+(the element selector — a coarse scope + the export reference) and a `TextAnchor`
+(TextPosition + TextQuote within that element). Markers/arrows/text resolve to a
+caret point; highlights resolve to a text range; the arrow stores its tail as an
+offset from the anchored head. Absolute positions are derived at render time
+(`src/anchor`).
 
 ```ts
 type ToolKind = 'callout' | 'text' | 'arrow' | 'highlight';
 
-interface AnchoredPoint { dx: number; dy: number } // offset from target's box
+interface TextAnchor {
+  start: number; end: number;          // TextPositionSelector
+  exact: string; prefix: string; suffix: string; // TextQuoteSelector
+}
+interface AnchoredPoint { dx: number; dy: number } // arrow tail offset
 
 interface AnnotationBase {
   id: string;              // crypto.randomUUID()
   kind: ToolKind;
   createdAt: number;
   note?: string;           // the label shown in the changelog
-  target: TargetRef;       // required — everything is anchored
+  target: TargetRef;       // coarse anchor + export reference
+  anchor: TextAnchor;      // precise content anchor within target
 }
 
 interface CalloutAnnotation extends AnnotationBase {
   kind: 'callout';
   index: number;           // auto-numbered, 1-based, gap-free
-  at: AnchoredPoint;
 }
-// text(at, content), arrow(from, to: AnchoredPoint),
-// highlight(startOffset, endOffset, quote)  // char range in target's text
+// text(content), arrow(tail: AnchoredPoint), highlight — all share target + anchor
 
 type Annotation = CalloutAnnotation | /* …union of all kinds */;
 
