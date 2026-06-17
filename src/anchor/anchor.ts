@@ -23,34 +23,31 @@ export function resolveGeometry(annotation: Annotation, doc: Document): Resolved
   const range = anchorRange(root, annotation.anchor);
   if (!range) return null;
 
+  const box = range.getBoundingClientRect();
+  const at = (offset: { dx: number; dy: number }): Point => ({
+    x: box.left + offset.dx,
+    y: box.top + offset.dy,
+  });
+
   switch (annotation.kind) {
     case 'callout': {
-      const box = range.getBoundingClientRect();
       return {
         id: annotation.id,
         kind: 'callout',
         index: annotation.index,
-        at: { x: box.left, y: box.top },
+        at: at(annotation.offset),
       };
     }
     case 'text': {
-      const box = range.getBoundingClientRect();
       return {
         id: annotation.id,
         kind: 'text',
         content: annotation.content,
-        at: { x: box.left, y: box.top },
+        at: at(annotation.offset),
       };
     }
     case 'arrow': {
-      const box = range.getBoundingClientRect();
-      const head: Point = { x: box.left, y: box.top };
-      return {
-        id: annotation.id,
-        kind: 'arrow',
-        from: { x: head.x + annotation.tail.dx, y: head.y + annotation.tail.dy },
-        to: head,
-      };
+      return { id: annotation.id, kind: 'arrow', from: at(annotation.from), to: at(annotation.to) };
     }
     case 'highlight': {
       const rects = [...range.getClientRects()].map((rect) => toRect(rect));

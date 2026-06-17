@@ -24,6 +24,7 @@ function callout(id: string, createdAt = 0): CalloutAnnotation {
     target,
     index: 0,
     anchor: { start: 0, end: 1, exact: 'x', prefix: '', suffix: '' },
+    offset: { dx: 0, dy: 0 },
   };
 }
 
@@ -34,6 +35,7 @@ function text(id: string, createdAt = 0): TextAnnotation {
     createdAt,
     target,
     anchor: { start: 0, end: 1, exact: 'x', prefix: '', suffix: '' },
+    offset: { dx: 0, dy: 0 },
     content: '',
   };
 }

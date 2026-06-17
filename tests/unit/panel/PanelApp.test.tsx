@@ -42,6 +42,7 @@ describe('PanelApp', () => {
       createdAt: 0,
       index: 1,
       anchor: { start: 0, end: 1, exact: 'x', prefix: '', suffix: '' },
+      offset: { dx: 0, dy: 0 },
       target: {
         selector: '#x',
         fallbacks: [],

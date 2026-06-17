@@ -24,7 +24,11 @@ export interface Rect {
   height: number;
 }
 
-/** A point expressed as an offset (CSS px) from the anchor point. */
+/**
+ * An offset (CSS px) from the anchored character's box to where the user
+ * actually placed the mark — so it stays near the original click while still
+ * tracking the anchored text as the page reflows.
+ */
 export interface AnchoredPoint {
   dx: number;
   dy: number;
@@ -60,17 +64,20 @@ export interface CalloutAnnotation extends AnnotationBase {
   kind: 'callout';
   /** Auto-numbered, 1-based, gap-free — owned by the reducer, never by callers. */
   index: number;
+  offset: AnchoredPoint;
 }
 
 export interface TextAnnotation extends AnnotationBase {
   kind: 'text';
   content: string;
+  offset: AnchoredPoint;
 }
 
 export interface ArrowAnnotation extends AnnotationBase {
   kind: 'arrow';
-  /** Offset of the arrow's tail from the anchored head point. */
-  tail: AnchoredPoint;
+  /** Both endpoints as offsets from the anchored character's box. */
+  from: AnchoredPoint;
+  to: AnchoredPoint;
 }
 
 export interface HighlightAnnotation extends AnnotationBase {

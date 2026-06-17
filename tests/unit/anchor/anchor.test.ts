@@ -52,6 +52,7 @@ describe('resolveGeometry', () => {
       index: 2,
       target: targetFor('#el', 'p'),
       anchor: anchorFor('brown'),
+      offset: { dx: 0, dy: 0 },
     };
     expect(resolveGeometry(annotation, document)).toMatchObject({ kind: 'callout', index: 2 });
   });
@@ -63,7 +64,8 @@ describe('resolveGeometry', () => {
       createdAt: 0,
       target: targetFor('#el', 'p'),
       anchor: anchorFor('brown'),
-      tail: { dx: 3, dy: 4 },
+      from: { dx: 3, dy: 4 },
+      to: { dx: 0, dy: 0 },
     };
     expect(resolveGeometry(annotation, document)).toMatchObject({
       kind: 'arrow',
@@ -80,6 +82,7 @@ describe('resolveGeometry', () => {
       index: 1,
       target: targetFor('#el', 'p'),
       anchor: anchorFor('quick brown'),
+      offset: { dx: 0, dy: 0 },
     };
     const resolved = resolveGeometry({ ...annotation, kind: 'highlight' }, document);
     expect(resolved?.kind).toBe('highlight');
@@ -93,6 +96,7 @@ describe('resolveGeometry', () => {
       index: 1,
       target: targetFor('#el', 'p'),
       anchor: { start: 0, end: 5, exact: 'zzzzz', prefix: '', suffix: '' },
+      offset: { dx: 0, dy: 0 },
     };
     expect(resolveGeometry(annotation, document)).toBeNull();
   });
@@ -105,6 +109,7 @@ describe('resolveGeometry', () => {
       index: 1,
       target: targetFor('#missing', 'p'),
       anchor: anchorFor('brown'),
+      offset: { dx: 0, dy: 0 },
     };
     // body contains the same text, so it still resolves.
     expect(resolveGeometry(annotation, document)?.kind).toBe('callout');

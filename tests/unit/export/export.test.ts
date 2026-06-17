@@ -18,6 +18,7 @@ function callout(
     createdAt: 0,
     index,
     anchor: { start: 0, end: 1, exact: 'x', prefix: '', suffix: '' },
+    offset: { dx: 0, dy: 0 },
     target: target('#default'),
     ...partial,
   };
@@ -33,6 +34,7 @@ function text(
     kind: 'text',
     createdAt,
     anchor: { start: 0, end: 1, exact: 'x', prefix: '', suffix: '' },
+    offset: { dx: 0, dy: 0 },
     content: '',
     target: target('#default'),
     ...partial,

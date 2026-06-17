@@ -88,6 +88,8 @@ describe('Overlay — click tools', () => {
       createdAt: 1000,
       target: { selector: '#para' },
       anchor: { exact: 'q' },
+      // Offset from the anchored char box (0 in happy-dom) to the click point.
+      offset: { dx: 30, dy: 40 },
     });
     expect(overlay.getState()).toBe('idle');
   });
@@ -126,7 +128,7 @@ describe('Overlay — click tools', () => {
 });
 
 describe('Overlay — arrow', () => {
-  it('anchors the head and stores the tail offset', () => {
+  it('anchors to the head char and stores both endpoint offsets', () => {
     const overlay = makeOverlay({ tool: 'arrow' });
     pointer(overlay, 'pointerdown', 10, 10);
     expect(overlay.getState()).toBe('drawing');
@@ -135,7 +137,8 @@ describe('Overlay — arrow', () => {
     expect(overlay.getState()).toBe('idle');
     expect(created[0]).toMatchObject({
       kind: 'arrow',
-      tail: { dx: 10, dy: 10 },
+      from: { dx: 10, dy: 10 },
+      to: { dx: 40, dy: 30 },
       anchor: { exact: 'q' },
     });
   });
@@ -188,6 +191,7 @@ describe('Overlay — rendering', () => {
         index: 2,
         target: targetFor('#para', 'p'),
         anchor: anchorOver('brown'),
+        offset: { dx: 0, dy: 0 },
       },
       {
         id: 't',
@@ -196,12 +200,14 @@ describe('Overlay — rendering', () => {
         content: 'note',
         target: targetFor('#para', 'p'),
         anchor: anchorOver('quick'),
+        offset: { dx: 0, dy: 0 },
       },
       {
         id: 'a',
         kind: 'arrow',
         createdAt: 0,
-        tail: { dx: 4, dy: 4 },
+        from: { dx: 0, dy: 0 },
+        to: { dx: 4, dy: 4 },
         target: targetFor('#para', 'p'),
         anchor: anchorOver('brown'),
       },
@@ -243,6 +249,7 @@ describe('Overlay — rendering', () => {
         index: 1,
         target: targetFor('#para', 'p'),
         anchor: anchorOver('fox'),
+        offset: { dx: 0, dy: 0 },
       },
     ]);
     dispatchEvent(new Event('scroll'));

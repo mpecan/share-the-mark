@@ -241,6 +241,12 @@ export class Overlay {
     this.render();
   };
 
+  // Offset (CSS px) from the anchored character's box to where the user clicked.
+  private offsetFrom(range: Range, point: Point): { dx: number; dy: number } {
+    const box = range.getBoundingClientRect();
+    return { dx: point.x - box.left, dy: point.y - box.top };
+  }
+
   private createCallout(point: Point): void {
     const anchor = this.caretAt(point);
     if (!anchor) return;
@@ -251,6 +257,7 @@ export class Overlay {
       index: 0,
       target: computeSelector(anchor.element),
       anchor: describeRange(anchor.element, anchor.range),
+      offset: this.offsetFrom(anchor.range, point),
     });
   }
 
@@ -269,20 +276,21 @@ export class Overlay {
       content,
       target: computeSelector(anchor.element),
       anchor: describeRange(anchor.element, anchor.range),
+      offset: this.offsetFrom(anchor.range, point),
     });
   }
 
   private createArrow(from: Point, to: Point): void {
     const anchor = this.caretAt(to);
     if (!anchor) return;
-    const head = anchor.range.getBoundingClientRect();
     this.options.onCreate({
       id: this.nextId(),
       kind: 'arrow',
       createdAt: this.timestamp(),
-      tail: { dx: from.x - head.left, dy: from.y - head.top },
       target: computeSelector(anchor.element),
       anchor: describeRange(anchor.element, anchor.range),
+      from: this.offsetFrom(anchor.range, from),
+      to: this.offsetFrom(anchor.range, to),
     });
   }
 
