@@ -90,6 +90,16 @@ export default defineConfig(
     },
   },
 
+  // Tests legitimately use patterns the source rules discourage: assigning to
+  // a module-scoped `let` from `beforeEach`, and vitest's `expect.any()` /
+  // matcher helpers that surface as `any`.
+  {
+    files: ['tests/**'],
+    rules: {
+      'unicorn/no-top-level-assignment-in-function': 'off',
+    },
+  },
+
   // Config files (and any plain JS) are outside the typed program: turn off
   // type-checked rules for them and give them Node globals.
   {
