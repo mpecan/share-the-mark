@@ -77,8 +77,8 @@ installing.
    with the **highlight** tool, or use **element** to hover-and-click a whole
    element and comment on it.
 3. Adjust marks: drag a callout or text label to reposition it, drag an arrow's
-   endpoint handles (or its line) to retarget it, and double-click a text label
-   to retype it.
+   endpoint handles (or its line) to retarget it, drag a highlight's start/end
+   handles to extend or shrink it, and double-click a text label to retype it.
 4. Add notes/comments in the panel; delete markers with ✕.
 5. Click **Copy to clipboard** and paste the Markdown + screenshot anywhere.
 

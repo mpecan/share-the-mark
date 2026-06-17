@@ -298,6 +298,97 @@ describe('Overlay — editing', () => {
     });
   });
 
+  it('extends a highlight by dragging its end handle', () => {
+    const spy = vi
+      .spyOn(Range.prototype, 'getClientRects')
+      .mockReturnValue([{ x: 0, y: 0, width: 10, height: 4 } as DOMRect] as unknown as DOMRectList);
+    const overlay = makeOverlay({ caretFromPoint: () => caretAt(19) }); // end of the text
+    overlay.setAnnotations([
+      {
+        id: 'h',
+        kind: 'highlight',
+        createdAt: 0,
+        target: targetFor('#para', 'p'),
+        anchor: anchorOver('quick'),
+      },
+    ]);
+    const handle = container.querySelector(':scope [data-stm-handle="end"]');
+    if (!handle) throw new Error('end handle not found');
+    pointerOn(handle, 'pointerdown', 30, 30);
+    pointer(overlay, 'pointermove', 60, 30);
+    pointer(overlay, 'pointerup', 60, 30);
+    expect(updated[0]).toMatchObject({ kind: 'highlight', anchor: { exact: 'quick brown fox' } });
+    spy.mockRestore();
+  });
+
+  it('shrinks a highlight by dragging its start handle', () => {
+    const spy = vi
+      .spyOn(Range.prototype, 'getClientRects')
+      .mockReturnValue([{ x: 0, y: 0, width: 10, height: 4 } as DOMRect] as unknown as DOMRectList);
+    const overlay = makeOverlay({ caretFromPoint: () => caretAt(0) }); // start of the text
+    overlay.setAnnotations([
+      {
+        id: 'h',
+        kind: 'highlight',
+        createdAt: 0,
+        target: targetFor('#para', 'p'),
+        anchor: anchorOver('quick'),
+      },
+    ]);
+    const handle = container.querySelector(':scope [data-stm-handle="start"]');
+    if (!handle) throw new Error('start handle not found');
+    pointerOn(handle, 'pointerdown', 10, 10);
+    pointer(overlay, 'pointermove', 0, 10);
+    pointer(overlay, 'pointerup', 0, 10);
+    expect(updated[0]).toMatchObject({ kind: 'highlight', anchor: { exact: 'The quick' } });
+    spy.mockRestore();
+  });
+
+  it('leaves a highlight unchanged when the drag resolves no caret', () => {
+    const spy = vi
+      .spyOn(Range.prototype, 'getClientRects')
+      .mockReturnValue([{ x: 0, y: 0, width: 10, height: 4 } as DOMRect] as unknown as DOMRectList);
+    const overlay = makeOverlay({ caretFromPoint: () => null });
+    overlay.setAnnotations([
+      {
+        id: 'h',
+        kind: 'highlight',
+        createdAt: 0,
+        target: targetFor('#para', 'p'),
+        anchor: anchorOver('quick'),
+      },
+    ]);
+    const handle = container.querySelector(':scope [data-stm-handle="end"]');
+    if (!handle) throw new Error('end handle not found');
+    pointerOn(handle, 'pointerdown', 30, 30);
+    pointer(overlay, 'pointerup', 40, 30);
+    expect(updated[0]).toMatchObject({ kind: 'highlight', anchor: { exact: 'quick' } });
+    spy.mockRestore();
+  });
+
+  it('leaves a highlight unchanged when the drag collapses the range', () => {
+    const spy = vi
+      .spyOn(Range.prototype, 'getClientRects')
+      .mockReturnValue([{ x: 0, y: 0, width: 10, height: 4 } as DOMRect] as unknown as DOMRectList);
+    // Dragging the end handle before the start collapses the range.
+    const overlay = makeOverlay({ caretFromPoint: () => caretAt(2) });
+    overlay.setAnnotations([
+      {
+        id: 'h',
+        kind: 'highlight',
+        createdAt: 0,
+        target: targetFor('#para', 'p'),
+        anchor: anchorOver('quick'),
+      },
+    ]);
+    const handle = container.querySelector(':scope [data-stm-handle="end"]');
+    if (!handle) throw new Error('end handle not found');
+    pointerOn(handle, 'pointerdown', 30, 30);
+    pointer(overlay, 'pointerup', 5, 30);
+    expect(updated[0]).toMatchObject({ kind: 'highlight', anchor: { exact: 'quick' } });
+    spy.mockRestore();
+  });
+
   it('ignores double-clicks on non-text marks', () => {
     const overlay = makeOverlay();
     overlay.setAnnotations([

@@ -178,8 +178,10 @@ page, and captures the selection `Range` on `mouseup`.
 
 Existing marks are **editable** (the `editing` state): pressing on a mark drags
 it — callout/text update their offset, arrows expose endpoint handles (and the
-line moves the whole arrow) — and double-clicking a text mark retypes it. Edits
-flow out via `onUpdate` and the reducer's `update` action.
+line moves the whole arrow), and highlights expose start/end handles that
+**re-anchor the text range** (caret hit-test → new range → fresh `TextAnchor`) —
+and double-clicking a text mark retypes it. Edits flow out via `onUpdate` and the
+reducer's `update` action.
 
 ### 5.2 Selector engine (`src/core/selector`) — the differentiator
 

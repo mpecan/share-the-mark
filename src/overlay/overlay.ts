@@ -1,9 +1,10 @@
-import { computeSelector } from '@/src/core/selector';
-import { describeRange, resolveGeometry, type ResolvedAnnotation } from '@/src/anchor';
+import { computeSelector, resolveSelector } from '@/src/core/selector';
+import { anchorRange, describeRange, resolveGeometry, type ResolvedAnnotation } from '@/src/anchor';
 import type {
   Annotation,
   ArrowAnnotation,
   CalloutAnnotation,
+  HighlightAnnotation,
   Point,
   TextAnnotation,
   ToolKind,
@@ -23,32 +24,36 @@ const TEXT_PADDING = 4;
 export type OverlayState = 'idle' | 'drawing' | 'editing' | 'placing-text';
 
 type DraggableAnnotation = CalloutAnnotation | TextAnnotation | ArrowAnnotation;
-type EditHandle = 'from' | 'to' | 'move';
+type EditableAnnotation = DraggableAnnotation | HighlightAnnotation;
+type EditHandle = 'from' | 'to' | 'start' | 'end' | 'move';
 
 interface EditState {
-  origin: DraggableAnnotation;
+  origin: EditableAnnotation;
   handle: EditHandle;
   start: Point;
   current: Point;
 }
 
 const DRAGGABLE_KINDS = new Set<ToolKind>(['callout', 'text', 'arrow']);
+const HANDLE_NAMES = new Set(['from', 'to', 'start', 'end']);
 
 function isDraggable(annotation: Annotation): annotation is DraggableAnnotation {
   return DRAGGABLE_KINDS.has(annotation.kind);
 }
 
-// Apply a drag delta to the edited annotation: moving updates the offset(s);
-// dragging an arrow endpoint updates just that endpoint.
-function applyEdit(edit: EditState): DraggableAnnotation {
-  const dx = edit.current.x - edit.start.x;
-  const dy = edit.current.y - edit.start.y;
-  const origin = edit.origin;
+// Apply a drag delta to a draggable annotation: moving updates the offset(s);
+// dragging an arrow endpoint updates just that endpoint. (Highlights re-anchor
+// against the DOM instead — see Overlay.editedHighlight.)
+function applyEdit(
+  origin: DraggableAnnotation,
+  dx: number,
+  dy: number,
+  handle: EditHandle,
+): DraggableAnnotation {
   if (origin.kind === 'arrow') {
     const from =
-      edit.handle === 'to' ? origin.from : { dx: origin.from.dx + dx, dy: origin.from.dy + dy };
-    const to =
-      edit.handle === 'from' ? origin.to : { dx: origin.to.dx + dx, dy: origin.to.dy + dy };
+      handle === 'to' ? origin.from : { dx: origin.from.dx + dx, dy: origin.from.dy + dy };
+    const to = handle === 'from' ? origin.to : { dx: origin.to.dx + dx, dy: origin.to.dy + dy };
     return { ...origin, from, to };
   }
   return { ...origin, offset: { dx: origin.offset.dx + dx, dy: origin.offset.dy + dy } };
@@ -263,16 +268,22 @@ export class Overlay {
   }
 
   // Find the existing mark (and arrow handle, if any) under an event.
-  private markUnder(event: Event): { annotation: DraggableAnnotation; handle: EditHandle } | null {
+  private markUnder(event: Event): { annotation: EditableAnnotation; handle: EditHandle } | null {
     const target = event.target;
     if (!(target instanceof SVGElement)) return null;
     const markEl = target.closest('[data-stm-id]');
     if (!(markEl instanceof SVGElement)) return null;
     const annotation = this.committed.find((a) => a.id === markEl.dataset['stmId']);
-    if (!annotation || !isDraggable(annotation)) return null;
-    const handleAttr = target.dataset['stmHandle'];
-    const handle: EditHandle = handleAttr === 'from' || handleAttr === 'to' ? handleAttr : 'move';
-    return { annotation, handle };
+    if (!annotation) return null;
+    const attr = target.dataset['stmHandle'];
+    const handle: EditHandle =
+      attr !== undefined && HANDLE_NAMES.has(attr) ? (attr as EditHandle) : 'move';
+    // Highlights are only editable via their start/end handles (re-anchoring the
+    // text range); their body isn't draggable. The rest move/resize freely.
+    if (annotation.kind === 'highlight') {
+      return handle === 'start' || handle === 'end' ? { annotation, handle } : null;
+    }
+    return isDraggable(annotation) ? { annotation, handle } : null;
   }
 
   private readonly onPointerDown = (event: PointerEvent): void => {
@@ -330,7 +341,7 @@ export class Overlay {
 
   private readonly onPointerUp = (event: PointerEvent): void => {
     if (this.state === 'editing' && this.edit) {
-      const edited = applyEdit({ ...this.edit, current: this.pointFrom(event) });
+      const edited = this.computeEdit({ ...this.edit, current: this.pointFrom(event) });
       this.state = 'idle';
       this.edit = null;
       this.options.onUpdate?.(edited);
@@ -449,8 +460,47 @@ export class Overlay {
   // Substitute the in-progress edit for its committed annotation while dragging.
   private draftFor(annotation: Annotation): Annotation {
     const edit = this.edit;
-    if (edit === null) return annotation;
-    return edit.origin.id === annotation.id ? applyEdit(edit) : annotation;
+    if (edit?.origin.id !== annotation.id) return annotation;
+    return this.computeEdit(edit);
+  }
+
+  private computeEdit(edit: EditState): Annotation {
+    if (edit.origin.kind === 'highlight')
+      return this.editedHighlight(edit.origin, edit) ?? edit.origin;
+    return applyEdit(
+      edit.origin,
+      edit.current.x - edit.start.x,
+      edit.current.y - edit.start.y,
+      edit.handle,
+    );
+  }
+
+  // Re-anchor a highlight: rebuild its text range from the fixed endpoint to the
+  // caret under the dragged handle, then describe it as a fresh TextAnchor.
+  private editedHighlight(
+    origin: HighlightAnnotation,
+    edit: EditState,
+  ): HighlightAnnotation | null {
+    const element = resolveSelector(origin.target, this.doc) ?? this.doc.body;
+    const current = anchorRange(element, origin.anchor);
+    if (!current) return null;
+    const caretFromPoint = this.options.caretFromPoint ?? defaultCaretFromPoint;
+    const caret = caretFromPoint(this.doc, edit.current.x, edit.current.y);
+    if (!caret) return null;
+    const range = this.doc.createRange();
+    try {
+      if (edit.handle === 'start') {
+        range.setStart(caret.startContainer, caret.startOffset);
+        range.setEnd(current.endContainer, current.endOffset);
+      } else {
+        range.setStart(current.startContainer, current.startOffset);
+        range.setEnd(caret.startContainer, caret.startOffset);
+      }
+    } catch {
+      return null; // boundaries crossed over — ignore this move
+    }
+    if (range.collapsed || !element.contains(range.commonAncestorContainer)) return null;
+    return { ...origin, anchor: describeRange(element, range) };
   }
 
   private render(): void {
@@ -520,7 +570,7 @@ export class Overlay {
     return defs;
   }
 
-  private handleSvg(point: Point, handle: 'from' | 'to'): SVGElement {
+  private handleSvg(point: Point, handle: 'from' | 'to' | 'start' | 'end'): SVGElement {
     const circle = svgEl(this.doc, 'circle', {
       cx: String(point.x),
       cy: String(point.y),
@@ -608,6 +658,13 @@ export class Overlay {
               'fill-opacity': '0.35',
             }),
           );
+        }
+        // Handles at the start (first rect) and end (last rect) to re-anchor it.
+        const first = annotation.rects[0];
+        const last = annotation.rects.at(-1);
+        if (first) group.append(this.handleSvg({ x: first.x, y: first.y }, 'start'));
+        if (last) {
+          group.append(this.handleSvg({ x: last.x + last.width, y: last.y + last.height }, 'end'));
         }
         return group;
       }
