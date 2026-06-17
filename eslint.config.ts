@@ -87,6 +87,9 @@ export default defineConfig(
         'error',
         { cases: { camelCase: true, pascalCase: true, kebabCase: true } },
       ],
+      // We group class members by role (public API, then pointer handlers, then
+      // private helpers) rather than by the plugin's fixed ordering.
+      'unicorn/consistent-class-member-order': 'off',
     },
   },
 

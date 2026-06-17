@@ -29,6 +29,7 @@ function noopContext(): DrawContext {
     globalAlpha: 1,
     save: noop,
     restore: noop,
+    clearRect: noop,
     beginPath: noop,
     moveTo: noop,
     lineTo: noop,

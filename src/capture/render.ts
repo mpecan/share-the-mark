@@ -15,6 +15,7 @@ export interface DrawContext {
   globalAlpha: number;
   save: () => void;
   restore: () => void;
+  clearRect: (x: number, y: number, w: number, h: number) => void;
   beginPath: () => void;
   moveTo: (x: number, y: number) => void;
   lineTo: (x: number, y: number) => void;

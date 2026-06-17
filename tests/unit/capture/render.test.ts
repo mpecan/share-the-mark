@@ -24,6 +24,7 @@ function recorder(): { ctx: DrawContext; ops: Op[] } {
     globalAlpha: 1,
     save: record('save'),
     restore: record('restore'),
+    clearRect: record('clearRect'),
     beginPath: record('beginPath'),
     moveTo: record('moveTo'),
     lineTo: record('lineTo'),
