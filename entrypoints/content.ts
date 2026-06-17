@@ -3,12 +3,10 @@ import { createRoot } from 'react-dom/client';
 import { onMessage, sendMessage } from '@/src/messaging';
 import { Overlay } from '@/src/overlay';
 import { PanelApp, type PanelSnapshot, type PanelStore } from '@/src/panel';
-import { computeSelector } from '@/src/core/selector';
 import {
   changelogReducer,
   type Changelog,
   type ChangelogAction,
-  type Point,
   type ToolKind,
 } from '@/src/core/model';
 import { buildExportPayload, changelogToMarkdown } from '@/src/core/export';
@@ -20,7 +18,6 @@ import {
   requestScreenshot,
   type RenderOptions,
 } from '@/src/capture';
-import type { ResolvedTarget } from '@/src/overlay';
 import '@/src/panel/panel.css';
 
 export default defineContentScript({
@@ -63,16 +60,6 @@ export default defineContentScript({
       for (const listener of listeners) listener();
     }
 
-    // Filled once the shadow host exists; read lazily during hit-testing.
-    const refs: { shadowHost?: Element } = {};
-
-    function targetAt(point: Point): ResolvedTarget | undefined {
-      const element = document
-        .elementsFromPoint(point.x, point.y)
-        .find((el) => el !== refs.shadowHost && refs.shadowHost?.contains(el) !== true);
-      return element ? { target: computeSelector(element), element } : undefined;
-    }
-
     const ui = await createShadowRootUi(ctx, {
       name: 'share-the-mark',
       position: 'overlay',
@@ -92,7 +79,6 @@ export default defineContentScript({
           onCreate: (annotation) => {
             dispatch({ type: 'add', annotation });
           },
-          resolveTarget: targetAt,
         });
 
         function dispatch(action: ChangelogAction): void {
@@ -131,8 +117,6 @@ export default defineContentScript({
         mounted?.panelRoot.unmount();
       },
     });
-
-    refs.shadowHost = ui.shadowHost;
 
     async function exportChangelog(): Promise<void> {
       const captured: Changelog = { ...changelog, capturedAt: Date.now() };

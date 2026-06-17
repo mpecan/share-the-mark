@@ -41,7 +41,7 @@ describe('PanelApp', () => {
       kind: 'callout',
       createdAt: 0,
       index: 1,
-      at: { dx: 0, dy: 0 },
+      anchor: { start: 0, end: 1, exact: 'x', prefix: '', suffix: '' },
       target: {
         selector: '#x',
         fallbacks: [],

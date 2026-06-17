@@ -17,11 +17,25 @@ const target: TargetRef = {
 };
 
 function callout(id: string, createdAt = 0): CalloutAnnotation {
-  return { id, kind: 'callout', createdAt, target, index: 0, at: { dx: 0, dy: 0 } };
+  return {
+    id,
+    kind: 'callout',
+    createdAt,
+    target,
+    index: 0,
+    anchor: { start: 0, end: 1, exact: 'x', prefix: '', suffix: '' },
+  };
 }
 
 function text(id: string, createdAt = 0): TextAnnotation {
-  return { id, kind: 'text', createdAt, target, at: { dx: 0, dy: 0 }, content: '' };
+  return {
+    id,
+    kind: 'text',
+    createdAt,
+    target,
+    anchor: { start: 0, end: 1, exact: 'x', prefix: '', suffix: '' },
+    content: '',
+  };
 }
 
 function changelog(annotations: Annotation[]): Changelog {

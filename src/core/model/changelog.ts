@@ -24,10 +24,24 @@ export interface Rect {
   height: number;
 }
 
-/** A point expressed as an offset (CSS px) from the target element's top-left. */
+/** A point expressed as an offset (CSS px) from the anchor point. */
 export interface AnchoredPoint {
   dx: number;
   dy: number;
+}
+
+/**
+ * A content-based text anchor (W3C Web Annotation model): a TextPositionSelector
+ * (character offsets) plus a TextQuoteSelector (exact text + prefix/suffix
+ * context), relative to the annotation's target element. Resolved with fallback
+ * in `src/anchor`. Pure data — no DOM here.
+ */
+export interface TextAnchor {
+  start: number;
+  end: number;
+  exact: string;
+  prefix: string;
+  suffix: string;
 }
 
 export interface AnnotationBase {
@@ -36,37 +50,31 @@ export interface AnnotationBase {
   createdAt: number;
   /** The label shown in the changelog. */
   note?: string;
-  /** Every annotation is anchored to an element. */
+  /** Coarse anchor + export reference: the target element's selector. */
   target: TargetRef;
+  /** Precise content anchor (text position + quote) within the target element. */
+  anchor: TextAnchor;
 }
 
 export interface CalloutAnnotation extends AnnotationBase {
   kind: 'callout';
   /** Auto-numbered, 1-based, gap-free — owned by the reducer, never by callers. */
   index: number;
-  at: AnchoredPoint;
 }
 
 export interface TextAnnotation extends AnnotationBase {
   kind: 'text';
-  at: AnchoredPoint;
   content: string;
 }
 
 export interface ArrowAnnotation extends AnnotationBase {
   kind: 'arrow';
-  /** Both endpoints are offsets from the same target element's box. */
-  from: AnchoredPoint;
-  to: AnchoredPoint;
+  /** Offset of the arrow's tail from the anchored head point. */
+  tail: AnchoredPoint;
 }
 
 export interface HighlightAnnotation extends AnnotationBase {
   kind: 'highlight';
-  /** Character offsets into the target element's text content. */
-  startOffset: number;
-  endOffset: number;
-  /** The selected text, used as the default note and for debugging. */
-  quote: string;
 }
 
 export type Annotation = CalloutAnnotation | TextAnnotation | ArrowAnnotation | HighlightAnnotation;

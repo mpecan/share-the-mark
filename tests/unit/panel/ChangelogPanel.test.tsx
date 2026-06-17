@@ -18,7 +18,7 @@ function callout(id: string, index: number, note?: string): Annotation {
     kind: 'callout',
     createdAt: 0,
     index,
-    at: { dx: 0, dy: 0 },
+    anchor: { start: 0, end: 1, exact: 'x', prefix: '', suffix: '' },
     target,
   };
   if (note !== undefined) annotation.note = note;
@@ -68,7 +68,7 @@ describe('ChangelogPanel', () => {
       kind: 'text',
       createdAt: 0,
       content: 'x',
-      at: { dx: 0, dy: 0 },
+      anchor: { start: 0, end: 1, exact: 'x', prefix: '', suffix: '' },
       target,
     };
     renderPanel({ annotations: [callout('a', 1, 'Fix heading'), note] });

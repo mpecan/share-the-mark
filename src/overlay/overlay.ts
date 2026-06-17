@@ -1,12 +1,12 @@
-import { computeSelector, type TargetRef } from '@/src/core/selector';
-import { offsetsForRange, resolveGeometry, type ResolvedAnnotation } from '@/src/anchor';
+import { computeSelector } from '@/src/core/selector';
+import { describeRange, resolveGeometry, type ResolvedAnnotation } from '@/src/anchor';
 import type { Annotation, Point, ToolKind } from '@/src/core/model';
 
 // Imperative drawing overlay (SPEC §5.1). Plain TypeScript, not React. SVG-only:
-// every annotation is anchored to the DOM and resolved to absolute geometry at
-// render time, so marks track the content across scroll/resize. Four tools:
-// callout (click), text (click + prompt), arrow (drag), highlight (native text
-// selection). The committed set is owned externally (the changelog).
+// annotations are content-anchored (text position + quote) and resolved to
+// absolute geometry at render time, so marks track the content across
+// scroll/resize/reflow. Four tools: callout (click), text (click + prompt),
+// arrow (drag), highlight (native text selection).
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const ARROW_MARKER = 'stm-arrowhead';
@@ -19,21 +19,16 @@ export interface OverlaySettings {
   highlightColor: string;
 }
 
-export interface ResolvedTarget {
-  target: TargetRef;
-  element: Element;
-}
-
 export interface OverlayOptions {
   container: HTMLElement;
   tool: ToolKind;
   settings: OverlaySettings;
   onCreate: (annotation: Annotation) => void;
-  /** Resolve the page element (and its selector) under a viewport point. */
-  resolveTarget: (point: Point) => ResolvedTarget | undefined;
   createId?: () => string;
   now?: () => number;
   promptText?: (current: string) => string | null;
+  /** Convert a viewport point to a caret range in page text (injected for tests). */
+  caretFromPoint?: (doc: Document, x: number, y: number) => Range | null;
 }
 
 function svgEl<K extends keyof SVGElementTagNameMap>(
@@ -46,12 +41,43 @@ function svgEl<K extends keyof SVGElementTagNameMap>(
   return el;
 }
 
+function elementOf(node: Node): Element | null {
+  return node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement;
+}
+
+function defaultCaretFromPoint(doc: Document, x: number, y: number): Range | null {
+  // The standard caretPositionFromPoint (supported in current Chromium and
+  // Firefox); we deliberately avoid the deprecated caretRangeFromPoint.
+  if (!('caretPositionFromPoint' in doc)) return null;
+  const position = doc.caretPositionFromPoint(x, y);
+  if (!position) return null;
+  const range = doc.createRange();
+  range.setStart(position.offsetNode, position.offset);
+  range.collapse(true);
+  return range;
+}
+
+// Expand a collapsed caret to cover one character, so a point anchor carries a
+// non-empty quote (disambiguated by its prefix/suffix context).
+function expandToChar(caret: Range): Range {
+  const range = caret.cloneRange();
+  const node = range.startContainer;
+  if (node.nodeType === Node.TEXT_NODE) {
+    const length = (node as Text).data.length;
+    if (range.startOffset < length) range.setEnd(node, range.startOffset + 1);
+    else if (range.startOffset > 0) range.setStart(node, range.startOffset - 1);
+  }
+  return range;
+}
+
 export class Overlay {
   private readonly doc: Document;
   private readonly root: HTMLDivElement;
   private readonly svg: SVGSVGElement;
   private readonly layer: SVGGElement;
   private readonly options: OverlayOptions;
+  private readonly resizeObserver: ResizeObserver | null;
+  private readonly mutationObserver: MutationObserver;
   private tool: ToolKind;
   private state: OverlayState = 'idle';
   private arrowDraft: { from: Point; to: Point } | null = null;
@@ -83,6 +109,17 @@ export class Overlay {
     this.doc.addEventListener('mouseup', this.onDocumentMouseUp);
     addEventListener('scroll', this.scheduleRender, { capture: true, passive: true });
     addEventListener('resize', this.scheduleRender);
+
+    // Recompute positions when the page layout or content changes.
+    this.mutationObserver = new MutationObserver(this.scheduleRender);
+    this.mutationObserver.observe(this.doc.body, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+    this.resizeObserver =
+      typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(this.scheduleRender);
+    this.resizeObserver?.observe(this.doc.documentElement);
   }
 
   get element(): HTMLElement {
@@ -113,11 +150,11 @@ export class Overlay {
     this.doc.removeEventListener('mouseup', this.onDocumentMouseUp);
     removeEventListener('scroll', this.scheduleRender, { capture: true });
     removeEventListener('resize', this.scheduleRender);
+    this.mutationObserver.disconnect();
+    this.resizeObserver?.disconnect();
     this.root.remove();
   }
 
-  // The highlight tool needs native page selection, so the overlay must not
-  // intercept pointer events while it is active.
   private applyToolPointerMode(): void {
     this.root.style.pointerEvents = this.tool === 'highlight' ? 'none' : 'auto';
   }
@@ -135,16 +172,41 @@ export class Overlay {
     return (this.options.now ?? (() => Date.now()))();
   }
 
+  private hostElement(): HTMLElement | null {
+    const rootNode = this.root.getRootNode();
+    return rootNode instanceof ShadowRoot && rootNode.host instanceof HTMLElement
+      ? rootNode.host
+      : null;
+  }
+
+  // Hit-test page text beneath the overlay by momentarily dropping our own
+  // pointer-events, then anchor to the character at the caret.
+  private caretAt(point: Point): { element: Element; range: Range } | undefined {
+    const caretFromPoint = this.options.caretFromPoint ?? defaultCaretFromPoint;
+    const host = this.hostElement();
+    const previousRoot = this.root.style.pointerEvents;
+    const previousHost = host?.style.pointerEvents;
+    this.root.style.pointerEvents = 'none';
+    if (host) host.style.pointerEvents = 'none';
+    const caret = caretFromPoint(this.doc, point.x, point.y);
+    this.root.style.pointerEvents = previousRoot;
+    if (host) host.style.pointerEvents = previousHost ?? '';
+
+    if (!caret) return undefined;
+    const element = elementOf(caret.startContainer);
+    if (!element || host?.contains(element) === true) return undefined;
+    return { element, range: expandToChar(caret) };
+  }
+
   private readonly onPointerDown = (event: PointerEvent): void => {
     if (this.state !== 'idle') return;
     const point = this.pointFrom(event);
-
     if (this.tool === 'text') {
       this.placeText(point);
       return;
     }
     if (this.tool === 'callout') {
-      this.createPointMark('callout', point);
+      this.createCallout(point);
       return;
     }
     if (this.tool === 'arrow') {
@@ -178,49 +240,48 @@ export class Overlay {
     this.render();
   };
 
+  private createCallout(point: Point): void {
+    const anchor = this.caretAt(point);
+    if (!anchor) return;
+    this.options.onCreate({
+      id: this.nextId(),
+      kind: 'callout',
+      createdAt: this.timestamp(),
+      index: 0,
+      target: computeSelector(anchor.element),
+      anchor: describeRange(anchor.element, anchor.range),
+    });
+  }
+
   private placeText(point: Point): void {
-    const resolved = this.options.resolveTarget(point);
-    if (!resolved) return;
+    const anchor = this.caretAt(point);
+    if (!anchor) return;
     this.state = 'placing-text';
     const ask = this.options.promptText ?? ((current) => prompt('Annotation text', current));
     const content = ask('');
     this.state = 'idle';
     if (content === null || content === '') return;
-    const at = offsetWithin(resolved.element, point);
     this.options.onCreate({
       id: this.nextId(),
       kind: 'text',
       createdAt: this.timestamp(),
-      target: resolved.target,
-      at,
       content,
-    });
-  }
-
-  private createPointMark(kind: 'callout', point: Point): void {
-    const resolved = this.options.resolveTarget(point);
-    if (!resolved) return;
-    const at = offsetWithin(resolved.element, point);
-    this.options.onCreate({
-      id: this.nextId(),
-      kind,
-      createdAt: this.timestamp(),
-      target: resolved.target,
-      index: 0,
-      at,
+      target: computeSelector(anchor.element),
+      anchor: describeRange(anchor.element, anchor.range),
     });
   }
 
   private createArrow(from: Point, to: Point): void {
-    const resolved = this.options.resolveTarget(from);
-    if (!resolved) return;
+    const anchor = this.caretAt(to);
+    if (!anchor) return;
+    const head = anchor.range.getBoundingClientRect();
     this.options.onCreate({
       id: this.nextId(),
       kind: 'arrow',
       createdAt: this.timestamp(),
-      target: resolved.target,
-      from: offsetWithin(resolved.element, from),
-      to: offsetWithin(resolved.element, to),
+      tail: { dx: from.x - head.left, dy: from.y - head.top },
+      target: computeSelector(anchor.element),
+      anchor: describeRange(anchor.element, anchor.range),
     });
   }
 
@@ -230,15 +291,12 @@ export class Overlay {
     const range = selection.getRangeAt(0);
     const element = elementOf(range.commonAncestorContainer);
     if (!element || this.root.contains(element)) return;
-    const offsets = offsetsForRange(element, range);
     this.options.onCreate({
       id: this.nextId(),
       kind: 'highlight',
       createdAt: this.timestamp(),
       target: computeSelector(element),
-      startOffset: offsets.start,
-      endOffset: offsets.end,
-      quote: selection.toString(),
+      anchor: describeRange(element, range),
     });
     selection.removeAllRanges();
   }
@@ -339,13 +397,4 @@ export class Overlay {
       }
     }
   }
-}
-
-function offsetWithin(element: Element, point: Point): { dx: number; dy: number } {
-  const rect = element.getBoundingClientRect();
-  return { dx: point.x - rect.left, dy: point.y - rect.top };
-}
-
-function elementOf(node: Node): Element | null {
-  return node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement;
 }
