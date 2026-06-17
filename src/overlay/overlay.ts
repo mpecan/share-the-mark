@@ -10,6 +10,7 @@ import type { Annotation, Point, ToolKind } from '@/src/core/model';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const ARROW_MARKER = 'stm-arrowhead';
+const TEXT_PADDING = 4;
 
 export type OverlayState = 'idle' | 'drawing' | 'editing' | 'placing-text';
 
@@ -305,11 +306,31 @@ export class Overlay {
     this.layer.replaceChildren();
     for (const annotation of this.committed) {
       const resolved = resolveGeometry(annotation, this.doc);
-      if (resolved) this.layer.append(this.toSvg(resolved));
+      if (!resolved) continue;
+      const node = this.toSvg(resolved);
+      this.layer.append(node);
+      // The text chip's background must be measured once the label is in the DOM.
+      if (resolved.kind === 'text' && node instanceof SVGGElement) this.sizeTextBackground(node);
     }
     if (this.arrowDraft) {
       this.layer.append(this.arrowSvg(this.arrowDraft.from, this.arrowDraft.to));
     }
+  }
+
+  private sizeTextBackground(group: SVGGElement): void {
+    const label = group.querySelector('text');
+    const background = group.querySelector('rect');
+    if (!label || !background) return;
+    let box: DOMRect;
+    try {
+      box = label.getBBox();
+    } catch {
+      return; // no layout engine (e.g. tests) — leave the background unsized
+    }
+    background.setAttribute('x', String(box.x - TEXT_PADDING));
+    background.setAttribute('y', String(box.y - TEXT_PADDING));
+    background.setAttribute('width', String(box.width + TEXT_PADDING * 2));
+    background.setAttribute('height', String(box.height + TEXT_PADDING * 2));
   }
 
   private arrowMarkerDefs(): SVGDefsElement {
@@ -367,14 +388,24 @@ export class Overlay {
         return group;
       }
       case 'text': {
-        const text = svgEl(this.doc, 'text', {
-          x: String(annotation.at.x),
-          y: String(annotation.at.y),
+        // A chip: a background rect (for legibility over busy backgrounds) plus
+        // the label. The background goes transparent on hover (see panel.css).
+        const group = svgEl(this.doc, 'g', { class: 'stm-text' });
+        const background = svgEl(this.doc, 'rect', {
+          class: 'stm-text__bg',
+          rx: '3',
           fill: stroke,
+        });
+        const label = svgEl(this.doc, 'text', {
+          class: 'stm-text__label',
+          x: String(annotation.at.x + TEXT_PADDING),
+          y: String(annotation.at.y + TEXT_PADDING),
+          fill: '#ffffff',
           'dominant-baseline': 'hanging',
         });
-        text.textContent = annotation.content;
-        return text;
+        label.textContent = annotation.content;
+        group.append(background, label);
+        return group;
       }
       case 'arrow': {
         return this.arrowSvg(annotation.from, annotation.to);

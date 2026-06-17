@@ -5,6 +5,22 @@
  * on-page markers; monospace wordmark/indices; no external fonts (CSP-safe).
  */
 
+/* Text-annotation chip in the overlay SVG: a readable background that goes
+ * transparent on hover so you can peek at the content beneath it. */
+.stm-text__bg {
+  fill-opacity: 0.92;
+  pointer-events: all;
+  transition: fill-opacity 120ms ease;
+}
+
+.stm-text__label {
+  pointer-events: none;
+}
+
+.stm-text:hover .stm-text__bg {
+  fill-opacity: 0;
+}
+
 .stm-host {
   position: fixed;
   top: 16px;

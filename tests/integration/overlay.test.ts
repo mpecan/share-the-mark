@@ -210,6 +210,9 @@ describe('Overlay — rendering', () => {
     expect(svg?.querySelector('circle')).not.toBeNull();
     expect(svg?.querySelector('text')?.textContent).toBe('2');
     expect(svg?.querySelector('line')).not.toBeNull();
+    // Text annotations render as a chip: a background rect plus the label.
+    expect(svg?.querySelector('.stm-text__bg')).not.toBeNull();
+    expect(svg?.querySelector('.stm-text__label')?.textContent).toBe('note');
   });
 
   it('renders highlight rects from the resolved range', () => {
