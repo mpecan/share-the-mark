@@ -21,11 +21,12 @@ pub fn is_up(port: u16) -> bool {
 }
 
 /// Ensure a daemon is running on `port`, starting one in the background if not.
-pub fn ensure(port: u16, dir: &Path) -> Result<()> {
+/// A freshly auto-started daemon gets `idle_secs` so it cleans itself up.
+pub fn ensure(port: u16, dir: &Path, idle_secs: u64) -> Result<()> {
     if is_up(port) {
         Ok(())
     } else {
-        start(port, dir)
+        start(port, dir, idle_secs)
     }
 }
 
@@ -40,7 +41,7 @@ pub fn stop(port: u16) -> Result<()> {
     Ok(())
 }
 
-pub fn start(port: u16, dir: &Path) -> Result<()> {
+pub fn start(port: u16, dir: &Path, idle_secs: u64) -> Result<()> {
     if is_up(port) {
         return Ok(()); // already running
     }
@@ -51,6 +52,8 @@ pub fn start(port: u16, dir: &Path) -> Result<()> {
         .arg(port.to_string())
         .arg("--dir")
         .arg(dir)
+        .arg("--idle-timeout")
+        .arg(idle_secs.to_string())
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null());

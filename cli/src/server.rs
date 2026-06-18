@@ -1,7 +1,7 @@
 use std::io::Cursor;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, Result};
 use serde::Deserialize;
@@ -40,13 +40,29 @@ pub fn port_of(server: &Server) -> u16 {
     server.server_addr().to_ip().map(|a| a.port()).unwrap_or(0)
 }
 
-/// Serve until `running` is cleared (by Ctrl-C in the foreground, or `/shutdown`).
-pub fn run(server: Server, store: Store, running: Arc<AtomicBool>) -> Result<()> {
+/// Serve until `running` is cleared (Ctrl-C or `/shutdown`), or — when
+/// `idle_timeout` is non-zero — after that long with no handled request. The
+/// idle exit lets auto-started daemons clean themselves up; explicit `stm serve`
+/// passes a zero timeout and runs until stopped.
+pub fn run(
+    server: Server,
+    store: Store,
+    running: Arc<AtomicBool>,
+    idle_timeout: Duration,
+) -> Result<()> {
     let mut requests = Requests::default();
+    let mut last_activity = Instant::now();
     while running.load(Ordering::SeqCst) {
         match server.recv_timeout(Duration::from_millis(200)) {
-            Ok(Some(request)) => handle(request, &store, &mut requests, &running),
-            Ok(None) => continue,
+            Ok(Some(request)) => {
+                last_activity = Instant::now();
+                handle(request, &store, &mut requests, &running);
+            }
+            Ok(None) => {
+                if !idle_timeout.is_zero() && last_activity.elapsed() >= idle_timeout {
+                    break;
+                }
+            }
             Err(e) => return Err(anyhow!("server error: {e}")),
         }
     }
@@ -217,7 +233,7 @@ mod tests {
         let running = Arc::new(AtomicBool::new(true));
         let worker = {
             let running = running.clone();
-            thread::spawn(move || run(server, store, running).unwrap())
+            thread::spawn(move || run(server, store, running, Duration::ZERO).unwrap())
         };
 
         let base = format!("http://127.0.0.1:{port}");
@@ -255,7 +271,7 @@ mod tests {
         let running = Arc::new(AtomicBool::new(true));
         let worker = {
             let running = running.clone();
-            thread::spawn(move || run(server, store, running).unwrap())
+            thread::spawn(move || run(server, store, running, Duration::ZERO).unwrap())
         };
         let base = format!("http://127.0.0.1:{port}");
 
@@ -298,6 +314,25 @@ mod tests {
     }
 
     #[test]
+    fn shuts_down_after_the_idle_timeout() {
+        let dir = tempdir().unwrap();
+        let store = Store::new(dir.path().to_path_buf());
+        let server = bind(0).unwrap();
+        let running = Arc::new(AtomicBool::new(true));
+        // Short idle window, no traffic → the loop should exit on its own.
+        let worker =
+            thread::spawn(move || run(server, store, running, Duration::from_millis(150)).unwrap());
+        for _ in 0..50 {
+            if worker.is_finished() {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(100));
+        }
+        assert!(worker.is_finished(), "idle daemon did not shut itself down");
+        worker.join().unwrap();
+    }
+
+    #[test]
     fn rejects_bad_json() {
         let dir = tempdir().unwrap();
         let store = Store::new(dir.path().to_path_buf());
@@ -306,7 +341,7 @@ mod tests {
         let running = Arc::new(AtomicBool::new(true));
         let worker = {
             let running = running.clone();
-            thread::spawn(move || run(server, store, running).unwrap())
+            thread::spawn(move || run(server, store, running, Duration::ZERO).unwrap())
         };
 
         let err = ureq::post(&format!("http://127.0.0.1:{port}/brief"))

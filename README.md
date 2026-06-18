@@ -116,6 +116,11 @@ backgrounded agent (e.g. Claude Code) so it can act on your comments.
 CLI: `stm request <url> | pending | list | show <id> | serve | start | stop | status | skill install`.
 Config via flags or `STM_PORT` / `STM_DIR`.
 
+**Daemon lifecycle.** `stm serve` / `stm start` run until you `stm stop` them.
+A daemon that `stm request` auto-starts gets an idle timeout (default 30 min,
+`--idle-timeout` / `STM_IDLE`) and shuts itself down once unused — so it never
+lingers as a stray. `stm status` checks if one is running.
+
 ## Permissions
 
 Least-privilege (Manifest V3): `activeTab`, `scripting`, `storage`, plus a single

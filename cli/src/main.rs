@@ -9,20 +9,29 @@ mod store;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::{bail, Result};
 use clap::Parser;
 
-use cli::{resolve_dir, resolve_port, Cli, Command, SkillCommand};
+use cli::{resolve_dir, resolve_idle, resolve_port, Cli, Command, SkillCommand};
 use store::Store;
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
-        Command::Serve(args) => serve(resolve_port(args.port), resolve_dir(args.dir)?),
+        Command::Serve(args) => serve(
+            resolve_port(args.port),
+            resolve_dir(args.dir)?,
+            Duration::from_secs(resolve_idle(args.idle_timeout)),
+        ),
         Command::Start(args) => {
             let port = resolve_port(args.port);
-            daemon::start(port, &resolve_dir(args.dir)?)?;
+            daemon::start(
+                port,
+                &resolve_dir(args.dir)?,
+                resolve_idle(args.idle_timeout),
+            )?;
             println!("share-the-mark daemon running on http://127.0.0.1:{port}");
             Ok(())
         }
@@ -66,7 +75,7 @@ fn main() -> Result<()> {
     }
 }
 
-fn serve(port: u16, dir: PathBuf) -> Result<()> {
+fn serve(port: u16, dir: PathBuf, idle_timeout: Duration) -> Result<()> {
     let server = server::bind(port)?;
     let running = Arc::new(AtomicBool::new(true));
     {
@@ -77,7 +86,7 @@ fn serve(port: u16, dir: PathBuf) -> Result<()> {
         "share-the-mark daemon listening on http://127.0.0.1:{port}  (store: {})",
         dir.display()
     );
-    server::run(server, Store::new(dir), running)
+    server::run(server, Store::new(dir), running, idle_timeout)
 }
 
 fn list_briefs(dir: PathBuf, all: bool, pending_only: bool) -> Result<()> {

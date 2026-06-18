@@ -506,6 +506,9 @@ capture/drawing/model) plus the cross-platform Rust **`stm` CLI** under `cli/`:
   extension's background SW POSTs the brief (Markdown + base64 PNG) to `/brief`
   under one loopback `host_permission`; `/health` and `/shutdown` drive a portable
   lifecycle (`start`/`stop`/`status`) with no OS signals.
+- Lifecycle: explicit `stm serve`/`stm start` run until stopped; daemons that
+  `stm request` auto-starts get an idle timeout (`--idle-timeout`/`STM_IDLE`,
+  default 30 min) so they self-shut-down and don't linger as strays.
 - Persistence: `<dir>/briefs/<id>/{brief.md,screenshot.png,meta.json}` with
   read/unread state (per-OS data dir, or `STM_DIR`).
 - Agent integration: the CLI itself (`stm pending` / `stm list` / `stm show <id>`)

@@ -8,6 +8,8 @@ use serde_json::Value;
 use crate::daemon;
 
 const POLL_INTERVAL: Duration = Duration::from_millis(500);
+/// Auto-started daemons self-shut-down after this idle window (no strays).
+const AUTO_IDLE_SECS: u64 = 1800;
 
 // `stm request <url>` — the agent-initiated flow. Register an open request with
 // the daemon, open the page in the browser, then block (short-polling) until the
@@ -15,7 +17,7 @@ const POLL_INTERVAL: Duration = Duration::from_millis(500);
 // brief by origin and fulfills the request; this returns the brief, which — by
 // the command returning — wakes a backgrounded agent (e.g. Claude Code).
 pub fn run(port: u16, dir: &Path, url: &str, timeout_secs: u64, json: bool) -> Result<()> {
-    daemon::ensure(port, dir)?;
+    daemon::ensure(port, dir, AUTO_IDLE_SECS)?;
     let id = create(port, url)?;
     open::that(url).map_err(|e| anyhow!("failed to open the browser: {e}"))?;
     eprintln!("Opened {url} — annotate it and click \"Send to agent\". Waiting…");

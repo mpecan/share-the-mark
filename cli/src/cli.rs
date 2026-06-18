@@ -80,6 +80,9 @@ pub struct ServeArgs {
     pub port: Option<u16>,
     #[arg(long)]
     pub dir: Option<PathBuf>,
+    /// Shut down after this many seconds with no activity (0 = never).
+    #[arg(long)]
+    pub idle_timeout: Option<u64>,
 }
 
 #[derive(Subcommand)]
@@ -95,6 +98,12 @@ pub enum SkillCommand {
 pub fn resolve_port(flag: Option<u16>) -> u16 {
     flag.or_else(|| std::env::var("STM_PORT").ok().and_then(|s| s.parse().ok()))
         .unwrap_or(8787)
+}
+
+/// Idle-timeout precedence: flag → `STM_IDLE` → 0 (never). Seconds.
+pub fn resolve_idle(flag: Option<u64>) -> u64 {
+    flag.or_else(|| std::env::var("STM_IDLE").ok().and_then(|s| s.parse().ok()))
+        .unwrap_or(0)
 }
 
 /// Store dir precedence: flag → `STM_DIR` → per-OS data directory.
