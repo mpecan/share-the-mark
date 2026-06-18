@@ -31,10 +31,12 @@ function renderPanel(overrides: Partial<ChangelogPanelProps> = {}): void {
     <ChangelogPanel
       annotations={[]}
       activeTool="callout"
+      handoff={null}
       onSelectTool={vi.fn()}
       onEditNote={vi.fn()}
       onDelete={vi.fn()}
       onExport={vi.fn()}
+      onSendToAgent={vi.fn()}
       {...overrides}
     />,
   );
@@ -94,5 +96,28 @@ describe('ChangelogPanel', () => {
     await userEvent.click(screen.getByRole('button', { name: /copy to clipboard/i }));
     expect(onDelete).toHaveBeenCalledWith('a');
     expect(onExport).toHaveBeenCalledTimes(1);
+  });
+
+  it('emits send-to-agent', async () => {
+    const onSendToAgent = vi.fn();
+    renderPanel({ annotations: [callout('a', 1)], onSendToAgent });
+    await userEvent.click(screen.getByRole('button', { name: /send to agent/i }));
+    expect(onSendToAgent).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the handoff command after sending', () => {
+    renderPanel({
+      annotations: [callout('a', 1)],
+      handoff: { kind: 'sent', command: 'share-the-mark show ab12' },
+    });
+    expect(screen.getByText('share-the-mark show ab12')).toBeInTheDocument();
+  });
+
+  it('shows a handoff error when the daemon is unreachable', () => {
+    renderPanel({
+      annotations: [callout('a', 1)],
+      handoff: { kind: 'error', message: 'daemon not reachable — run `share-the-mark serve`' },
+    });
+    expect(screen.getByText(/daemon not reachable/i)).toBeInTheDocument();
   });
 });

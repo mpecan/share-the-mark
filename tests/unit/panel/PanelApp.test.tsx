@@ -24,6 +24,7 @@ const handlers = {
   onEditNote: vi.fn(),
   onDelete: vi.fn(),
   onExport: vi.fn(),
+  onSendToAgent: vi.fn(),
 };
 
 function Boom(): never {
@@ -32,7 +33,7 @@ function Boom(): never {
 
 describe('PanelApp', () => {
   it('renders from the store and re-renders when it changes', () => {
-    const store = makeStore({ annotations: [], activeTool: 'callout' });
+    const store = makeStore({ annotations: [], activeTool: 'callout', handoff: null });
     render(<PanelApp store={store} {...handlers} />);
     expect(screen.getByText(/no annotations yet/i)).toBeInTheDocument();
 
@@ -51,7 +52,7 @@ describe('PanelApp', () => {
       },
     };
     act(() => {
-      store.set({ annotations: [callout], activeTool: 'arrow' });
+      store.set({ annotations: [callout], activeTool: 'arrow', handoff: null });
     });
 
     expect(screen.queryByText(/no annotations yet/i)).not.toBeInTheDocument();

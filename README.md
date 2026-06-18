@@ -83,25 +83,82 @@ installing.
    double-click a text label to retype it. Dropping a callout, text label, or
    arrow head over new text re-anchors it there.
 4. Add notes/comments in the panel; delete markers with ✕.
-5. Click **Copy to clipboard** and paste the Markdown + screenshot anywhere.
+5. Click **Copy to clipboard** and paste the Markdown + screenshot anywhere, or
+   **Send to agent** to hand the brief to the local `share-the-mark` daemon (see below).
+
+## Connect a coding agent (the `share-the-mark` CLI)
+
+`share-the-mark` is a small cross-platform (macOS/Linux/Windows) Rust CLI under [`cli/`](cli)
+that receives change-briefs from the extension and exposes them to a coding agent.
+
+```bash
+cargo install --path cli      # build & install the `share-the-mark` binary
+share-the-mark serve                     # run the ingest daemon (or `share-the-mark start` to background it)
+share-the-mark skill install             # install the Claude Code skill into ~/.claude/skills
+```
+
+Then, in the extension panel, click **Send to agent**. The daemon stores the brief
+(`brief.md` + annotated `screenshot.png`) and the panel shows a handoff token:
+
+```
+✓ sent — paste to your agent: share-the-mark show ab12
+```
+
+Paste that to your agent (or just ask it about your marks — the installed skill
+teaches it to run `share-the-mark pending` / `share-the-mark show <id>`). The agent reads the Markdown
+(element selectors + your comments) and the screenshot, and acts on the feedback.
+
+**Agent-initiated requests.** An agent can also ask _you_ for feedback:
+`share-the-mark request <url>` opens the page in your browser and blocks until you annotate
+it and click **Send to agent**, then returns the brief — which wakes a
+backgrounded agent (e.g. Claude Code) so it can act on your comments.
+
+CLI: `share-the-mark request <url> | pending | list | show <id> | serve | start | stop | status | skill install`.
+Config via flags or `SHARE_THE_MARK_PORT` / `SHARE_THE_MARK_DIR`.
+
+**Daemon lifecycle.** `share-the-mark serve` / `share-the-mark start` run until you `share-the-mark stop` them.
+A daemon that `share-the-mark request` auto-starts gets an idle timeout (default 30 min,
+`--idle-timeout` / `SHARE_THE_MARK_IDLE`) and shuts itself down once unused — so it never
+lingers as a stray. `share-the-mark status` checks if one is running.
 
 ## Permissions
 
-Least-privilege (Manifest V3): `activeTab`, `scripting`, `storage`. No host
-permissions — `tabs.captureVisibleTab` works under `activeTab` + a user gesture.
+Least-privilege (Manifest V3): `activeTab`, `scripting`, `storage`, plus a single
+loopback `host_permission` (`http://127.0.0.1/*`) so the **Send to agent** sink can
+reach the local `share-the-mark` daemon. No web-origin host permissions —
+`tabs.captureVisibleTab` works under `activeTab` + a user gesture.
 
 ## Development
 
 `SPEC.md` is the full build brief and the source of truth; `CLAUDE.md` is the
-short operating layer on top of it. Common commands:
+short operating layer on top of it.
+
+Tasks are wired through [`mise`](https://mise.jdx.dev) (`mise tasks` to list,
+`mise run <task>`); each maps to the underlying `pnpm`/`cargo` command, so you can
+use either:
 
 ```bash
-pnpm typecheck      # tsc --noEmit (strict)
-pnpm lint           # eslint, zero warnings
-pnpm test           # vitest with coverage thresholds
-pnpm e2e            # Playwright against the built extension (run pnpm build first)
-pnpm size           # gzip bundle budget
+mise run dev            # load the extension in Chrome (hot-reload)
+mise run dev:firefox    # load the extension in Firefox (hot-reload)
+mise run cli:install     # put the `share-the-mark` binary on PATH
+mise run serve           # run the share-the-mark ingest daemon
+mise run request <url>   # agent flow: open a page, wait for feedback
+
+mise run check           # all extension gates (typecheck, lint, test, builds, e2e, size)
+mise run cli:check       # all CLI gates (fmt, clippy, test)
+mise run check:all       # both
 ```
+
+The equivalent raw commands (`pnpm typecheck | lint | test | e2e | size`,
+`cargo …` in `cli/`) still work directly.
+
+### Local review flow (extension ↔ agent)
+
+1. `mise run dev:firefox` (or `dev`) — loads the extension into the browser.
+2. `mise run cli:install` then `share-the-mark serve` (or `mise run serve`) — runs the daemon.
+3. The agent runs `share-the-mark request <url>` (or you click **Send to agent** in the
+   panel); annotate the page, click **Send to agent**, and the brief flows to the
+   agent.
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full quality bar, architecture
 invariants, and the contribution workflow.

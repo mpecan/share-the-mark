@@ -498,8 +498,27 @@ Markdown contains correct `Element:` selector lines that `resolveSelector`
 round-trips; coverage thresholds met; Chromium e2e green; Chrome + Firefox zips
 build.
 
-**M2 — Persistence & agent interaction (deferred).** Additional `ExportSink`
-implementations (`FileSystemSink` via File System Access API on Chromium;
-`NativeHostSink` / `LocalDaemonSink` for cross-browser folder-write and agent
-dispatch), native side panel, Firefox e2e via `web-ext`. No changes to
-capture/drawing/model — sinks plug into the §5.4 interface.
+**M2 — Persistence & agent interaction (in progress).** The agent path ships as a
+`DaemonSink` (behind the §5.4 `ExportSink` interface, no changes to
+capture/drawing/model) plus the cross-platform Rust **`share-the-mark` CLI** under `cli/`:
+
+- Transport: a localhost HTTP daemon (`share-the-mark serve`, default `127.0.0.1:8787`). The
+  extension's background SW POSTs the brief (Markdown + base64 PNG) to `/brief`
+  under one loopback `host_permission`; `/health` and `/shutdown` drive a portable
+  lifecycle (`start`/`stop`/`status`) with no OS signals.
+- Lifecycle: explicit `share-the-mark serve`/`share-the-mark start` run until stopped; daemons that
+  `share-the-mark request` auto-starts get an idle timeout (`--idle-timeout`/`SHARE_THE_MARK_IDLE`,
+  default 30 min) so they self-shut-down and don't linger as strays.
+- Persistence: `<dir>/briefs/<id>/{brief.md,screenshot.png,meta.json}` with
+  read/unread state (per-OS data dir, or `SHARE_THE_MARK_DIR`).
+- Agent integration: the CLI itself (`share-the-mark pending` / `share-the-mark list` / `share-the-mark show <id>`)
+  plus a bundled **Claude Code skill** (`share-the-mark skill install`); on send, the panel
+  surfaces a handoff token (`share-the-mark show <id>`) to paste to the agent. (Chosen over
+  MCP for tool-agnostic simplicity.)
+- Agent-initiated: `share-the-mark request <url>` registers an open request, opens the page,
+  and **blocks** until a same-origin brief is sent (daemon correlates on
+  `POST /brief`, marks it read, fulfills the request via short-poll) — the command
+  returning wakes a backgrounded agent. Auto-starts the daemon.
+
+Still deferred: `FileSystemSink` (File System Access API), native side panel,
+Firefox e2e via `web-ext`.

@@ -344,3 +344,57 @@
   border-color: var(--line);
   cursor: not-allowed;
 }
+
+.stm-panel__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.stm-panel__actions .stm-panel__export,
+.stm-panel__send {
+  flex: 1;
+}
+
+/* Secondary action: the "Send to agent" daemon sink. */
+.stm-panel__send {
+  padding: 9px 12px;
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  cursor: pointer;
+  transition:
+    filter 120ms ease,
+    border-color 120ms ease;
+}
+
+.stm-panel__send:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.stm-panel__send:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.stm-panel__handoff {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  word-break: break-all;
+}
+
+.stm-panel__handoff code {
+  padding: 1px 5px;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.stm-panel__handoff--error {
+  color: var(--accent);
+}

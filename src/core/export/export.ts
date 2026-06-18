@@ -19,10 +19,16 @@ export interface ExportPayload {
   meta: ExportMeta;
 }
 
+/** Outcome of a write — e.g. a reference an agent can fetch by. */
+export interface ExportResult {
+  /** A handle for the written brief (the daemon sink returns the brief id). */
+  ref?: string;
+}
+
 export interface ExportSink {
   readonly id: string;
   isAvailable(): Promise<boolean>;
-  write(payload: ExportPayload): Promise<void>;
+  write(payload: ExportPayload): Promise<ExportResult>;
 }
 
 function annotationLabel(annotation: Annotation): string {

@@ -8,9 +8,13 @@ import type { Annotation, ToolKind } from '@/src/core/model';
 // root.render() from inside event handlers (which intermittently crashed the
 // panel). An error boundary keeps a render fault from tearing down the UI.
 
+/** Result of a "Send to agent" attempt, surfaced as a handoff line in the panel. */
+export type Handoff = { kind: 'sent'; command: string } | { kind: 'error'; message: string };
+
 export interface PanelSnapshot {
   annotations: readonly Annotation[];
   activeTool: ToolKind;
+  handoff: Handoff | null;
 }
 
 export interface PanelStore {
@@ -23,6 +27,7 @@ export interface PanelHandlers {
   onEditNote: (id: string, note: string) => void;
   onDelete: (id: string) => void;
   onExport: () => void;
+  onSendToAgent: () => void;
 }
 
 export interface PanelAppProps extends PanelHandlers {
@@ -61,6 +66,7 @@ export function PanelApp({
   onEditNote,
   onDelete,
   onExport,
+  onSendToAgent,
 }: PanelAppProps): JSX.Element {
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
   return (
@@ -68,10 +74,12 @@ export function PanelApp({
       <ChangelogPanel
         annotations={snapshot.annotations}
         activeTool={snapshot.activeTool}
+        handoff={snapshot.handoff}
         onSelectTool={onSelectTool}
         onEditNote={onEditNote}
         onDelete={onDelete}
         onExport={onExport}
+        onSendToAgent={onSendToAgent}
       />
     </PanelErrorBoundary>
   );

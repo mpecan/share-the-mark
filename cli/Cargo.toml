@@ -1,0 +1,28 @@
+[package]
+name = "share-the-mark"
+version = "0.1.0"
+edition = "2021"
+description = "share-the-mark CLI: receive design-feedback change-briefs from the browser extension and expose them to a coding agent"
+license = "MIT"
+repository = "https://github.com/mpecan/share-the-mark"
+
+[[bin]]
+name = "share-the-mark"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+tiny_http = "0.12"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+base64 = "0.22"
+directories = "5"
+ctrlc = "3"
+# Blocking HTTP client for daemon lifecycle calls (loopback only, no TLS needed).
+ureq = { version = "2", default-features = false, features = ["json"] }
+# Cross-platform "open this URL in the default browser" for `share-the-mark request`.
+open = "5"
+
+[dev-dependencies]
+tempfile = "3"
