@@ -1,7 +1,7 @@
 import { registerCaptureHandler } from '@/src/capture';
 import { onMessage } from '@/src/messaging';
 
-// The local `stm` daemon's loopback address (its default port). Briefs are POSTed
+// The local `share-the-mark` daemon's loopback address (its default port). Briefs are POSTed
 // here from the background service worker, which holds the host permission and
 // fetches free of any page CSP.
 const DAEMON_BASE = 'http://127.0.0.1:8787';

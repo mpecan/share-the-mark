@@ -1,6 +1,6 @@
 use crate::store::new_id;
 
-// In-memory registry of "open requests" created by `stm request`: an agent opens
+// In-memory registry of "open requests" created by `share-the-mark request`: an agent opens
 // a page for annotation and waits; when a brief of the same origin is sent, the
 // matching request is fulfilled and the waiting client returns it. Requests are
 // ephemeral (lost on daemon restart) — that's fine, the agent re-requests.

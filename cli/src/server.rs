@@ -42,7 +42,7 @@ pub fn port_of(server: &Server) -> u16 {
 
 /// Serve until `running` is cleared (Ctrl-C or `/shutdown`), or — when
 /// `idle_timeout` is non-zero — after that long with no handled request. The
-/// idle exit lets auto-started daemons clean themselves up; explicit `stm serve`
+/// idle exit lets auto-started daemons clean themselves up; explicit `share-the-mark serve`
 /// passes a zero timeout and runs until stopped.
 pub fn run(
     server: Server,

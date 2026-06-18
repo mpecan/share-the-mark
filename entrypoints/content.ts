@@ -172,18 +172,18 @@ export default defineContentScript({
       if (await sink.isAvailable()) await sink.write(payload);
     }
 
-    // Send the brief to the local `stm` daemon and surface the handoff token.
+    // Send the brief to the local `share-the-mark` daemon and surface the handoff token.
     async function sendToAgent(): Promise<void> {
       const payload = await buildPayload();
       if (!payload) return;
       const sink = new DaemonSink();
       if (!(await sink.isAvailable())) {
-        setHandoff({ kind: 'error', message: 'daemon not reachable — run `stm serve`' });
+        setHandoff({ kind: 'error', message: 'daemon not reachable — run `share-the-mark serve`' });
         return;
       }
       try {
         const result = await sink.write(payload);
-        if (result.ref) setHandoff({ kind: 'sent', command: `stm show ${result.ref}` });
+        if (result.ref) setHandoff({ kind: 'sent', command: `share-the-mark show ${result.ref}` });
       } catch {
         setHandoff({ kind: 'error', message: 'failed to send to the daemon' });
       }

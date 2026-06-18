@@ -6,7 +6,7 @@ import { defineConfig } from 'wxt';
 // gesture, so no web-origin host_permissions).
 //
 // M2 adds one loopback host permission so the background service worker can POST
-// briefs to the local `stm` daemon (the "Send to agent" sink). Scoped to
+// briefs to the local `share-the-mark` daemon (the "Send to agent" sink). Scoped to
 // 127.0.0.1 only — no web origins — preserving the least-privilege posture.
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],

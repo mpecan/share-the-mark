@@ -500,22 +500,22 @@ build.
 
 **M2 — Persistence & agent interaction (in progress).** The agent path ships as a
 `DaemonSink` (behind the §5.4 `ExportSink` interface, no changes to
-capture/drawing/model) plus the cross-platform Rust **`stm` CLI** under `cli/`:
+capture/drawing/model) plus the cross-platform Rust **`share-the-mark` CLI** under `cli/`:
 
-- Transport: a localhost HTTP daemon (`stm serve`, default `127.0.0.1:8787`). The
+- Transport: a localhost HTTP daemon (`share-the-mark serve`, default `127.0.0.1:8787`). The
   extension's background SW POSTs the brief (Markdown + base64 PNG) to `/brief`
   under one loopback `host_permission`; `/health` and `/shutdown` drive a portable
   lifecycle (`start`/`stop`/`status`) with no OS signals.
-- Lifecycle: explicit `stm serve`/`stm start` run until stopped; daemons that
-  `stm request` auto-starts get an idle timeout (`--idle-timeout`/`STM_IDLE`,
+- Lifecycle: explicit `share-the-mark serve`/`share-the-mark start` run until stopped; daemons that
+  `share-the-mark request` auto-starts get an idle timeout (`--idle-timeout`/`SHARE_THE_MARK_IDLE`,
   default 30 min) so they self-shut-down and don't linger as strays.
 - Persistence: `<dir>/briefs/<id>/{brief.md,screenshot.png,meta.json}` with
-  read/unread state (per-OS data dir, or `STM_DIR`).
-- Agent integration: the CLI itself (`stm pending` / `stm list` / `stm show <id>`)
-  plus a bundled **Claude Code skill** (`stm skill install`); on send, the panel
-  surfaces a handoff token (`stm show <id>`) to paste to the agent. (Chosen over
+  read/unread state (per-OS data dir, or `SHARE_THE_MARK_DIR`).
+- Agent integration: the CLI itself (`share-the-mark pending` / `share-the-mark list` / `share-the-mark show <id>`)
+  plus a bundled **Claude Code skill** (`share-the-mark skill install`); on send, the panel
+  surfaces a handoff token (`share-the-mark show <id>`) to paste to the agent. (Chosen over
   MCP for tool-agnostic simplicity.)
-- Agent-initiated: `stm request <url>` registers an open request, opens the page,
+- Agent-initiated: `share-the-mark request <url>` registers an open request, opens the page,
   and **blocks** until a same-origin brief is sent (daemon correlates on
   `POST /brief`, marks it read, fulfills the request via short-poll) — the command
   returning wakes a backgrounded agent. Auto-starts the daemon.

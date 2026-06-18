@@ -125,7 +125,7 @@ fn list_briefs(dir: PathBuf, all: bool, pending_only: bool) -> Result<()> {
 fn show_brief(dir: PathBuf, id: &str, json: bool, keep_unread: bool) -> Result<()> {
     let store = Store::new(dir);
     let Some(brief) = store.get(id)? else {
-        bail!("no brief with id '{id}' (try `stm pending`)");
+        bail!("no brief with id '{id}' (try `share-the-mark pending`)");
     };
     if json {
         let value = serde_json::json!({

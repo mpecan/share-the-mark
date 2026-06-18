@@ -1,7 +1,7 @@
 import { sendMessage } from '@/src/messaging';
 import type { ExportPayload, ExportResult, ExportSink } from '@/src/core/export';
 
-// Export sink that ships the brief to the local `stm` daemon (SPEC §5.4, M2).
+// Export sink that ships the brief to the local `share-the-mark` daemon (SPEC §5.4, M2).
 // The actual HTTP POST happens in the background service worker (which holds the
 // host permission and isn't subject to page CSP); this sink just round-trips the
 // payload over the typed message bus and returns the brief id for the handoff.

@@ -4,8 +4,8 @@
 #
 # Local review flow (Firefox or Chrome):
 #   1. mise run dev:firefox     # loads the extension into Firefox (hot-reload)
-#   2. mise run cli:install      # put `stm` on PATH (or use `mise run serve`)
-#   3. the agent runs: stm request <url>  → annotate → "Send to agent"
+#   2. mise run cli:install      # put `share-the-mark` on PATH (or use `mise run serve`)
+#   3. the agent runs: share-the-mark request <url>  → annotate → "Send to agent"
 
 # ── Extension: load in a browser for local testing (WXT dev, hot-reload) ──
 [tasks.dev]
@@ -62,38 +62,38 @@ run = "pnpm e2e"
 description = "Check the bundle size budget"
 run = "pnpm size"
 
-# ── CLI (stm): build, test, run ──
+# ── CLI (share-the-mark): build, test, run ──
 [tasks."cli:build"]
-description = "Build the stm CLI (debug)"
+description = "Build the share-the-mark CLI (debug)"
 dir = "cli"
 run = "cargo build"
 
 [tasks."cli:test"]
-description = "Run the stm CLI tests"
+description = "Run the share-the-mark CLI tests"
 dir = "cli"
 run = "cargo test"
 
 [tasks."cli:clippy"]
-description = "Lint the stm CLI (clippy, deny warnings)"
+description = "Lint the share-the-mark CLI (clippy, deny warnings)"
 dir = "cli"
 run = "cargo clippy --all-targets -- -D warnings"
 
 [tasks."cli:fmt"]
-description = "Check stm CLI formatting"
+description = "Check share-the-mark CLI formatting"
 dir = "cli"
 run = "cargo fmt --check"
 
 [tasks."cli:check"]
-description = "All stm CLI gates: fmt + clippy + test"
+description = "All share-the-mark CLI gates: fmt + clippy + test"
 depends = ["cli:fmt", "cli:clippy", "cli:test"]
 
 [tasks."cli:install"]
-description = "Install the stm binary to ~/.cargo/bin"
+description = "Install the share-the-mark binary to ~/.cargo/bin"
 dir = "cli"
 run = "cargo install --path ."
 
 [tasks.serve]
-description = "Run the stm ingest daemon in the foreground"
+description = "Run the share-the-mark ingest daemon in the foreground"
 dir = "cli"
 run = "cargo run --quiet -- serve"
 

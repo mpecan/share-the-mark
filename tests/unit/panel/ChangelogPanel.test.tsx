@@ -108,15 +108,15 @@ describe('ChangelogPanel', () => {
   it('shows the handoff command after sending', () => {
     renderPanel({
       annotations: [callout('a', 1)],
-      handoff: { kind: 'sent', command: 'stm show ab12' },
+      handoff: { kind: 'sent', command: 'share-the-mark show ab12' },
     });
-    expect(screen.getByText('stm show ab12')).toBeInTheDocument();
+    expect(screen.getByText('share-the-mark show ab12')).toBeInTheDocument();
   });
 
   it('shows a handoff error when the daemon is unreachable', () => {
     renderPanel({
       annotations: [callout('a', 1)],
-      handoff: { kind: 'error', message: 'daemon not reachable — run `stm serve`' },
+      handoff: { kind: 'error', message: 'daemon not reachable — run `share-the-mark serve`' },
     });
     expect(screen.getByText(/daemon not reachable/i)).toBeInTheDocument();
   });

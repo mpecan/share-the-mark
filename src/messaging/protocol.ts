@@ -1,7 +1,7 @@
 import { defineExtensionMessaging } from '@webext-core/messaging';
 import type { ExportMeta } from '@/src/core/export';
 
-/** The brief the background forwards to the `stm` daemon (M2). */
+/** The brief the background forwards to the `share-the-mark` daemon (M2). */
 export interface BriefMessage {
   markdown: string;
   meta: ExportMeta;
@@ -19,7 +19,7 @@ export interface ProtocolMap {
   captureVisibleTab: () => string;
   /** Content scripts cannot read their own tab id; the background supplies it. */
   getTabId: () => number;
-  /** Is the local `stm` daemon reachable? */
+  /** Is the local `share-the-mark` daemon reachable? */
   daemonHealth: () => boolean;
   /** POST a brief to the daemon; returns its assigned id. */
   sendBrief: (brief: BriefMessage) => { id: string };

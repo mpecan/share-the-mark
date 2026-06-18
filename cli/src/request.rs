@@ -11,7 +11,7 @@ const POLL_INTERVAL: Duration = Duration::from_millis(500);
 /// Auto-started daemons self-shut-down after this idle window (no strays).
 const AUTO_IDLE_SECS: u64 = 1800;
 
-// `stm request <url>` — the agent-initiated flow. Register an open request with
+// `share-the-mark request <url>` — the agent-initiated flow. Register an open request with
 // the daemon, open the page in the browser, then block (short-polling) until the
 // user annotates it and clicks "Send to agent". The daemon matches the incoming
 // brief by origin and fulfills the request; this returns the brief, which — by

@@ -5,7 +5,7 @@ use clap::{Args, Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(
-    name = "stm",
+    name = "share-the-mark",
     version,
     about = "share-the-mark: receive design-feedback change-briefs and expose them to a coding agent"
 )]
@@ -44,7 +44,7 @@ pub enum Command {
     },
     /// Print a brief's Markdown and screenshot path (marks it read).
     Show {
-        /// Brief id, as shown by `stm pending` / `stm list`.
+        /// Brief id, as shown by `share-the-mark pending` / `share-the-mark list`.
         id: String,
         #[arg(long)]
         json: bool,
@@ -94,24 +94,32 @@ pub enum SkillCommand {
     },
 }
 
-/// Port precedence: flag → `STM_PORT` → 8787.
+/// Port precedence: flag → `SHARE_THE_MARK_PORT` → 8787.
 pub fn resolve_port(flag: Option<u16>) -> u16 {
-    flag.or_else(|| std::env::var("STM_PORT").ok().and_then(|s| s.parse().ok()))
-        .unwrap_or(8787)
+    flag.or_else(|| {
+        std::env::var("SHARE_THE_MARK_PORT")
+            .ok()
+            .and_then(|s| s.parse().ok())
+    })
+    .unwrap_or(8787)
 }
 
-/// Idle-timeout precedence: flag → `STM_IDLE` → 0 (never). Seconds.
+/// Idle-timeout precedence: flag → `SHARE_THE_MARK_IDLE` → 0 (never). Seconds.
 pub fn resolve_idle(flag: Option<u64>) -> u64 {
-    flag.or_else(|| std::env::var("STM_IDLE").ok().and_then(|s| s.parse().ok()))
-        .unwrap_or(0)
+    flag.or_else(|| {
+        std::env::var("SHARE_THE_MARK_IDLE")
+            .ok()
+            .and_then(|s| s.parse().ok())
+    })
+    .unwrap_or(0)
 }
 
-/// Store dir precedence: flag → `STM_DIR` → per-OS data directory.
+/// Store dir precedence: flag → `SHARE_THE_MARK_DIR` → per-OS data directory.
 pub fn resolve_dir(flag: Option<PathBuf>) -> Result<PathBuf> {
     if let Some(dir) = flag {
         return Ok(dir);
     }
-    if let Ok(dir) = std::env::var("STM_DIR") {
+    if let Ok(dir) = std::env::var("SHARE_THE_MARK_DIR") {
         return Ok(PathBuf::from(dir));
     }
     let project = directories::ProjectDirs::from("", "", "share-the-mark")
