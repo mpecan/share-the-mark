@@ -51,26 +51,6 @@
   pointer-events: auto;
 }
 
-/* A "beak" pointing up toward the toolbar, so the panel reads as coming from the
- * extension icon. The exact icon position isn't knowable cross-browser, so this
- * is a best-effort cue near the top-right (where toolbar icons live). Colors are
- * literal because this pseudo-element sits on the host, above the panel's own
- * token scope. */
-.stm-host::before {
-  content: '';
-  position: absolute;
-  top: -5px;
-  right: 26px;
-  width: 12px;
-  height: 12px;
-  background: #1b1e25;
-  border-top: 1px solid #2c313d;
-  border-left: 1px solid #2c313d;
-  border-top-left-radius: 3px;
-  transform: rotate(45deg);
-  z-index: -1;
-}
-
 .stm-panel {
   --accent: #e11d48;
   --accent-ink: #ffffff;
