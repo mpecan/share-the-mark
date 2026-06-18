@@ -126,15 +126,34 @@ reach the local `stm` daemon. No web-origin host permissions —
 ## Development
 
 `SPEC.md` is the full build brief and the source of truth; `CLAUDE.md` is the
-short operating layer on top of it. Common commands:
+short operating layer on top of it.
+
+Tasks are wired through [`mise`](https://mise.jdx.dev) (`mise tasks` to list,
+`mise run <task>`); each maps to the underlying `pnpm`/`cargo` command, so you can
+use either:
 
 ```bash
-pnpm typecheck      # tsc --noEmit (strict)
-pnpm lint           # eslint, zero warnings
-pnpm test           # vitest with coverage thresholds
-pnpm e2e            # Playwright against the built extension (run pnpm build first)
-pnpm size           # gzip bundle budget
+mise run dev            # load the extension in Chrome (hot-reload)
+mise run dev:firefox    # load the extension in Firefox (hot-reload)
+mise run cli:install     # put the `stm` binary on PATH
+mise run serve           # run the stm ingest daemon
+mise run request <url>   # agent flow: open a page, wait for feedback
+
+mise run check           # all extension gates (typecheck, lint, test, builds, e2e, size)
+mise run cli:check       # all CLI gates (fmt, clippy, test)
+mise run check:all       # both
 ```
+
+The equivalent raw commands (`pnpm typecheck | lint | test | e2e | size`,
+`cargo …` in `cli/`) still work directly.
+
+### Local review flow (extension ↔ agent)
+
+1. `mise run dev:firefox` (or `dev`) — loads the extension into the browser.
+2. `mise run cli:install` then `stm serve` (or `mise run serve`) — runs the daemon.
+3. The agent runs `stm request <url>` (or you click **Send to agent** in the
+   panel); annotate the page, click **Send to agent**, and the brief flows to the
+   agent.
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full quality bar, architecture
 invariants, and the contribution workflow.
