@@ -11,6 +11,12 @@ importers:
       '@webext-core/messaging':
         specifier: ^3.0.2
         version: 3.0.2
+      dom-anchor-text-position:
+        specifier: ^5.0.0
+        version: 5.0.0
+      dom-anchor-text-quote:
+        specifier: ^4.0.2
+        version: 4.0.2
       react:
         specifier: ^19.2.7
         version: 19.2.7
@@ -1069,6 +1075,9 @@ packages:
   ajv@8.20.0:
     resolution: {integrity: sha512-Thbli+OlOj+iMPYFBVBfJ3OmCAnaSyNn4M1vz9T6Gka5Jt9ba/HIR56joy65tY6kx/FCF5VXNB819Y7/GUrBGA==}
 
+  ancestors@0.0.3:
+    resolution: {integrity: sha512-hWePu8BinW3M5wSo2++ahS6mb3ZZcYWFIxrmOfJI4990DRQnM/OrMNWorjVotrrAkVxldBdF17TCKenwin4XzA==}
+
   ansi-align@3.0.1:
     resolution: {integrity: sha512-IOfwwBF5iczOjp/WeY4YxyjqAFMQoZufdQWDd19SEExbVLNXqvpzSJ/M7Za4/sCPmQ0+GRquoA7bGcINcxew6w==}
 
@@ -1514,11 +1523,32 @@ packages:
   devtools-protocol@0.0.1495869:
     resolution: {integrity: sha512-i+bkd9UYFis40RcnkW7XrOprCujXRAHg62IVh/Ah3G8MmNXpCGt1m0dTFhSdx/AVs8XEMbdOGRwdkR1Bcta8AA==}
 
+  diff-match-patch@1.0.5:
+    resolution: {integrity: sha512-IayShXAgj/QMXgB0IWmKx+rOPuGMhqm5w6jvFxmVenXKIzRqTAAsbBPT3kWQeGANj3jGgvcvv4yK6SxqYmikgw==}
+
   dom-accessibility-api@0.5.16:
     resolution: {integrity: sha512-X7BJ2yElsnOJ30pZF4uIIDfBEVgF4XEBxL9Bxhy6dnrm5hkzqmsWHGTiHqRiITNhMyFLyAiWndIJP7Z1NTteDg==}
 
   dom-accessibility-api@0.6.3:
     resolution: {integrity: sha512-7ZgogeTnjuHbo+ct10G9Ffp0mif17idi0IyWNVA/wcwcm7NPOD/WEHVP3n7n3MhXqxoIYm8d6MuZohYWIZ4T3w==}
+
+  dom-anchor-text-position@4.0.0:
+    resolution: {integrity: sha512-McGwz4XUK2ttClhYTMoeSuu5sCYYKG2UilW9rJg5n39byIpKtFQMviGPmjRuCWE4JWO8IIjCbAXQgGFVMCuUww==}
+
+  dom-anchor-text-position@5.0.0:
+    resolution: {integrity: sha512-2Z5p3jBfcxh5PUdxg68GBRbt4kZ6PsxoHp/rhSmZNoWKJfI14ScPMAxJySVWI8EIf+4dMhVskjRXsCxGGe4zJA==}
+
+  dom-anchor-text-quote@4.0.2:
+    resolution: {integrity: sha512-yM1Z/PYgh8hEnfijmTA14Z1XWvlN8P9wD6srBvRaTSktmtI+z5f2zr0r9hqr7ZMpmokW71MeDyOHBRqbXu0VXA==}
+
+  dom-node-iterator@3.5.3:
+    resolution: {integrity: sha512-B61Q0KVg/86rIT9C3zwq9ud495TI/4B/V0psFMNcNEn9UFVpG1JjY04jP57MUGUb6FRMozPzSSVXJvFyF0PQ+g==}
+
+  dom-seek@4.0.3:
+    resolution: {integrity: sha512-Tx9l8RmRkbqfIW0EXPPeKS5+2AJ2+9s2Sam+G+xi9JgPoYEwnSRg+6knLswI66QRD7DaVTI/GRS9qDWAMi/SPg==}
+
+  dom-seek@5.1.1:
+    resolution: {integrity: sha512-1strSwd201Gfhfkfsk77SX9xyJGzu12gqUo5Q0W3Njtj2QxcfQTwCDOynZ6npZ4ASUFRQq0asjYDRlFxYPKwTA==}
 
   dom-serializer@2.0.0:
     resolution: {integrity: sha512-wIkAryiqt/nV5EQKqQpo3SToSOV9J0DnbJqwK7Wv/Trc92zIAYZ4FlMu+JPFW1DfGFt81ZTCGgDEabffXeLyJg==}
@@ -1975,6 +2005,10 @@ packages:
   indent-string@5.0.0:
     resolution: {integrity: sha512-m6FAo/spmsW2Ab2fU35JTYwtOKa2yAwXSwgjSv1TJzh4Mh7mC3lzAOVLBprb72XsTrgkEIsl7YrFNAiDiRhIGg==}
     engines: {node: '>=12'}
+
+  index-of@0.2.0:
+    resolution: {integrity: sha512-VkoJmFW85R0il3IJJYCD7wdQ8pQgTtVoCSqu/BI/ZMy51qDJ618nQsiWmQ6tnyKZShEG2nLt7i7o3YJmEPJSyg==}
+    engines: {node: '>=0.10.0'}
 
   inherits@2.0.4:
     resolution: {integrity: sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==}
@@ -4299,6 +4333,8 @@ snapshots:
       json-schema-traverse: 1.0.0
       require-from-string: 2.0.2
 
+  ancestors@0.0.3: {}
+
   ansi-align@3.0.1:
     dependencies:
       string-width: 4.2.3
@@ -4682,9 +4718,34 @@ snapshots:
 
   devtools-protocol@0.0.1495869: {}
 
+  diff-match-patch@1.0.5: {}
+
   dom-accessibility-api@0.5.16: {}
 
   dom-accessibility-api@0.6.3: {}
+
+  dom-anchor-text-position@4.0.0:
+    dependencies:
+      dom-node-iterator: 3.5.3
+      dom-seek: 4.0.3
+
+  dom-anchor-text-position@5.0.0:
+    dependencies:
+      dom-seek: 5.1.1
+
+  dom-anchor-text-quote@4.0.2:
+    dependencies:
+      diff-match-patch: 1.0.5
+      dom-anchor-text-position: 4.0.0
+
+  dom-node-iterator@3.5.3: {}
+
+  dom-seek@4.0.3:
+    dependencies:
+      ancestors: 0.0.3
+      index-of: 0.2.0
+
+  dom-seek@5.1.1: {}
 
   dom-serializer@2.0.0:
     dependencies:
@@ -5195,6 +5256,8 @@ snapshots:
   indent-string@4.0.0: {}
 
   indent-string@5.0.0: {}
+
+  index-of@0.2.0: {}
 
   inherits@2.0.4: {}
 

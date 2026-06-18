@@ -4,6 +4,12 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "license": "MIT",
+  "author": "Matjaz Domen Pecan",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mpecan/share-the-mark.git"
+  },
   "packageManager": "pnpm@10.14.0",
   "engines": {
     "node": ">=22"
@@ -35,6 +41,8 @@
   },
   "dependencies": {
     "@webext-core/messaging": "^3.0.2",
+    "dom-anchor-text-position": "^5.0.0",
+    "dom-anchor-text-quote": "^4.0.2",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "turndown": "^7.2.4"

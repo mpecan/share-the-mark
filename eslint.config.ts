@@ -87,6 +87,23 @@ export default defineConfig(
         'error',
         { cases: { camelCase: true, pascalCase: true, kebabCase: true } },
       ],
+      // We group class members by role (public API, then pointer handlers, then
+      // private helpers) rather than by the plugin's fixed ordering.
+      'unicorn/consistent-class-member-order': 'off',
+    },
+  },
+
+  // Tests legitimately use patterns the source rules discourage: assigning to
+  // a module-scoped `let` from `beforeEach`, and vitest's `expect.any()` /
+  // matcher helpers that surface as `any`.
+  {
+    files: ['tests/**'],
+    rules: {
+      'unicorn/no-top-level-assignment-in-function': 'off',
+      // Deeply nested fixture constructors and literal expected strings (with
+      // significant whitespace) are normal and clearer in tests.
+      'unicorn/max-nested-calls': 'off',
+      'unicorn/prefer-string-repeat': 'off',
     },
   },
 

@@ -14,7 +14,14 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
       include: ['src/**/*.{ts,tsx}'],
-      exclude: ['src/**/*.d.ts', 'src/**/index.ts'],
+      exclude: [
+        'src/**/*.d.ts',
+        'src/**/index.ts',
+        // Irreducible browser glue (OffscreenCanvas/createImageBitmap) that
+        // cannot run under happy-dom; the orchestration it backs is tested via
+        // dependency injection. See src/capture/composite.ts.
+        'src/capture/composite-surface.ts',
+      ],
       thresholds: {
         lines: 90,
         statements: 90,
