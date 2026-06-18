@@ -2,7 +2,13 @@ import { createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { onMessage, sendMessage } from '@/src/messaging';
 import { Overlay } from '@/src/overlay';
-import { PanelApp, type Handoff, type PanelSnapshot, type PanelStore } from '@/src/panel';
+import {
+  PanelApp,
+  isolateKeyboard,
+  type Handoff,
+  type PanelSnapshot,
+  type PanelStore,
+} from '@/src/panel';
 import {
   changelogReducer,
   type Changelog,
@@ -74,6 +80,10 @@ export default defineContentScript({
       append: 'last',
       mode: 'closed',
       onMount: (container) => {
+        // Keep our UI's keystrokes (notes, text annotations) from leaking to the
+        // host page, whose single-key shortcuts would otherwise fire while typing.
+        const releaseKeyboard = isolateKeyboard(container);
+
         const panelHost = document.createElement('div');
         panelHost.className = 'stm-host';
         container.append(panelHost);
@@ -123,9 +133,10 @@ export default defineContentScript({
 
         overlay.setAnnotations(changelog.annotations);
         publish();
-        return { overlay, panelRoot };
+        return { overlay, panelRoot, releaseKeyboard };
       },
       onRemove: (mounted) => {
+        mounted?.releaseKeyboard();
         mounted?.overlay.destroy();
         mounted?.panelRoot.unmount();
       },
