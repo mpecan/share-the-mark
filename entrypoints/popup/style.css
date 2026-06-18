@@ -1,11 +1,22 @@
 @import '../theme.css';
 
+/* Let the popup's own rounded container be the visible surface; the document
+ * behind it is transparent so the window corners aren't filled square. Browser
+ * popup chrome has the final say on the window shape — verify per browser. */
+html,
+body {
+  background: transparent;
+}
+
 .popup {
   width: 240px;
   padding: 14px;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  background: var(--bg);
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 .popup__head {
