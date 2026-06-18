@@ -265,8 +265,8 @@ export class Overlay {
     if (!this.isEditing) return;
     const annotation = this.markUnder(event)?.annotation;
     if (annotation?.kind !== 'text') return;
-    const content = this.ask(annotation.content);
-    if (content !== null && content !== '') this.options.onUpdate?.({ ...annotation, content });
+    const note = this.ask(annotation.note ?? '');
+    if (note !== null && note !== '') this.options.onUpdate?.({ ...annotation, note });
   };
 
   private readonly scheduleRender = (): void => {
@@ -297,14 +297,14 @@ export class Overlay {
     const anchor = this.hitTester.caretAt(point);
     if (!anchor) return;
     this.state = 'placing-text';
-    const content = this.ask('');
+    const note = this.ask('');
     this.state = 'idle';
-    if (content === null || content === '') return;
+    if (note === null || note === '') return;
     this.options.onCreate({
       id: this.nextId(),
       kind: 'text',
       createdAt: this.timestamp(),
-      content,
+      note,
       target: computeSelector(anchor.element),
       anchor: describeRange(anchor.element, anchor.range),
       offset: this.offsetFrom(anchor.range, point),

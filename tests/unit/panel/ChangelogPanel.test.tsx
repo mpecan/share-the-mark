@@ -71,7 +71,7 @@ describe('ChangelogPanel', () => {
       id: 'n',
       kind: 'text',
       createdAt: 0,
-      content: 'x',
+      note: 'x',
       anchor: { start: 0, end: 1, exact: 'x', prefix: '', suffix: '' },
       offset: { dx: 0, dy: 0 },
       target,

@@ -6,10 +6,10 @@ import type { Changelog } from '@/src/core/model';
 
 type ChangelogKey = `local:${string}`;
 
-// v2: annotations are content-anchored (offsets/text ranges), not viewport
-// coordinates — bumping the key discards incompatible pre-anchoring data.
+// v3: a text annotation's on-page text is now its `note` (was a separate
+// `content` field) — bumping the key discards data with the old shape.
 function changelogKey(tabId: number, url: string): ChangelogKey {
-  return `local:changelog:v2:${String(tabId)}:${url}`;
+  return `local:changelog:v3:${String(tabId)}:${url}`;
 }
 
 export function saveChangelog(tabId: number, changelog: Changelog): Promise<void> {

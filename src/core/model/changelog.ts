@@ -73,7 +73,8 @@ export interface CalloutAnnotation extends TextAnchoredBase {
 
 export interface TextAnnotation extends TextAnchoredBase {
   kind: 'text';
-  content: string;
+  // The on-page text is the annotation's `note` (AnnotationBase) — one string
+  // shown both in the overlay and the changelog panel, editable from either.
   offset: AnchoredPoint;
 }
 

@@ -36,7 +36,6 @@ function text(id: string, createdAt = 0): TextAnnotation {
     target,
     anchor: { start: 0, end: 1, exact: 'x', prefix: '', suffix: '' },
     offset: { dx: 0, dy: 0 },
-    content: '',
   };
 }
 

@@ -49,7 +49,7 @@ describe('Overlay — click tools', () => {
   it('creates a text annotation from the prompt', () => {
     const overlay = makeOverlay({ tool: 'text', promptText: () => 'hello' });
     pointer(overlay, 'pointerdown', 5, 6);
-    expect(created[0]).toMatchObject({ kind: 'text', content: 'hello', anchor: { exact: 'q' } });
+    expect(created[0]).toMatchObject({ kind: 'text', note: 'hello', anchor: { exact: 'q' } });
   });
 
   it('skips text creation when the prompt is cancelled', () => {
@@ -177,7 +177,7 @@ describe('Overlay — rendering', () => {
         id: 't',
         kind: 'text',
         createdAt: 0,
-        content: 'note',
+        note: 'note',
         target: targetFor('#para', 'p'),
         anchor: anchorOver('quick'),
         offset: { dx: 0, dy: 0 },

@@ -275,13 +275,13 @@ describe('Overlay — editing', () => {
         id: 't',
         kind: 'text',
         createdAt: 0,
-        content: 'old',
+        note: 'old',
         target: targetFor('#para', 'p'),
         anchor: anchorOver('quick'),
         offset: { dx: 0, dy: 0 },
       },
     ]);
     pointerOn(findMark('t'), 'dblclick', 0, 0);
-    expect(updated[0]).toMatchObject({ id: 't', kind: 'text', content: 'new content' });
+    expect(updated[0]).toMatchObject({ id: 't', kind: 'text', note: 'new content' });
   });
 });

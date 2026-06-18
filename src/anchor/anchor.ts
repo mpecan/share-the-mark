@@ -50,7 +50,7 @@ export function resolveGeometry(annotation: Annotation, doc: Document): Resolved
       return {
         id: annotation.id,
         kind: 'text',
-        content: annotation.content,
+        content: annotation.note ?? '',
         at: at(annotation.offset),
       };
     }
