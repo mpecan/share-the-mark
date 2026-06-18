@@ -2,18 +2,19 @@ import { createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { onMessage, sendMessage } from '@/src/messaging';
 import { Overlay } from '@/src/overlay';
-import { PanelApp, type PanelSnapshot, type PanelStore } from '@/src/panel';
+import { PanelApp, type Handoff, type PanelSnapshot, type PanelStore } from '@/src/panel';
 import {
   changelogReducer,
   type Changelog,
   type ChangelogAction,
   type ToolKind,
 } from '@/src/core/model';
-import { buildExportPayload, changelogToMarkdown } from '@/src/core/export';
+import { buildExportPayload, changelogToMarkdown, type ExportPayload } from '@/src/core/export';
 import { getSettings, loadChangelog, saveChangelog } from '@/src/storage';
 import { resolveGeometry } from '@/src/anchor';
 import {
   ClipboardSink,
+  DaemonSink,
   compositeAnnotations,
   requestScreenshot,
   type RenderOptions,
@@ -44,9 +45,14 @@ export default defineContentScript({
     };
 
     let activeTool: ToolKind = settings.defaultTool;
+    let handoff: Handoff | null = null;
 
     // External store the panel subscribes to; React owns its own re-renders.
-    const buildSnapshot = (): PanelSnapshot => ({ annotations: changelog.annotations, activeTool });
+    const buildSnapshot = (): PanelSnapshot => ({
+      annotations: changelog.annotations,
+      activeTool,
+      handoff,
+    });
     let snapshot: PanelSnapshot = buildSnapshot();
     const listeners = new Set<() => void>();
     const store: PanelStore = {
@@ -107,7 +113,10 @@ export default defineContentScript({
               dispatch({ type: 'remove', id });
             },
             onExport: () => {
-              void exportChangelog();
+              void exportToClipboard();
+            },
+            onSendToAgent: () => {
+              void sendToAgent();
             },
           }),
         );
@@ -122,25 +131,50 @@ export default defineContentScript({
       },
     });
 
-    async function exportChangelog(): Promise<void> {
+    // Build the composited export payload (Markdown + annotated PNG). Returns
+    // null if the screenshot/composite step fails (it needs a user gesture); the
+    // Markdown is published to the dataset first for e2e/debugging either way.
+    async function buildPayload(): Promise<ExportPayload | null> {
       const captured: Changelog = { ...changelog, capturedAt: Date.now() };
-      // Publish the exact Markdown (identical to the clipboard text/plain) first,
-      // for e2e and debugging.
       document.documentElement.dataset['stmLastExport'] = changelogToMarkdown(captured);
       try {
-        // captureVisibleTab needs activeTab (granted by a user gesture on the
-        // action) and the clipboard write needs a user gesture (the panel
-        // button provides one). Best-effort: the Markdown is already published.
         const screenshot = await requestScreenshot();
         const resolved = captured.annotations
           .map((annotation) => resolveGeometry(annotation, document))
           .filter((value) => value !== null);
         const image = await compositeAnnotations(screenshot, resolved, renderOptions);
-        const payload = await buildExportPayload(captured, image);
-        const sink = new ClipboardSink();
-        if (await sink.isAvailable()) await sink.write(payload);
+        return await buildExportPayload(captured, image);
       } catch {
-        /* screenshot/clipboard require a user gesture; Markdown is still published */
+        return null;
+      }
+    }
+
+    function setHandoff(next: Handoff | null): void {
+      handoff = next;
+      publish();
+    }
+
+    async function exportToClipboard(): Promise<void> {
+      const payload = await buildPayload();
+      if (!payload) return;
+      const sink = new ClipboardSink();
+      if (await sink.isAvailable()) await sink.write(payload);
+    }
+
+    // Send the brief to the local `stm` daemon and surface the handoff token.
+    async function sendToAgent(): Promise<void> {
+      const payload = await buildPayload();
+      if (!payload) return;
+      const sink = new DaemonSink();
+      if (!(await sink.isAvailable())) {
+        setHandoff({ kind: 'error', message: 'daemon not reachable — run `stm serve`' });
+        return;
+      }
+      try {
+        const result = await sink.write(payload);
+        if (result.ref) setHandoff({ kind: 'sent', command: `stm show ${result.ref}` });
+      } catch {
+        setHandoff({ kind: 'error', message: 'failed to send to the daemon' });
       }
     }
 
@@ -151,7 +185,7 @@ export default defineContentScript({
       ui.remove();
     });
     onMessage('exportAnnotations', () => {
-      void exportChangelog();
+      void exportToClipboard();
     });
 
     // Signals (for e2e) that the message listeners above are registered.

@@ -1,5 +1,6 @@
 import type { JSX } from 'react';
 import type { Annotation, ToolKind } from '@/src/core/model';
+import type { Handoff } from './PanelApp';
 
 // In-page changelog panel (SPEC §5.8). Rendered with React into the closed
 // shadow root alongside the overlay. Static-ish UI only — the hot drawing path
@@ -9,10 +10,12 @@ import type { Annotation, ToolKind } from '@/src/core/model';
 export interface ChangelogPanelProps {
   annotations: readonly Annotation[];
   activeTool: ToolKind;
+  handoff: Handoff | null;
   onSelectTool: (tool: ToolKind) => void;
   onEditNote: (id: string, note: string) => void;
   onDelete: (id: string) => void;
   onExport: () => void;
+  onSendToAgent: () => void;
 }
 
 const ICONS: Record<ToolKind, JSX.Element> = {
@@ -52,10 +55,12 @@ function badge(annotation: Annotation): string {
 export function ChangelogPanel({
   annotations,
   activeTool,
+  handoff,
   onSelectTool,
   onEditNote,
   onDelete,
   onExport,
+  onSendToAgent,
 }: ChangelogPanelProps): JSX.Element {
   return (
     <section className="stm-panel" aria-label="Changelog">
@@ -130,14 +135,32 @@ export function ChangelogPanel({
       </div>
 
       <footer className="stm-panel__foot">
-        <button
-          type="button"
-          className="stm-panel__export"
-          onClick={onExport}
-          disabled={annotations.length === 0}
-        >
-          Copy to clipboard
-        </button>
+        <div className="stm-panel__actions">
+          <button
+            type="button"
+            className="stm-panel__export"
+            onClick={onExport}
+            disabled={annotations.length === 0}
+          >
+            Copy to clipboard
+          </button>
+          <button
+            type="button"
+            className="stm-panel__send"
+            onClick={onSendToAgent}
+            disabled={annotations.length === 0}
+          >
+            Send to agent
+          </button>
+        </div>
+        {handoff !== null &&
+          (handoff.kind === 'sent' ? (
+            <p className="stm-panel__handoff">
+              ✓ sent — paste to your agent: <code>{handoff.command}</code>
+            </p>
+          ) : (
+            <p className="stm-panel__handoff stm-panel__handoff--error">{handoff.message}</p>
+          ))}
       </footer>
     </section>
   );

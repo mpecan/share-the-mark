@@ -1,4 +1,4 @@
-import type { ExportPayload, ExportSink } from '@/src/core/export';
+import type { ExportPayload, ExportResult, ExportSink } from '@/src/core/export';
 
 // The single M1 export sink (SPEC §5.4). Writes one ClipboardItem carrying both
 // the Markdown (text/plain) and the composited PNG (image/png). Must run in the
@@ -15,11 +15,12 @@ export class ClipboardSink implements ExportSink {
     );
   }
 
-  async write(payload: ExportPayload): Promise<void> {
+  async write(payload: ExportPayload): Promise<ExportResult> {
     const item = new ClipboardItem({
       'text/plain': new Blob([payload.markdown], { type: 'text/plain' }),
       'image/png': payload.image,
     });
     await navigator.clipboard.write([item]);
+    return {};
   }
 }
