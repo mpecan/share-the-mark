@@ -1,4 +1,4 @@
-import type { JSX } from 'react';
+import { useState, type JSX } from 'react';
 import type { Annotation, ToolKind } from '@/src/core/model';
 import type { Handoff } from './PanelApp';
 
@@ -14,6 +14,7 @@ export interface ChangelogPanelProps {
   onSelectTool: (tool: ToolKind) => void;
   onEditNote: (id: string, note: string) => void;
   onDelete: (id: string) => void;
+  onClearAll: () => void;
   onExport: () => void;
   onSendToAgent: () => void;
 }
@@ -59,14 +60,36 @@ export function ChangelogPanel({
   onSelectTool,
   onEditNote,
   onDelete,
+  onClearAll,
   onExport,
   onSendToAgent,
 }: ChangelogPanelProps): JSX.Element {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isConfirmingClear, setIsConfirmingClear] = useState(false);
   return (
-    <section className="stm-panel" aria-label="Changelog">
+    <section className="stm-panel" data-collapsed={isCollapsed} aria-label="Changelog">
       <header className="stm-panel__head">
         <span className="stm-panel__brand">share&nbsp;the&nbsp;mark</span>
         <span className="stm-panel__count">{annotations.length}</span>
+        <button
+          type="button"
+          className="stm-panel__toggle"
+          aria-label={isCollapsed ? 'Expand panel' : 'Collapse panel'}
+          aria-expanded={!isCollapsed}
+          onClick={() => {
+            setIsCollapsed((value) => !value);
+          }}
+        >
+          <svg
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            aria-hidden="true"
+          >
+            <path d="M4 10l4-4 4 4" />
+          </svg>
+        </button>
       </header>
 
       <div className="stm-panel__tools" role="toolbar" aria-label="Annotation tools">
@@ -102,35 +125,73 @@ export function ChangelogPanel({
         {annotations.length === 0 ? (
           <p className="stm-panel__empty">No annotations yet. Pick a tool and draw on the page.</p>
         ) : (
-          <ol className="stm-panel__list">
-            {annotations.map((annotation) => (
-              <li key={annotation.id} className="stm-item">
-                <span className="stm-item__badge" data-kind={annotation.kind} aria-hidden="true">
-                  {badge(annotation)}
+          <>
+            <div className="stm-panel__listhead">
+              {isConfirmingClear ? (
+                <span className="stm-panel__confirm">
+                  Clear {annotations.length}?
+                  <button
+                    type="button"
+                    className="stm-panel__confirm-yes"
+                    onClick={() => {
+                      onClearAll();
+                      setIsConfirmingClear(false);
+                    }}
+                  >
+                    Clear
+                  </button>
+                  <button
+                    type="button"
+                    className="stm-panel__confirm-no"
+                    onClick={() => {
+                      setIsConfirmingClear(false);
+                    }}
+                  >
+                    Keep
+                  </button>
                 </span>
-                <input
-                  className="stm-item__note"
-                  type="text"
-                  placeholder={`${annotation.kind} note`}
-                  aria-label={`Note for ${annotation.kind} annotation`}
-                  value={annotation.note ?? ''}
-                  onChange={(event) => {
-                    onEditNote(annotation.id, event.target.value);
-                  }}
-                />
+              ) : (
                 <button
                   type="button"
-                  className="stm-item__del"
-                  aria-label={`Delete ${annotation.kind} annotation`}
+                  className="stm-panel__clear"
                   onClick={() => {
-                    onDelete(annotation.id);
+                    setIsConfirmingClear(true);
                   }}
                 >
-                  ✕
+                  Clear all
                 </button>
-              </li>
-            ))}
-          </ol>
+              )}
+            </div>
+            <ol className="stm-panel__list">
+              {annotations.map((annotation) => (
+                <li key={annotation.id} className="stm-item">
+                  <span className="stm-item__badge" data-kind={annotation.kind} aria-hidden="true">
+                    {badge(annotation)}
+                  </span>
+                  <input
+                    className="stm-item__note"
+                    type="text"
+                    placeholder={`${annotation.kind} note`}
+                    aria-label={`Note for ${annotation.kind} annotation`}
+                    value={annotation.note ?? ''}
+                    onChange={(event) => {
+                      onEditNote(annotation.id, event.target.value);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="stm-item__del"
+                    aria-label={`Delete ${annotation.kind} annotation`}
+                    onClick={() => {
+                      onDelete(annotation.id);
+                    }}
+                  >
+                    ✕
+                  </button>
+                </li>
+              ))}
+            </ol>
+          </>
         )}
       </div>
 

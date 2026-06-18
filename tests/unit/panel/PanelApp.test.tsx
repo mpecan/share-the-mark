@@ -23,6 +23,7 @@ const handlers = {
   onSelectTool: vi.fn(),
   onEditNote: vi.fn(),
   onDelete: vi.fn(),
+  onClearAll: vi.fn(),
   onExport: vi.fn(),
   onSendToAgent: vi.fn(),
 };

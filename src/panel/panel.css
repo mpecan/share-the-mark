@@ -47,7 +47,28 @@
   max-height: calc(100vh - 32px);
   z-index: 2147483647;
   display: flex;
+  justify-content: flex-end;
   pointer-events: auto;
+}
+
+/* A "beak" pointing up toward the toolbar, so the panel reads as coming from the
+ * extension icon. The exact icon position isn't knowable cross-browser, so this
+ * is a best-effort cue near the top-right (where toolbar icons live). Colors are
+ * literal because this pseudo-element sits on the host, above the panel's own
+ * token scope. */
+.stm-host::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  right: 26px;
+  width: 12px;
+  height: 12px;
+  background: #1b1e25;
+  border-top: 1px solid #2c313d;
+  border-left: 1px solid #2c313d;
+  border-top-left-radius: 3px;
+  transform: rotate(45deg);
+  z-index: -1;
 }
 
 .stm-panel {
@@ -75,6 +96,8 @@
   font-size: 13px;
   line-height: 1.4;
   overflow: hidden;
+  /* Grow from the top-right, toward the toolbar icon the panel "comes from". */
+  transform-origin: top right;
   animation: stm-in 220ms cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
@@ -136,7 +159,7 @@
 
 .stm-panel__tools {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 4px;
   padding: 10px 12px 4px;
 }
@@ -397,4 +420,113 @@
 
 .stm-panel__handoff--error {
   color: var(--accent);
+}
+
+/* Collapse toggle in the header (chevron). */
+.stm-panel__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  margin-left: 8px;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  cursor: pointer;
+  transition:
+    color 120ms ease,
+    border-color 120ms ease;
+}
+
+.stm-panel__toggle:hover {
+  color: var(--text);
+  border-color: #39414f;
+}
+
+.stm-panel__toggle svg {
+  width: 14px;
+  height: 14px;
+  transition: transform 160ms ease;
+}
+
+.stm-panel[data-collapsed='true'] .stm-panel__toggle svg {
+  transform: rotate(180deg);
+}
+
+/* Collapsed: a compact tool strip — hide the title, count, list, and footer,
+ * shrink the tools to a single row, and let the panel size to its content. */
+.stm-panel[data-collapsed='true'] {
+  width: auto;
+}
+
+.stm-panel[data-collapsed='true'] .stm-panel__brand,
+.stm-panel[data-collapsed='true'] .stm-panel__count,
+.stm-panel[data-collapsed='true'] .stm-panel__active,
+.stm-panel[data-collapsed='true'] .stm-panel__body,
+.stm-panel[data-collapsed='true'] .stm-panel__foot {
+  display: none;
+}
+
+.stm-panel[data-collapsed='true'] .stm-panel__head {
+  justify-content: flex-end;
+  padding: 6px;
+  border-bottom: none;
+  background: none;
+}
+
+.stm-panel[data-collapsed='true'] .stm-panel__tools {
+  grid-template-columns: repeat(6, 26px);
+  padding: 0 6px 6px;
+}
+
+.stm-panel[data-collapsed='true'] .stm-tool svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Clear-all control, above the list. */
+.stm-panel__listhead {
+  display: flex;
+  justify-content: flex-end;
+  padding: 6px 6px 2px;
+}
+
+.stm-panel__clear,
+.stm-panel__confirm-yes,
+.stm-panel__confirm-no {
+  padding: 2px 6px;
+  font: inherit;
+  font-size: 11px;
+  background: none;
+  border: 0;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.stm-panel__clear {
+  color: var(--muted);
+}
+
+.stm-panel__clear:hover {
+  color: var(--accent);
+}
+
+.stm-panel__confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.stm-panel__confirm-yes {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.stm-panel__confirm-no {
+  color: var(--text);
 }

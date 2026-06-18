@@ -122,6 +122,9 @@ export default defineContentScript({
             onDelete: (id) => {
               dispatch({ type: 'remove', id });
             },
+            onClearAll: () => {
+              dispatch({ type: 'replaceAll', annotations: [] });
+            },
             onExport: () => {
               void exportToClipboard();
             },

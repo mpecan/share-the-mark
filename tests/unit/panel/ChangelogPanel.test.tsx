@@ -35,6 +35,7 @@ function renderPanel(overrides: Partial<ChangelogPanelProps> = {}): void {
       onSelectTool={vi.fn()}
       onEditNote={vi.fn()}
       onDelete={vi.fn()}
+      onClearAll={vi.fn()}
       onExport={vi.fn()}
       onSendToAgent={vi.fn()}
       {...overrides}
@@ -119,5 +120,34 @@ describe('ChangelogPanel', () => {
       handoff: { kind: 'error', message: 'daemon not reachable — run `share-the-mark serve`' },
     });
     expect(screen.getByText(/daemon not reachable/i)).toBeInTheDocument();
+  });
+
+  it('collapses and expands via the toggle', async () => {
+    renderPanel();
+    await userEvent.click(screen.getByRole('button', { name: /collapse panel/i }));
+    expect(screen.getByRole('button', { name: /expand panel/i })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+    await userEvent.click(screen.getByRole('button', { name: /expand panel/i }));
+    expect(screen.getByRole('button', { name: /collapse panel/i })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+  });
+
+  it('clears all only after confirmation', async () => {
+    const onClearAll = vi.fn();
+    renderPanel({ annotations: [callout('a', 1)], onClearAll });
+
+    // Cancel path: "Clear all" → "Keep" does not clear.
+    await userEvent.click(screen.getByRole('button', { name: /clear all/i }));
+    await userEvent.click(screen.getByRole('button', { name: /keep/i }));
+    expect(onClearAll).not.toHaveBeenCalled();
+
+    // Confirm path: "Clear all" → "Clear" clears.
+    await userEvent.click(screen.getByRole('button', { name: /clear all/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^clear$/i }));
+    expect(onClearAll).toHaveBeenCalledTimes(1);
   });
 });

@@ -26,6 +26,7 @@ export interface PanelHandlers {
   onSelectTool: (tool: ToolKind) => void;
   onEditNote: (id: string, note: string) => void;
   onDelete: (id: string) => void;
+  onClearAll: () => void;
   onExport: () => void;
   onSendToAgent: () => void;
 }
@@ -65,6 +66,7 @@ export function PanelApp({
   onSelectTool,
   onEditNote,
   onDelete,
+  onClearAll,
   onExport,
   onSendToAgent,
 }: PanelAppProps): JSX.Element {
@@ -78,6 +80,7 @@ export function PanelApp({
         onSelectTool={onSelectTool}
         onEditNote={onEditNote}
         onDelete={onDelete}
+        onClearAll={onClearAll}
         onExport={onExport}
         onSendToAgent={onSendToAgent}
       />
