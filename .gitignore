@@ -32,3 +32,6 @@ test-results
 *.njsproj
 *.sln
 *.sw?
+
+# Rust CLI build output
+cli/target
