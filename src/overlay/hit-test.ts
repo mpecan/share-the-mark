@@ -54,13 +54,19 @@ export class PageHitTester {
     return this.withPageHitTest((doc) => caretFromPoint(doc, point.x, point.y));
   }
 
-  // Anchor to the character at the caret (point-tool creation).
+  // Anchor to the character at the caret (point-tool creation + drop re-anchor).
   caretAt(point: Point): { element: Element; range: Range } | undefined {
     const caret = this.caretRangeAt(point);
     if (!caret) return undefined;
     const element = elementOf(caret.startContainer);
     if (!element || this.hostElement()?.contains(element) === true) return undefined;
-    return { element, range: expandToChar(caret) };
+    // A caret over non-text (whitespace, padding, a container element) lands on
+    // an element node, which expandToChar can't grow — that yields an empty,
+    // contextless TextAnchor that resolves to nowhere. Reject it so callers fall
+    // back safely: creation no-ops, and a drop re-anchor keeps the prior anchor.
+    const range = expandToChar(caret);
+    if (range.collapsed) return undefined;
+    return { element, range };
   }
 
   // Resolve the topmost page element under a point (skipping our own UI).

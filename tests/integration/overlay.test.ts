@@ -5,6 +5,7 @@ import {
   caretAt,
   container,
   created,
+  elementCaret,
   makeOverlay,
   para,
   pointer,
@@ -55,6 +56,18 @@ describe('Overlay — click tools', () => {
   it('skips text creation when the prompt is cancelled', () => {
     const overlay = makeOverlay({ tool: 'text', promptText: () => null });
     pointer(overlay, 'pointerdown', 5, 5);
+    expect(created).toHaveLength(0);
+  });
+
+  it('does not anchor when the caret lands on non-text (an element node)', () => {
+    // caretPositionFromPoint over whitespace/padding resolves to an element node,
+    // which can't expand to a character — that would yield an empty anchor.
+    const overlay = makeOverlay({
+      tool: 'text',
+      promptText: () => 'hi',
+      caretFromPoint: () => elementCaret(),
+    });
+    pointer(overlay, 'pointerdown', 5, 6);
     expect(created).toHaveLength(0);
   });
 

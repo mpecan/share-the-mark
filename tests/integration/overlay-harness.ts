@@ -42,6 +42,16 @@ export function caretAt(offset: number): Range {
   return range;
 }
 
+// A caret that resolves to an element node (not text) — as caretPositionFromPoint
+// does over whitespace/padding. expandToChar can't grow it, so callers must
+// refuse it rather than build an empty anchor.
+export function elementCaret(): Range {
+  const range = document.createRange();
+  range.setStart(para, 0);
+  range.collapse(true);
+  return range;
+}
+
 export function anchorOver(substring: string): TextAnchor {
   const index = textNode.data.indexOf(substring);
   const range = document.createRange();

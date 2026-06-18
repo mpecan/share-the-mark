@@ -4,6 +4,7 @@ import {
   caretAt,
   container,
   created,
+  elementCaret,
   findMark,
   makeOverlay,
   pointer,
@@ -63,6 +64,33 @@ describe('Overlay — editing', () => {
     pointer(overlay, 'pointerup', 40, 40);
     // Anchor moved from 'brown' to the character now under the mark.
     expect(updated[0]).toMatchObject({ kind: 'callout', anchor: { exact: 'T' } });
+  });
+
+  it('keeps the original anchor when a mark is dropped off-text', () => {
+    // Dropping over non-text resolves the caret to an element node; re-anchoring
+    // must refuse (not produce an empty anchor) and keep the prior anchor.
+    const original = anchorOver('quick');
+    const overlay = makeOverlay({ tool: 'select', caretFromPoint: () => elementCaret() });
+    overlay.setAnnotations([
+      {
+        id: 't',
+        kind: 'text',
+        createdAt: 0,
+        note: 'hi',
+        target: targetFor('#para', 'p'),
+        anchor: original,
+        offset: { dx: 0, dy: 0 },
+      },
+    ]);
+    pointerOn(findMark('t'), 'pointerdown', 10, 10);
+    pointer(overlay, 'pointermove', 40, 40);
+    pointer(overlay, 'pointerup', 40, 40);
+    // Re-anchor refused → original anchor preserved, only the offset shifts.
+    expect(updated[0]).toMatchObject({
+      kind: 'text',
+      anchor: original,
+      offset: { dx: 30, dy: 30 },
+    });
   });
 
   it('re-anchors an arrow head when its handle is dragged', () => {
