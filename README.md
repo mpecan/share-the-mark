@@ -83,12 +83,40 @@ installing.
    double-click a text label to retype it. Dropping a callout, text label, or
    arrow head over new text re-anchors it there.
 4. Add notes/comments in the panel; delete markers with ✕.
-5. Click **Copy to clipboard** and paste the Markdown + screenshot anywhere.
+5. Click **Copy to clipboard** and paste the Markdown + screenshot anywhere, or
+   **Send to agent** to hand the brief to the local `stm` daemon (see below).
+
+## Connect a coding agent (the `stm` CLI)
+
+`stm` is a small cross-platform (macOS/Linux/Windows) Rust CLI under [`cli/`](cli)
+that receives change-briefs from the extension and exposes them to a coding agent.
+
+```bash
+cargo install --path cli      # build & install the `stm` binary
+stm serve                     # run the ingest daemon (or `stm start` to background it)
+stm skill install             # install the Claude Code skill into ~/.claude/skills
+```
+
+Then, in the extension panel, click **Send to agent**. The daemon stores the brief
+(`brief.md` + annotated `screenshot.png`) and the panel shows a handoff token:
+
+```
+✓ sent — paste to your agent: stm show ab12
+```
+
+Paste that to your agent (or just ask it about your marks — the installed skill
+teaches it to run `stm pending` / `stm show <id>`). The agent reads the Markdown
+(element selectors + your comments) and the screenshot, and acts on the feedback.
+
+CLI: `stm pending | list | show <id> | serve | start | stop | status | skill install`.
+Config via flags or `STM_PORT` / `STM_DIR`.
 
 ## Permissions
 
-Least-privilege (Manifest V3): `activeTab`, `scripting`, `storage`. No host
-permissions — `tabs.captureVisibleTab` works under `activeTab` + a user gesture.
+Least-privilege (Manifest V3): `activeTab`, `scripting`, `storage`, plus a single
+loopback `host_permission` (`http://127.0.0.1/*`) so the **Send to agent** sink can
+reach the local `stm` daemon. No web-origin host permissions —
+`tabs.captureVisibleTab` works under `activeTab` + a user gesture.
 
 ## Development
 

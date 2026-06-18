@@ -498,8 +498,20 @@ Markdown contains correct `Element:` selector lines that `resolveSelector`
 round-trips; coverage thresholds met; Chromium e2e green; Chrome + Firefox zips
 build.
 
-**M2 — Persistence & agent interaction (deferred).** Additional `ExportSink`
-implementations (`FileSystemSink` via File System Access API on Chromium;
-`NativeHostSink` / `LocalDaemonSink` for cross-browser folder-write and agent
-dispatch), native side panel, Firefox e2e via `web-ext`. No changes to
-capture/drawing/model — sinks plug into the §5.4 interface.
+**M2 — Persistence & agent interaction (in progress).** The agent path ships as a
+`DaemonSink` (behind the §5.4 `ExportSink` interface, no changes to
+capture/drawing/model) plus the cross-platform Rust **`stm` CLI** under `cli/`:
+
+- Transport: a localhost HTTP daemon (`stm serve`, default `127.0.0.1:8787`). The
+  extension's background SW POSTs the brief (Markdown + base64 PNG) to `/brief`
+  under one loopback `host_permission`; `/health` and `/shutdown` drive a portable
+  lifecycle (`start`/`stop`/`status`) with no OS signals.
+- Persistence: `<dir>/briefs/<id>/{brief.md,screenshot.png,meta.json}` with
+  read/unread state (per-OS data dir, or `STM_DIR`).
+- Agent integration: the CLI itself (`stm pending` / `stm list` / `stm show <id>`)
+  plus a bundled **Claude Code skill** (`stm skill install`); on send, the panel
+  surfaces a handoff token (`stm show <id>`) to paste to the agent. (Chosen over
+  MCP for tool-agnostic simplicity.)
+
+Still deferred: `FileSystemSink` (File System Access API), native side panel,
+Firefox e2e via `web-ext`.
