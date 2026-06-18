@@ -1,0 +1,106 @@
+/* Shared design tokens + control primitives for the extension's own pages
+ * (popup, options). The in-page changelog panel re-declares the same palette on
+ * its shadow host (src/panel/panel.css) because a closed shadow root on an
+ * arbitrary page can't inherit these — keep the two palettes in sync. */
+:root {
+  --accent: #e11d48;
+  --accent-ink: #ffffff;
+  --bg: #14161b;
+  --surface: #1b1e25;
+  --surface-2: #232732;
+  --line: #2c313d;
+  --text: #eceef3;
+  --muted: #8b91a1;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+h1 {
+  margin: 0;
+}
+
+/* The monospace wordmark, matching the panel header. */
+.brand {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text);
+}
+
+button {
+  font: inherit;
+  font-weight: 600;
+  padding: 8px 12px;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  cursor: pointer;
+  transition:
+    filter 120ms ease,
+    border-color 120ms ease;
+}
+
+button:hover {
+  border-color: var(--accent);
+}
+
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Primary action: filled with the accent. */
+.button--primary {
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.button--primary:hover {
+  filter: brightness(1.08);
+  border-color: var(--accent);
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 9px;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+input[type='color'] {
+  width: 48px;
+  height: 32px;
+  padding: 2px;
+}

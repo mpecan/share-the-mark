@@ -1,0 +1,50 @@
+@import '../theme.css';
+
+.options {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 28px 20px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.options__head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.options__sub {
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.options__grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.options__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.options__field > span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.options__field textarea {
+  min-height: 88px;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}

@@ -25,74 +25,79 @@ export default function App() {
 
   return (
     <main className="options">
-      <h1>share the mark — options</h1>
+      <header className="options__head">
+        <h1 className="brand">share&nbsp;the&nbsp;mark</h1>
+        <span className="options__sub">options</span>
+      </header>
 
-      <label>
-        Default tool
-        <select
-          value={settings.defaultTool}
-          onChange={(e) => {
-            update('defaultTool', e.target.value as ToolKind);
-          }}
-        >
-          {TOOLS.map((tool) => (
-            <option key={tool} value={tool}>
-              {tool}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="options__grid">
+        <label className="options__field">
+          <span>Default tool</span>
+          <select
+            value={settings.defaultTool}
+            onChange={(e) => {
+              update('defaultTool', e.target.value as ToolKind);
+            }}
+          >
+            {TOOLS.map((tool) => (
+              <option key={tool} value={tool}>
+                {tool}
+              </option>
+            ))}
+          </select>
+        </label>
 
-      <label>
-        Stroke color
-        <input
-          type="color"
-          value={settings.strokeColor}
-          onChange={(e) => {
-            update('strokeColor', e.target.value);
-          }}
-        />
-      </label>
+        <label className="options__field">
+          <span>Stroke color</span>
+          <input
+            type="color"
+            value={settings.strokeColor}
+            onChange={(e) => {
+              update('strokeColor', e.target.value);
+            }}
+          />
+        </label>
 
-      <label>
-        Stroke width
-        <input
-          type="number"
-          min={1}
-          max={32}
-          value={settings.strokeWidth}
-          onChange={(e) => {
-            update('strokeWidth', Number(e.target.value));
-          }}
-        />
-      </label>
+        <label className="options__field">
+          <span>Stroke width</span>
+          <input
+            type="number"
+            min={1}
+            max={32}
+            value={settings.strokeWidth}
+            onChange={(e) => {
+              update('strokeWidth', Number(e.target.value));
+            }}
+          />
+        </label>
 
-      <label>
-        Highlight color
-        <input
-          type="color"
-          value={settings.highlightColor}
-          onChange={(e) => {
-            update('highlightColor', e.target.value);
-          }}
-        />
-      </label>
+        <label className="options__field">
+          <span>Highlight color</span>
+          <input
+            type="color"
+            value={settings.highlightColor}
+            onChange={(e) => {
+              update('highlightColor', e.target.value);
+            }}
+          />
+        </label>
 
-      <label>
-        Markdown: extra selectors to strip (one per line)
-        <textarea
-          value={settings.markdownStrip.join('\n')}
-          onChange={(e) => {
-            update(
-              'markdownStrip',
-              e.target.value
-                .split('\n')
-                .map((s) => s.trim())
-                .filter(Boolean),
-            );
-          }}
-        />
-      </label>
+        <label className="options__field">
+          <span>Markdown: extra selectors to strip (one per line)</span>
+          <textarea
+            value={settings.markdownStrip.join('\n')}
+            onChange={(e) => {
+              update(
+                'markdownStrip',
+                e.target.value
+                  .split('\n')
+                  .map((s) => s.trim())
+                  .filter(Boolean),
+              );
+            }}
+          />
+        </label>
+      </div>
     </main>
   );
 }
