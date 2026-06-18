@@ -33,4 +33,16 @@ export default defineConfig({
           browser_specific_settings: { gecko: { id: 'share-the-mark@mpecan.dev' } },
         }),
   }),
+  // The Firefox sources zip (for AMO review) doesn't honour .gitignore, so trim
+  // build artifacts and other non-source output explicitly. Keep `cli/src` (the
+  // daemon is open) but drop its compiled `target`.
+  zip: {
+    excludeSources: [
+      'cli/target/**',
+      'coverage/**',
+      '**/*.tsbuildinfo',
+      '**/*.log',
+      '.tmp-render/**',
+    ],
+  },
 });
