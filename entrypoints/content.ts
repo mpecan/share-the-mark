@@ -177,6 +177,16 @@ export default defineContentScript({
 
     // Send the brief to the local `share-the-mark` daemon and surface the handoff token.
     async function sendToAgent(): Promise<void> {
+      // The loopback host permission is opt-in; without it the background fetch
+      // can't reach the daemon, so guide the user to enable it rather than build
+      // a payload (a screenshot capture) we can't deliver.
+      if (!(await sendMessage('daemonPermitted', undefined))) {
+        setHandoff({
+          kind: 'error',
+          message: 'enable “Agent integration” in the extension Options to send to an agent',
+        });
+        return;
+      }
       const payload = await buildPayload();
       if (!payload) return;
       const sink = new DaemonSink();

@@ -19,6 +19,8 @@ export interface ProtocolMap {
   captureVisibleTab: () => string;
   /** Content scripts cannot read their own tab id; the background supplies it. */
   getTabId: () => number;
+  /** Has the user granted the optional loopback host permission (Options page)? */
+  daemonPermitted: () => boolean;
   /** Is the local `share-the-mark` daemon reachable? */
   daemonHealth: () => boolean;
   /** POST a brief to the daemon; returns its assigned id. */

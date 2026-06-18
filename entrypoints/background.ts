@@ -1,4 +1,5 @@
-import { registerCaptureHandler } from '@/src/capture';
+import { browser } from 'wxt/browser';
+import { DAEMON_ORIGIN, registerCaptureHandler } from '@/src/capture';
 import { onMessage } from '@/src/messaging';
 
 // The local `share-the-mark` daemon's loopback address (its default port). Briefs are POSTed
@@ -16,6 +17,11 @@ export default defineBackground(() => {
   // Content scripts ask the background for their own tab id (for per-tab
   // changelog persistence), which only the message sender exposes.
   onMessage('getTabId', ({ sender }) => sender.tab?.id ?? -1);
+
+  // The loopback host permission is optional and granted from the Options page;
+  // the content script checks here before attempting a daemon fetch so it can
+  // point the user at Options instead of mislabelling it "daemon unreachable".
+  onMessage('daemonPermitted', () => browser.permissions.contains({ origins: [DAEMON_ORIGIN] }));
 
   // M2 daemon bridge: the "Send to agent" sink runs here so the loopback fetch
   // uses the extension's host permission and avoids page CSP.

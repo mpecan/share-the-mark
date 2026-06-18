@@ -1,6 +1,12 @@
 import { sendMessage } from '@/src/messaging';
 import type { ExportPayload, ExportResult, ExportSink } from '@/src/core/export';
 
+// The loopback origin the daemon listens on. Declared as an *optional* host
+// permission (see wxt.config.ts) and requested at runtime from the Options page,
+// so the default install holds no host permissions. Match-pattern form for
+// `permissions.{contains,request,remove}`.
+export const DAEMON_ORIGIN = 'http://127.0.0.1/*';
+
 // Export sink that ships the brief to the local `share-the-mark` daemon (SPEC §5.4, M2).
 // The actual HTTP POST happens in the background service worker (which holds the
 // host permission and isn't subject to page CSP); this sink just round-trips the

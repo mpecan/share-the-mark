@@ -48,3 +48,38 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px;
 }
+
+.options__section {
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.options__toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.options__toggle input {
+  margin-top: 2px;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+
+.options__toggle span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.options__toggle small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.options__toggle code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
