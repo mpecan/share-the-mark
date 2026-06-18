@@ -103,6 +103,10 @@ dir = "cli"
 run = "cargo run --quiet -- request {{arg(name='url')}}"
 
 # ── Combined ──
+[tasks.icon]
+description = "Regenerate the extension icons from design/icon.svg"
+run = "node scripts/render-icon.mjs"
+
 [tasks.setup]
 description = "Install dependencies and prepare WXT"
 run = "pnpm install && pnpm prepare"
