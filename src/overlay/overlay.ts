@@ -1,71 +1,26 @@
-import { computeSelector, resolveSelector, type TargetRef } from '@/src/core/selector';
-import { anchorRange, describeRange, resolveGeometry, type ResolvedAnnotation } from '@/src/anchor';
-import type {
-  Annotation,
-  ArrowAnnotation,
-  CalloutAnnotation,
-  HighlightAnnotation,
-  Point,
-  Rect,
-  TextAnchor,
-  TextAnnotation,
-  ToolKind,
-} from '@/src/core/model';
+import { describeRange, resolveGeometry } from '@/src/anchor';
+import { computeSelector } from '@/src/core/selector';
+import type { Annotation, Point, ToolKind } from '@/src/core/model';
+import { SVG_NS, SvgRenderer, type OverlaySettings } from './svg';
+import { elementOf, PageHitTester } from './hit-test';
+import {
+  AnchorEditor,
+  isDraggable,
+  type EditableAnnotation,
+  type EditHandle,
+  type EditState,
+} from './edit';
 
-// Imperative drawing overlay (SPEC §5.1). Plain TypeScript, not React. SVG-only:
-// annotations are content-anchored (text position + quote) and resolved to
-// absolute geometry at render time, so marks track the content across
-// scroll/resize/reflow. Five tools: callout, text, arrow, highlight, element.
-// Existing marks are editable: drag to move (callout/text/arrow endpoints),
-// double-click text to retype it.
-
-const SVG_NS = 'http://www.w3.org/2000/svg';
-const ARROW_MARKER = 'stm-arrowhead';
-const TEXT_PADDING = 4;
+// Imperative drawing overlay controller (SPEC §5.1). Plain TypeScript, not React.
+// It owns the DOM mount, the pointer-event state machine, annotation creation,
+// and render orchestration, delegating the cohesive pieces to: SvgRenderer
+// (geometry → SVG), PageHitTester (caret/element hit-testing), and AnchorEditor
+// (drag → updated annotation, including re-anchoring on drop). Five tools —
+// callout, text, arrow, highlight, element — plus the select tool (edit mode).
 
 export type OverlayState = 'idle' | 'drawing' | 'editing' | 'placing-text';
 
-type DraggableAnnotation = CalloutAnnotation | TextAnnotation | ArrowAnnotation;
-type EditableAnnotation = DraggableAnnotation | HighlightAnnotation;
-type EditHandle = 'from' | 'to' | 'start' | 'end' | 'move';
-
-interface EditState {
-  origin: EditableAnnotation;
-  handle: EditHandle;
-  start: Point;
-  current: Point;
-}
-
-const DRAGGABLE_KINDS = new Set<ToolKind>(['callout', 'text', 'arrow']);
 const HANDLE_NAMES = new Set(['from', 'to', 'start', 'end']);
-
-function isDraggable(annotation: Annotation): annotation is DraggableAnnotation {
-  return DRAGGABLE_KINDS.has(annotation.kind);
-}
-
-// Apply a drag delta to a draggable annotation: moving updates the offset(s);
-// dragging an arrow endpoint updates just that endpoint. (Highlights re-anchor
-// against the DOM instead — see Overlay.editedHighlight.)
-function applyEdit(
-  origin: DraggableAnnotation,
-  dx: number,
-  dy: number,
-  handle: EditHandle,
-): DraggableAnnotation {
-  if (origin.kind === 'arrow') {
-    const from =
-      handle === 'to' ? origin.from : { dx: origin.from.dx + dx, dy: origin.from.dy + dy };
-    const to = handle === 'from' ? origin.to : { dx: origin.to.dx + dx, dy: origin.to.dy + dy };
-    return { ...origin, from, to };
-  }
-  return { ...origin, offset: { dx: origin.offset.dx + dx, dy: origin.offset.dy + dy } };
-}
-
-export interface OverlaySettings {
-  strokeColor: string;
-  strokeWidth: number;
-  highlightColor: string;
-}
 
 export interface OverlayOptions {
   container: HTMLElement;
@@ -82,51 +37,15 @@ export interface OverlayOptions {
   elementFromPoint?: (doc: Document, x: number, y: number) => Element | null;
 }
 
-function svgEl<K extends keyof SVGElementTagNameMap>(
-  doc: Document,
-  tag: K,
-  attrs: Record<string, string>,
-): SVGElementTagNameMap[K] {
-  const el = doc.createElementNS(SVG_NS, tag);
-  for (const [name, value] of Object.entries(attrs)) el.setAttribute(name, value);
-  return el;
-}
-
-function elementOf(node: Node): Element | null {
-  return node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement;
-}
-
-function defaultCaretFromPoint(doc: Document, x: number, y: number): Range | null {
-  // The standard caretPositionFromPoint (supported in current Chromium and
-  // Firefox); we deliberately avoid the deprecated caretRangeFromPoint.
-  if (!('caretPositionFromPoint' in doc)) return null;
-  const position = doc.caretPositionFromPoint(x, y);
-  if (!position) return null;
-  const range = doc.createRange();
-  range.setStart(position.offsetNode, position.offset);
-  range.collapse(true);
-  return range;
-}
-
-// Expand a collapsed caret to cover one character, so a point anchor carries a
-// non-empty quote (disambiguated by its prefix/suffix context).
-function expandToChar(caret: Range): Range {
-  const range = caret.cloneRange();
-  const node = range.startContainer;
-  if (node.nodeType === Node.TEXT_NODE) {
-    const length = (node as Text).data.length;
-    if (range.startOffset < length) range.setEnd(node, range.startOffset + 1);
-    else if (range.startOffset > 0) range.setStart(node, range.startOffset - 1);
-  }
-  return range;
-}
-
 export class Overlay {
   private readonly doc: Document;
   private readonly root: HTMLDivElement;
   private readonly svg: SVGSVGElement;
   private readonly layer: SVGGElement;
   private readonly options: OverlayOptions;
+  private readonly renderer: SvgRenderer;
+  private readonly hitTester: PageHitTester;
+  private readonly editor: AnchorEditor;
   private readonly resizeObserver: ResizeObserver | null;
   private readonly mutationObserver: MutationObserver;
   private tool: ToolKind;
@@ -140,6 +59,7 @@ export class Overlay {
     this.options = options;
     this.tool = options.tool;
     this.doc = options.container.ownerDocument;
+    this.renderer = new SvgRenderer(this.doc, options.settings);
 
     this.root = this.doc.createElement('div');
     this.root.dataset['stmOverlay'] = 'true';
@@ -147,12 +67,15 @@ export class Overlay {
 
     this.svg = this.doc.createElementNS(SVG_NS, 'svg');
     this.svg.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;overflow:visible;';
-    this.svg.append(this.arrowMarkerDefs());
+    this.svg.append(this.renderer.markerDefs());
     this.layer = this.doc.createElementNS(SVG_NS, 'g');
     this.svg.append(this.layer);
 
     this.root.append(this.svg);
     options.container.append(this.root);
+
+    this.hitTester = new PageHitTester(this.root, this.doc, options);
+    this.editor = new AnchorEditor(this.doc, this.hitTester);
 
     this.applyToolPointerMode();
 
@@ -240,53 +163,6 @@ export class Overlay {
     return this.tool === 'select';
   }
 
-  private hostElement(): HTMLElement | null {
-    const rootNode = this.root.getRootNode();
-    return rootNode instanceof ShadowRoot && rootNode.host instanceof HTMLElement
-      ? rootNode.host
-      : null;
-  }
-
-  // Run a hit-test with our own UI made non-interactive, so points land on the
-  // page beneath the overlay. Shared by caret and element hit-testing.
-  private withPageHitTest<T>(hitTest: (doc: Document) => T): T {
-    const host = this.hostElement();
-    const previousRoot = this.root.style.pointerEvents;
-    const previousHost = host?.style.pointerEvents;
-    this.root.style.pointerEvents = 'none';
-    if (host) host.style.pointerEvents = 'none';
-    try {
-      return hitTest(this.doc);
-    } finally {
-      this.root.style.pointerEvents = previousRoot;
-      if (host) host.style.pointerEvents = previousHost ?? '';
-    }
-  }
-
-  // Caret in the page text under a point. Shared by point-tool creation and
-  // highlight-handle editing.
-  private caretRangeAt(point: Point): Range | null {
-    const caretFromPoint = this.options.caretFromPoint ?? defaultCaretFromPoint;
-    return this.withPageHitTest((doc) => caretFromPoint(doc, point.x, point.y));
-  }
-
-  // Anchor to the character at the caret (point-tool creation).
-  private caretAt(point: Point): { element: Element; range: Range } | undefined {
-    const caret = this.caretRangeAt(point);
-    if (!caret) return undefined;
-    const element = elementOf(caret.startContainer);
-    if (!element || this.hostElement()?.contains(element) === true) return undefined;
-    return { element, range: expandToChar(caret) };
-  }
-
-  // Resolve the topmost page element under a point (skipping our own UI).
-  private pageElementAt(point: Point): Element | null {
-    const resolve = this.options.elementFromPoint ?? ((doc, x, y) => doc.elementFromPoint(x, y));
-    const element = this.withPageHitTest((doc) => resolve(doc, point.x, point.y));
-    if (!element || this.hostElement()?.contains(element) === true) return null;
-    return element;
-  }
-
   // Find the existing mark (and arrow handle, if any) under an event.
   private markUnder(event: Event): { annotation: EditableAnnotation; handle: EditHandle } | null {
     const target = event.target;
@@ -353,7 +229,7 @@ export class Overlay {
       return;
     }
     if (this.tool === 'element' && this.state === 'idle') {
-      const hovered = this.pageElementAt(point);
+      const hovered = this.hitTester.pageElementAt(point);
       if (hovered !== this.hoveredElement) {
         this.hoveredElement = hovered;
         this.render();
@@ -363,7 +239,10 @@ export class Overlay {
 
   private readonly onPointerUp = (event: PointerEvent): void => {
     if (this.state === 'editing' && this.edit) {
-      const edited = this.editedAnnotation({ ...this.edit, current: this.pointFrom(event) }, true);
+      const edited = this.editor.editedAnnotation(
+        { ...this.edit, current: this.pointFrom(event) },
+        true,
+      );
       this.state = 'idle';
       this.edit = null;
       this.options.onUpdate?.(edited);
@@ -401,7 +280,7 @@ export class Overlay {
   }
 
   private createCallout(point: Point): void {
-    const anchor = this.caretAt(point);
+    const anchor = this.hitTester.caretAt(point);
     if (!anchor) return;
     this.options.onCreate({
       id: this.nextId(),
@@ -415,7 +294,7 @@ export class Overlay {
   }
 
   private placeText(point: Point): void {
-    const anchor = this.caretAt(point);
+    const anchor = this.hitTester.caretAt(point);
     if (!anchor) return;
     this.state = 'placing-text';
     const content = this.ask('');
@@ -433,7 +312,7 @@ export class Overlay {
   }
 
   private createElementComment(point: Point): void {
-    const element = this.pageElementAt(point);
+    const element = this.hitTester.pageElementAt(point);
     if (!element) return;
     this.hoveredElement = null;
     this.options.onCreate({
@@ -445,7 +324,7 @@ export class Overlay {
   }
 
   private createArrow(from: Point, to: Point): void {
-    const anchor = this.caretAt(to);
+    const anchor = this.hitTester.caretAt(to);
     if (!anchor) return;
     this.options.onCreate({
       id: this.nextId(),
@@ -480,115 +359,7 @@ export class Overlay {
   private draftFor(annotation: Annotation): Annotation {
     const edit = this.edit;
     if (edit?.origin.id !== annotation.id) return annotation;
-    return this.editedAnnotation(edit, false);
-  }
-
-  private editedAnnotation(edit: EditState, shouldReanchor: boolean): Annotation {
-    if (edit.origin.kind === 'highlight')
-      return this.editedHighlight(edit.origin, edit) ?? edit.origin;
-    if (shouldReanchor) {
-      const reanchored = this.reanchorDraggable(edit);
-      if (reanchored) return reanchored;
-    }
-    return applyEdit(
-      edit.origin,
-      edit.current.x - edit.start.x,
-      edit.current.y - edit.start.y,
-      edit.handle,
-    );
-  }
-
-  // On drop, re-bind a moved mark to the text under where it landed: re-anchor
-  // the callout/text point or the arrow head, recomputing offsets so the mark
-  // stays exactly where dropped. Returns null (→ keep the original anchor) when
-  // the drop point isn't over page text, or for an arrow tail (head unmoved).
-  private reanchorDraggable(edit: EditState): DraggableAnnotation | null {
-    const origin = edit.origin;
-    if (origin.kind === 'highlight') return null;
-    const base = this.anchorBase(origin);
-    if (!base) return null;
-    const dx = edit.current.x - edit.start.x;
-    const dy = edit.current.y - edit.start.y;
-
-    if (origin.kind === 'arrow') {
-      if (edit.handle === 'from') return null; // tail drag leaves the head anchor put
-      const head = { x: base.x + origin.to.dx + dx, y: base.y + origin.to.dy + dy };
-      const tailShift = edit.handle === 'to' ? 0 : 1; // 'move' shifts the tail too
-      const tail = {
-        x: base.x + origin.from.dx + dx * tailShift,
-        y: base.y + origin.from.dy + dy * tailShift,
-      };
-      const re = this.anchorAtPoint(head);
-      if (!re) return null;
-      return {
-        ...origin,
-        target: re.target,
-        anchor: re.anchor,
-        from: { dx: tail.x - re.base.x, dy: tail.y - re.base.y },
-        to: { dx: head.x - re.base.x, dy: head.y - re.base.y },
-      };
-    }
-
-    // callout / text: the mark itself is the anchor point.
-    const at = { x: base.x + origin.offset.dx + dx, y: base.y + origin.offset.dy + dy };
-    const re = this.anchorAtPoint(at);
-    if (!re) return null;
-    return {
-      ...origin,
-      target: re.target,
-      anchor: re.anchor,
-      offset: { dx: at.x - re.base.x, dy: at.y - re.base.y },
-    };
-  }
-
-  // Top-left of the character a mark is currently anchored to (viewport coords).
-  private anchorBase(annotation: DraggableAnnotation): Point | null {
-    const element = resolveSelector(annotation.target, this.doc) ?? this.doc.body;
-    const range = anchorRange(element, annotation.anchor);
-    if (!range) return null;
-    const box = range.getBoundingClientRect();
-    return { x: box.left, y: box.top };
-  }
-
-  // Anchor (target + TextAnchor + char box) for the character under a point.
-  private anchorAtPoint(
-    point: Point,
-  ): { target: TargetRef; anchor: TextAnchor; base: Point } | null {
-    const hit = this.caretAt(point);
-    if (!hit) return null;
-    const box = hit.range.getBoundingClientRect();
-    return {
-      target: computeSelector(hit.element),
-      anchor: describeRange(hit.element, hit.range),
-      base: { x: box.left, y: box.top },
-    };
-  }
-
-  // Re-anchor a highlight: rebuild its text range from the fixed endpoint to the
-  // caret under the dragged handle, then describe it as a fresh TextAnchor.
-  private editedHighlight(
-    origin: HighlightAnnotation,
-    edit: EditState,
-  ): HighlightAnnotation | null {
-    const element = resolveSelector(origin.target, this.doc) ?? this.doc.body;
-    const current = anchorRange(element, origin.anchor);
-    if (!current) return null;
-    const caret = this.caretRangeAt(edit.current);
-    if (!caret) return null;
-    const range = this.doc.createRange();
-    try {
-      if (edit.handle === 'start') {
-        range.setStart(caret.startContainer, caret.startOffset);
-        range.setEnd(current.endContainer, current.endOffset);
-      } else {
-        range.setStart(current.startContainer, current.startOffset);
-        range.setEnd(caret.startContainer, caret.startOffset);
-      }
-    } catch {
-      return null; // boundaries crossed over — ignore this move
-    }
-    if (range.collapsed || !element.contains(range.commonAncestorContainer)) return null;
-    return { ...origin, anchor: describeRange(element, range) };
+    return this.editor.editedAnnotation(edit, false);
   }
 
   private render(): void {
@@ -596,180 +367,25 @@ export class Overlay {
     for (const annotation of this.committed) {
       const resolved = resolveGeometry(this.draftFor(annotation), this.doc);
       if (!resolved) continue;
-      const node = this.toSvg(resolved);
+      const node = this.renderer.toSvg(resolved, this.isEditing);
       node.dataset['stmId'] = resolved.id;
       this.layer.append(node);
       // The text chip's background must be measured once the label is in the DOM.
-      if (resolved.kind === 'text' && node instanceof SVGGElement) this.sizeTextBackground(node);
+      if (resolved.kind === 'text' && node instanceof SVGGElement) {
+        this.renderer.sizeTextBackground(node);
+      }
     }
     if (this.arrowDraft) {
-      this.layer.append(this.arrowSvg(this.arrowDraft.from, this.arrowDraft.to));
+      this.layer.append(this.renderer.arrowSvg(this.arrowDraft.from, this.arrowDraft.to));
     }
     if (this.tool === 'element' && this.hoveredElement) {
       const box = this.hoveredElement.getBoundingClientRect();
       this.layer.append(
-        this.dashedRectSvg({ x: box.left, y: box.top, width: box.width, height: box.height }, true),
+        this.renderer.dashedRectSvg(
+          { x: box.left, y: box.top, width: box.width, height: box.height },
+          true,
+        ),
       );
-    }
-  }
-
-  // The dashed outline used for element comments and the element-hover preview.
-  private dashedRectSvg(box: Rect, isPreview = false): SVGElement {
-    const rect = svgEl(this.doc, 'rect', {
-      x: String(box.x),
-      y: String(box.y),
-      width: String(box.width),
-      height: String(box.height),
-      rx: '2',
-      fill: 'none',
-      stroke: this.options.settings.strokeColor,
-      'stroke-width': String(this.options.settings.strokeWidth),
-      'stroke-dasharray': '5 3',
-    });
-    if (isPreview) rect.setAttribute('stroke-opacity', '0.5');
-    return rect;
-  }
-
-  private sizeTextBackground(group: SVGGElement): void {
-    const label = group.querySelector('text');
-    const background = group.querySelector('rect');
-    if (!label || !background) return;
-    let box: DOMRect;
-    try {
-      box = label.getBBox();
-    } catch {
-      return; // no layout engine (e.g. tests) — leave the background unsized
-    }
-    background.setAttribute('x', String(box.x - TEXT_PADDING));
-    background.setAttribute('y', String(box.y - TEXT_PADDING));
-    background.setAttribute('width', String(box.width + TEXT_PADDING * 2));
-    background.setAttribute('height', String(box.height + TEXT_PADDING * 2));
-  }
-
-  private arrowMarkerDefs(): SVGDefsElement {
-    const defs = this.doc.createElementNS(SVG_NS, 'defs');
-    const marker = svgEl(this.doc, 'marker', {
-      id: ARROW_MARKER,
-      viewBox: '0 0 10 10',
-      refX: '8',
-      refY: '5',
-      markerWidth: '7',
-      markerHeight: '7',
-      orient: 'auto-start-reverse',
-    });
-    marker.append(
-      svgEl(this.doc, 'path', { d: 'M0 0L10 5L0 10z', fill: this.options.settings.strokeColor }),
-    );
-    defs.append(marker);
-    return defs;
-  }
-
-  private handleSvg(point: Point, handle: 'from' | 'to' | 'start' | 'end'): SVGElement {
-    const circle = svgEl(this.doc, 'circle', {
-      cx: String(point.x),
-      cy: String(point.y),
-      r: '5',
-      fill: this.options.settings.strokeColor,
-      'fill-opacity': '0.6',
-    });
-    circle.dataset['stmHandle'] = handle;
-    return circle;
-  }
-
-  private arrowSvg(from: Point, to: Point): SVGElement {
-    return svgEl(this.doc, 'line', {
-      x1: String(from.x),
-      y1: String(from.y),
-      x2: String(to.x),
-      y2: String(to.y),
-      stroke: this.options.settings.strokeColor,
-      'stroke-width': String(this.options.settings.strokeWidth),
-      'marker-end': `url(#${ARROW_MARKER})`,
-    });
-  }
-
-  private toSvg(annotation: ResolvedAnnotation): SVGElement {
-    const stroke = this.options.settings.strokeColor;
-    switch (annotation.kind) {
-      case 'callout': {
-        const group = svgEl(this.doc, 'g', {});
-        group.append(
-          svgEl(this.doc, 'circle', {
-            cx: String(annotation.at.x),
-            cy: String(annotation.at.y),
-            r: '14',
-            fill: stroke,
-          }),
-        );
-        const label = svgEl(this.doc, 'text', {
-          x: String(annotation.at.x),
-          y: String(annotation.at.y),
-          fill: '#ffffff',
-          'text-anchor': 'middle',
-          'dominant-baseline': 'central',
-        });
-        label.textContent = String(annotation.index);
-        group.append(label);
-        return group;
-      }
-      case 'text': {
-        // A chip: a background rect (for legibility over busy backgrounds) plus
-        // the label. The background goes transparent on hover (see panel.css).
-        const group = svgEl(this.doc, 'g', { class: 'stm-text' });
-        const background = svgEl(this.doc, 'rect', {
-          class: 'stm-text__bg',
-          rx: '3',
-          fill: stroke,
-        });
-        const label = svgEl(this.doc, 'text', {
-          class: 'stm-text__label',
-          x: String(annotation.at.x + TEXT_PADDING),
-          y: String(annotation.at.y + TEXT_PADDING),
-          fill: '#ffffff',
-          'dominant-baseline': 'hanging',
-        });
-        label.textContent = annotation.content;
-        group.append(background, label);
-        return group;
-      }
-      case 'arrow': {
-        const group = svgEl(this.doc, 'g', {});
-        group.append(this.arrowSvg(annotation.from, annotation.to));
-        if (this.isEditing) {
-          group.append(this.handleSvg(annotation.from, 'from'));
-          group.append(this.handleSvg(annotation.to, 'to'));
-        }
-        return group;
-      }
-      case 'highlight': {
-        const group = svgEl(this.doc, 'g', {});
-        for (const rect of annotation.rects) {
-          group.append(
-            svgEl(this.doc, 'rect', {
-              x: String(rect.x),
-              y: String(rect.y),
-              width: String(rect.width),
-              height: String(rect.height),
-              fill: this.options.settings.highlightColor,
-              'fill-opacity': '0.35',
-            }),
-          );
-        }
-        // Handles at the start (first rect) and end (last rect) to re-anchor it,
-        // shown only in the select (edit) tool.
-        const first = annotation.rects[0];
-        const last = annotation.rects.at(-1);
-        if (this.isEditing && first) {
-          group.append(this.handleSvg({ x: first.x, y: first.y }, 'start'));
-        }
-        if (this.isEditing && last) {
-          group.append(this.handleSvg({ x: last.x + last.width, y: last.y + last.height }, 'end'));
-        }
-        return group;
-      }
-      case 'element': {
-        return this.dashedRectSvg(annotation.rect);
-      }
     }
   }
 }
