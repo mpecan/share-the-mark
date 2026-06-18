@@ -8,6 +8,7 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 use tiny_http::{Header, Method, Request, Response, Server};
 
+use crate::requests::Requests;
 use crate::store::{new_id, now_millis, Meta, Store};
 
 /// The JSON the extension POSTs to `/brief`.
@@ -41,9 +42,10 @@ pub fn port_of(server: &Server) -> u16 {
 
 /// Serve until `running` is cleared (by Ctrl-C in the foreground, or `/shutdown`).
 pub fn run(server: Server, store: Store, running: Arc<AtomicBool>) -> Result<()> {
+    let mut requests = Requests::default();
     while running.load(Ordering::SeqCst) {
         match server.recv_timeout(Duration::from_millis(200)) {
-            Ok(Some(request)) => handle(request, &store, &running),
+            Ok(Some(request)) => handle(request, &store, &mut requests, &running),
             Ok(None) => continue,
             Err(e) => return Err(anyhow!("server error: {e}")),
         }
@@ -51,7 +53,7 @@ pub fn run(server: Server, store: Store, running: Arc<AtomicBool>) -> Result<()>
     Ok(())
 }
 
-fn handle(mut request: Request, store: &Store, running: &Arc<AtomicBool>) {
+fn handle(mut request: Request, store: &Store, requests: &mut Requests, running: &Arc<AtomicBool>) {
     let method = request.method().clone();
     let url = request.url().to_string();
     let response = match (&method, url.as_str()) {
@@ -60,7 +62,11 @@ fn handle(mut request: Request, store: &Store, running: &Arc<AtomicBool>) {
             200,
             json!({ "ok": true, "version": env!("CARGO_PKG_VERSION") }),
         ),
-        (Method::Post, "/brief") => ingest(&mut request, store),
+        (Method::Post, "/brief") => ingest(&mut request, store, requests),
+        (Method::Post, "/request") => create_request(&mut request, requests),
+        (Method::Get, path) if path.starts_with("/request/") => {
+            request_status(&path["/request/".len()..], store, requests)
+        }
         (Method::Post, "/shutdown") => {
             running.store(false, Ordering::SeqCst);
             json_response(200, json!({ "ok": true }))
@@ -70,7 +76,11 @@ fn handle(mut request: Request, store: &Store, running: &Arc<AtomicBool>) {
     let _ = request.respond(response);
 }
 
-fn ingest(request: &mut Request, store: &Store) -> Response<Cursor<Vec<u8>>> {
+fn ingest(
+    request: &mut Request,
+    store: &Store,
+    requests: &mut Requests,
+) -> Response<Cursor<Vec<u8>>> {
     let mut body = String::new();
     if request.as_reader().read_to_string(&mut body).is_err() {
         return json_response(400, json!({ "error": "unreadable body" }));
@@ -93,9 +103,58 @@ fn ingest(request: &mut Request, store: &Store) -> Response<Cursor<Vec<u8>>> {
         received_at,
         read: false,
     };
-    match store.save(&brief.markdown, &png, &meta) {
-        Ok(()) => json_response(200, json!({ "id": id })),
-        Err(e) => json_response(500, json!({ "error": e.to_string() })),
+    if let Err(e) = store.save(&brief.markdown, &png, &meta) {
+        return json_response(500, json!({ "error": e.to_string() }));
+    }
+    // If an agent is waiting for this origin, route the brief to it (and mark it
+    // read — it went straight to the agent rather than the pending queue).
+    if requests.fulfill(&meta.url, &id) {
+        let _ = store.mark_read(&id);
+    }
+    json_response(200, json!({ "id": id }))
+}
+
+#[derive(Deserialize)]
+struct RequestIn {
+    url: String,
+}
+
+fn create_request(request: &mut Request, requests: &mut Requests) -> Response<Cursor<Vec<u8>>> {
+    let mut body = String::new();
+    if request.as_reader().read_to_string(&mut body).is_err() {
+        return json_response(400, json!({ "error": "unreadable body" }));
+    }
+    let parsed: RequestIn = match serde_json::from_str(&body) {
+        Ok(value) => value,
+        Err(e) => return json_response(400, json!({ "error": format!("bad json: {e}") })),
+    };
+    let id = requests.create(&parsed.url, now_millis());
+    json_response(200, json!({ "id": id }))
+}
+
+fn request_status(id: &str, store: &Store, requests: &Requests) -> Response<Cursor<Vec<u8>>> {
+    let Some(request) = requests.get(id) else {
+        return json_response(404, json!({ "status": "unknown" }));
+    };
+    let Some(brief_id) = &request.brief_id else {
+        return json_response(200, json!({ "status": "pending" }));
+    };
+    match store.get(brief_id) {
+        Ok(Some(brief)) => json_response(
+            200,
+            json!({
+                "status": "fulfilled",
+                "brief": {
+                    "id": brief.meta.id,
+                    "url": brief.meta.url,
+                    "title": brief.meta.title,
+                    "capturedAt": brief.meta.captured_at,
+                    "markdown": brief.markdown,
+                    "screenshot": brief.screenshot.display().to_string(),
+                }
+            }),
+        ),
+        _ => json_response(200, json!({ "status": "fulfilled" })),
     }
 }
 
@@ -182,6 +241,57 @@ mod tests {
         assert_eq!(brief.markdown, "# Brief\n");
         assert_eq!(brief.meta.captured_at, 5);
         assert_eq!(std::fs::read(brief.screenshot).unwrap(), b"PNG");
+
+        ureq::post(&format!("{base}/shutdown")).call().unwrap();
+        worker.join().unwrap();
+    }
+
+    #[test]
+    fn fulfills_an_open_request_with_a_same_origin_brief() {
+        let dir = tempdir().unwrap();
+        let store = Store::new(dir.path().to_path_buf());
+        let server = bind(0).unwrap();
+        let port = port_of(&server);
+        let running = Arc::new(AtomicBool::new(true));
+        let worker = {
+            let running = running.clone();
+            thread::spawn(move || run(server, store, running).unwrap())
+        };
+        let base = format!("http://127.0.0.1:{port}");
+
+        // Agent registers a request for an origin.
+        let req = ureq::post(&format!("{base}/request"))
+            .send_json(json!({ "url": "https://x.test/checkout" }))
+            .unwrap()
+            .into_json::<Value>()
+            .unwrap();
+        let request_id = req["id"].as_str().unwrap().to_string();
+
+        // Not fulfilled yet.
+        let pending = ureq::get(&format!("{base}/request/{request_id}"))
+            .call()
+            .unwrap()
+            .into_json::<Value>()
+            .unwrap();
+        assert_eq!(pending["status"], "pending");
+
+        // A same-origin brief arrives ("Send to agent").
+        ureq::post(&format!("{base}/brief"))
+            .send_json(json!({
+                "markdown": "# Fix it\n",
+                "meta": { "url": "https://x.test/cart", "title": "Cart", "capturedAt": 1 },
+                "imageBase64": b64(b"PNG"),
+            }))
+            .unwrap();
+
+        // Now fulfilled, carrying the brief.
+        let done = ureq::get(&format!("{base}/request/{request_id}"))
+            .call()
+            .unwrap()
+            .into_json::<Value>()
+            .unwrap();
+        assert_eq!(done["status"], "fulfilled");
+        assert_eq!(done["brief"]["markdown"], "# Fix it\n");
 
         ureq::post(&format!("{base}/shutdown")).call().unwrap();
         worker.join().unwrap();

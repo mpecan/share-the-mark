@@ -512,6 +512,10 @@ capture/drawing/model) plus the cross-platform Rust **`stm` CLI** under `cli/`:
   plus a bundled **Claude Code skill** (`stm skill install`); on send, the panel
   surfaces a handoff token (`stm show <id>`) to paste to the agent. (Chosen over
   MCP for tool-agnostic simplicity.)
+- Agent-initiated: `stm request <url>` registers an open request, opens the page,
+  and **blocks** until a same-origin brief is sent (daemon correlates on
+  `POST /brief`, marks it read, fulfills the request via short-poll) — the command
+  returning wakes a backgrounded agent. Auto-starts the daemon.
 
 Still deferred: `FileSystemSink` (File System Access API), native side panel,
 Firefox e2e via `web-ext`.

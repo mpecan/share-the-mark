@@ -20,6 +20,15 @@ pub fn is_up(port: u16) -> bool {
         .is_ok()
 }
 
+/// Ensure a daemon is running on `port`, starting one in the background if not.
+pub fn ensure(port: u16, dir: &Path) -> Result<()> {
+    if is_up(port) {
+        Ok(())
+    } else {
+        start(port, dir)
+    }
+}
+
 pub fn stop(port: u16) -> Result<()> {
     if !is_up(port) {
         return Err(anyhow!("no daemon responding on port {port}"));

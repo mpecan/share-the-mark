@@ -53,6 +53,20 @@ pub enum Command {
         #[arg(long)]
         dir: Option<PathBuf>,
     },
+    /// Open a page for annotation and wait for the user's feedback (for agents).
+    Request {
+        /// URL to open in the browser for annotation.
+        url: String,
+        #[arg(long)]
+        json: bool,
+        /// How long to wait for feedback before giving up.
+        #[arg(long, default_value_t = 600)]
+        timeout: u64,
+        #[arg(long)]
+        port: Option<u16>,
+        #[arg(long)]
+        dir: Option<PathBuf>,
+    },
     /// Manage the bundled Claude Code skill.
     Skill {
         #[command(subcommand)]

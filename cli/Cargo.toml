@@ -21,6 +21,8 @@ directories = "5"
 ctrlc = "3"
 # Blocking HTTP client for daemon lifecycle calls (loopback only, no TLS needed).
 ureq = { version = "2", default-features = false, features = ["json"] }
+# Cross-platform "open this URL in the default browser" for `stm request`.
+open = "5"
 
 [dev-dependencies]
 tempfile = "3"

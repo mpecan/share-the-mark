@@ -108,7 +108,12 @@ Paste that to your agent (or just ask it about your marks — the installed skil
 teaches it to run `stm pending` / `stm show <id>`). The agent reads the Markdown
 (element selectors + your comments) and the screenshot, and acts on the feedback.
 
-CLI: `stm pending | list | show <id> | serve | start | stop | status | skill install`.
+**Agent-initiated requests.** An agent can also ask _you_ for feedback:
+`stm request <url>` opens the page in your browser and blocks until you annotate
+it and click **Send to agent**, then returns the brief — which wakes a
+backgrounded agent (e.g. Claude Code) so it can act on your comments.
+
+CLI: `stm request <url> | pending | list | show <id> | serve | start | stop | status | skill install`.
 Config via flags or `STM_PORT` / `STM_DIR`.
 
 ## Permissions
