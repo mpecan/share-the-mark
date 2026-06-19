@@ -39,6 +39,11 @@ jobs:
       - name: Build (Chrome)
         run: pnpm build
 
+      # Guards the activeTab least-privilege posture on the *production* build (the
+      # e2e step below rebuilds with broad host into a separate output dir).
+      - name: Check permissions
+        run: pnpm check:perms
+
       - name: Build (Firefox)
         run: pnpm build:firefox
 
