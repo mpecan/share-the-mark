@@ -1,6 +1,13 @@
 import { describeRange, resolveGeometry } from '@/src/anchor';
-import { computeSelector } from '@/src/core/selector';
-import type { Annotation, Point, ToolKind } from '@/src/core/model';
+import { computeSelector, type TargetRef } from '@/src/core/selector';
+import {
+  pointOffset,
+  type AnchoredPoint,
+  type Annotation,
+  type Point,
+  type TextAnchor,
+  type ToolKind,
+} from '@/src/core/model';
 import { SVG_NS, SvgRenderer, type OverlaySettings } from './svg';
 import { elementOf, PageHitTester } from './hit-test';
 import {
@@ -274,28 +281,43 @@ export class Overlay {
   };
 
   // Offset (CSS px) from the anchored character's box to where the user clicked.
-  private offsetFrom(range: Range, point: Point): { dx: number; dy: number } {
+  private offsetFrom(range: Range, point: Point): AnchoredPoint {
     const box = range.getBoundingClientRect();
-    return { dx: point.x - box.left, dy: point.y - box.top };
+    return pointOffset(point, { x: box.left, y: box.top });
+  }
+
+  // The shared spine of every point-anchored mark (callout/text/arrow): hit-test
+  // the caret under `point`, then build the common fields — target, text anchor,
+  // and the offset of `point` from the anchored character's box. Returns null when
+  // the point isn't over page text, so callers no-op. Per-kind extras (a callout's
+  // index, the text note, an arrow's tail) are spread in by the caller.
+  private pointAnchoredFields(
+    point: Point,
+  ): { target: TargetRef; anchor: TextAnchor; offset: AnchoredPoint } | null {
+    const anchor = this.hitTester.caretAt(point);
+    if (!anchor) return null;
+    return {
+      target: computeSelector(anchor.element),
+      anchor: describeRange(anchor.element, anchor.range),
+      offset: this.offsetFrom(anchor.range, point),
+    };
   }
 
   private createCallout(point: Point): void {
-    const anchor = this.hitTester.caretAt(point);
-    if (!anchor) return;
+    const fields = this.pointAnchoredFields(point);
+    if (!fields) return;
     this.options.onCreate({
       id: this.nextId(),
       kind: 'callout',
       createdAt: this.timestamp(),
       index: 0,
-      target: computeSelector(anchor.element),
-      anchor: describeRange(anchor.element, anchor.range),
-      offset: this.offsetFrom(anchor.range, point),
+      ...fields,
     });
   }
 
   private placeText(point: Point): void {
-    const anchor = this.hitTester.caretAt(point);
-    if (!anchor) return;
+    const fields = this.pointAnchoredFields(point);
+    if (!fields) return;
     this.state = 'placing-text';
     const note = this.ask('');
     this.state = 'idle';
@@ -305,9 +327,7 @@ export class Overlay {
       kind: 'text',
       createdAt: this.timestamp(),
       note,
-      target: computeSelector(anchor.element),
-      anchor: describeRange(anchor.element, anchor.range),
-      offset: this.offsetFrom(anchor.range, point),
+      ...fields,
     });
   }
 
@@ -324,16 +344,15 @@ export class Overlay {
   }
 
   private createArrow(from: Point, to: Point): void {
-    const anchor = this.hitTester.caretAt(to);
-    if (!anchor) return;
+    // The head (`to`) is the anchor point; the tail is stored relative to it.
+    const fields = this.pointAnchoredFields(to);
+    if (!fields) return;
     this.options.onCreate({
       id: this.nextId(),
       kind: 'arrow',
       createdAt: this.timestamp(),
-      target: computeSelector(anchor.element),
-      anchor: describeRange(anchor.element, anchor.range),
-      from: this.offsetFrom(anchor.range, from),
-      to: this.offsetFrom(anchor.range, to),
+      ...fields,
+      tail: pointOffset(from, to),
     });
   }
 

@@ -4,11 +4,11 @@ import type { TargetRef } from '@/src/core/selector';
 // browser-free: ids/timestamps are supplied by callers (the overlay), so this
 // module stays deterministic and exhaustively testable.
 //
-// Annotations are anchored to the DOM, not to viewport coordinates: markers and
-// arrows store an offset from their target element's box, highlights store a
-// character range within their target element's text. Absolute positions are
-// derived at render time from the live element, so marks track the content
-// across scroll/resize/reflow.
+// Annotations are anchored to the DOM, not to viewport coordinates: point marks
+// (callout/text/arrow) store an offset from the anchored character's box,
+// highlights store a character range within their target element's text. Absolute
+// positions are derived at render time from the live element, so marks track the
+// content across scroll/resize/reflow.
 
 // 'select' is the edit mode (move/resize existing marks), not a drawing tool.
 export type ToolKind = 'select' | 'callout' | 'text' | 'arrow' | 'highlight' | 'element';
@@ -64,25 +64,34 @@ export interface TextAnchoredBase extends AnnotationBase {
   anchor: TextAnchor;
 }
 
-export interface CalloutAnnotation extends TextAnchoredBase {
+/**
+ * A point-anchored mark — callout, text, arrow. All three are the same shape: a
+ * single anchor point (`offset` from the anchored character's box). The mark's
+ * position is derived from that one point at render time, so they share one
+ * creation, resolution, and re-anchoring path (`src/anchor`, `src/overlay/edit`).
+ * Per-kind extras (a callout's number, an arrow's tail) hang off this base.
+ */
+export interface PointAnchoredBase extends TextAnchoredBase {
+  offset: AnchoredPoint;
+}
+
+export interface CalloutAnnotation extends PointAnchoredBase {
   kind: 'callout';
   /** Auto-numbered, 1-based, gap-free — owned by the reducer, never by callers. */
   index: number;
-  offset: AnchoredPoint;
 }
 
-export interface TextAnnotation extends TextAnchoredBase {
+export interface TextAnnotation extends PointAnchoredBase {
   kind: 'text';
   // The on-page text is the annotation's `note` (AnnotationBase) — one string
   // shown both in the overlay and the changelog panel, editable from either.
-  offset: AnchoredPoint;
 }
 
-export interface ArrowAnnotation extends TextAnchoredBase {
+export interface ArrowAnnotation extends PointAnchoredBase {
   kind: 'arrow';
-  /** Both endpoints as offsets from the anchored character's box. */
-  from: AnchoredPoint;
-  to: AnchoredPoint;
+  // The arrow's head is the anchor point (`offset`); the tail is a vector
+  // measured *from the head*, so re-anchoring the head carries the tail with it.
+  tail: AnchoredPoint;
 }
 
 export interface HighlightAnnotation extends TextAnchoredBase {

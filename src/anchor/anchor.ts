@@ -1,5 +1,5 @@
 import { resolveSelector } from '@/src/core/selector';
-import type { Annotation, Point, Rect } from '@/src/core/model';
+import type { AnchoredPoint, Annotation, Point, Rect } from '@/src/core/model';
 import { anchorRange } from './text-anchor';
 
 // Resolve a content-anchored annotation to absolute viewport geometry by reading
@@ -31,10 +31,15 @@ export function resolveGeometry(annotation: Annotation, doc: Document): Resolved
   const range = anchorRange(element ?? doc.body, annotation.anchor);
   if (!range) return null;
 
+  // The reference frame every point-anchored mark measures its offset from. Today
+  // that origin is the anchored character's box (text → body fallback handled
+  // above); this `at` is the single seam where a future text → element → body
+  // anchoring scheme would choose a different origin per mark. `plus` adds a
+  // second offset in the same frame (an arrow's head-relative tail).
   const box = range.getBoundingClientRect();
-  const at = (offset: { dx: number; dy: number }): Point => ({
-    x: box.left + offset.dx,
-    y: box.top + offset.dy,
+  const at = (offset: AnchoredPoint, plus?: AnchoredPoint): Point => ({
+    x: box.left + offset.dx + (plus?.dx ?? 0),
+    y: box.top + offset.dy + (plus?.dy ?? 0),
   });
 
   switch (annotation.kind) {
@@ -55,7 +60,13 @@ export function resolveGeometry(annotation: Annotation, doc: Document): Resolved
       };
     }
     case 'arrow': {
-      return { id: annotation.id, kind: 'arrow', from: at(annotation.from), to: at(annotation.to) };
+      // The head is the anchor point; the tail is a vector from it.
+      return {
+        id: annotation.id,
+        kind: 'arrow',
+        from: at(annotation.offset, annotation.tail),
+        to: at(annotation.offset),
+      };
     }
     case 'highlight': {
       const rects = [...range.getClientRects()].map((rect) => toRect(rect));
