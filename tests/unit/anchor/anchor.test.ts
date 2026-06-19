@@ -64,8 +64,8 @@ describe('resolveGeometry', () => {
       createdAt: 0,
       target: targetFor('#el', 'p'),
       anchor: anchorFor('brown'),
-      from: { dx: 3, dy: 4 },
-      to: { dx: 0, dy: 0 },
+      offset: { dx: 0, dy: 0 }, // the head, at the anchored char's box
+      tail: { dx: 3, dy: 4 }, // relative to the head
     };
     expect(resolveGeometry(annotation, document)).toMatchObject({
       kind: 'arrow',

@@ -1,14 +1,16 @@
 import { computeSelector, resolveSelector, type TargetRef } from '@/src/core/selector';
 import { anchorRange, describeRange } from '@/src/anchor';
-import type {
-  Annotation,
-  ArrowAnnotation,
-  CalloutAnnotation,
-  HighlightAnnotation,
-  Point,
-  TextAnchor,
-  TextAnnotation,
-  ToolKind,
+import {
+  pointOffset,
+  shiftOffset,
+  type Annotation,
+  type ArrowAnnotation,
+  type CalloutAnnotation,
+  type HighlightAnnotation,
+  type Point,
+  type TextAnchor,
+  type TextAnnotation,
+  type ToolKind,
 } from '@/src/core/model';
 import type { PageHitTester } from './hit-test';
 
@@ -33,9 +35,11 @@ export function isDraggable(annotation: Annotation): annotation is DraggableAnno
   return DRAGGABLE_KINDS.has(annotation.kind);
 }
 
-// Apply a drag delta to a draggable annotation: moving updates the offset(s);
-// dragging an arrow endpoint updates just that endpoint. (Highlights re-anchor
-// against the DOM instead — see AnchorEditor.editedHighlight.)
+// Apply a drag delta to a draggable annotation. Callout/text and a whole-arrow
+// 'move' just shift `offset` (an arrow's tail is head-relative, so it rides
+// along). The arrow-only handles are the two-endpoint residue: 'to' moves the
+// head and counter-shifts the tail to leave it put; 'from' moves only the tail.
+// (Highlights re-anchor against the DOM instead — see AnchorEditor.editedHighlight.)
 export function applyEdit(
   origin: DraggableAnnotation,
   dx: number,
@@ -43,12 +47,15 @@ export function applyEdit(
   handle: EditHandle,
 ): DraggableAnnotation {
   if (origin.kind === 'arrow') {
-    const from =
-      handle === 'to' ? origin.from : { dx: origin.from.dx + dx, dy: origin.from.dy + dy };
-    const to = handle === 'from' ? origin.to : { dx: origin.to.dx + dx, dy: origin.to.dy + dy };
-    return { ...origin, from, to };
+    if (handle === 'from') return { ...origin, tail: shiftOffset(origin.tail, dx, dy) };
+    if (handle === 'to')
+      return {
+        ...origin,
+        offset: shiftOffset(origin.offset, dx, dy),
+        tail: shiftOffset(origin.tail, -dx, -dy),
+      };
   }
-  return { ...origin, offset: { dx: origin.offset.dx + dx, dy: origin.offset.dy + dy } };
+  return { ...origin, offset: shiftOffset(origin.offset, dx, dy) };
 }
 
 export class AnchorEditor {
@@ -82,40 +89,26 @@ export class AnchorEditor {
   private reanchorDraggable(edit: EditState): DraggableAnnotation | null {
     const origin = edit.origin;
     if (origin.kind === 'highlight') return null;
+    // Dragging an arrow's tail leaves the head anchored where it was.
+    if (origin.kind === 'arrow' && edit.handle === 'from') return null;
     const base = this.anchorBase(origin);
     if (!base) return null;
     const dx = edit.current.x - edit.start.x;
     const dy = edit.current.y - edit.start.y;
 
-    if (origin.kind === 'arrow') {
-      if (edit.handle === 'from') return null; // tail drag leaves the head anchor put
-      const head = { x: base.x + origin.to.dx + dx, y: base.y + origin.to.dy + dy };
-      const tailShift = edit.handle === 'to' ? 0 : 1; // 'move' shifts the tail too
-      const tail = {
-        x: base.x + origin.from.dx + dx * tailShift,
-        y: base.y + origin.from.dy + dy * tailShift,
-      };
-      const re = this.anchorAtPoint(head);
-      if (!re) return null;
-      return {
-        ...origin,
-        target: re.target,
-        anchor: re.anchor,
-        from: { dx: tail.x - re.base.x, dy: tail.y - re.base.y },
-        to: { dx: head.x - re.base.x, dy: head.y - re.base.y },
-      };
-    }
-
-    // callout / text: the mark itself is the anchor point.
+    // The anchor point is `offset` for every mark — the arrow's head, the mark
+    // itself otherwise. Re-bind it to the text under where it landed.
     const at = { x: base.x + origin.offset.dx + dx, y: base.y + origin.offset.dy + dy };
     const re = this.anchorAtPoint(at);
     if (!re) return null;
-    return {
-      ...origin,
-      target: re.target,
-      anchor: re.anchor,
-      offset: { dx: at.x - re.base.x, dy: at.y - re.base.y },
-    };
+    const offset = pointOffset(at, re.base);
+    if (origin.kind === 'arrow') {
+      // The head moved by the drag; a 'to' drag kept the tail put, so its
+      // head-relative vector gains -(dx,dy). A 'move' carried the tail along.
+      const tail = edit.handle === 'to' ? shiftOffset(origin.tail, -dx, -dy) : origin.tail;
+      return { ...origin, target: re.target, anchor: re.anchor, offset, tail };
+    }
+    return { ...origin, target: re.target, anchor: re.anchor, offset };
   }
 
   // Top-left of the character a mark is currently anchored to (viewport coords).

@@ -93,7 +93,7 @@ describe('Overlay — click tools', () => {
 });
 
 describe('Overlay — arrow', () => {
-  it('anchors to the head char and stores both endpoint offsets', () => {
+  it('anchors to the head char and stores the head offset plus a relative tail', () => {
     const overlay = makeOverlay({ tool: 'arrow' });
     pointer(overlay, 'pointerdown', 10, 10);
     expect(overlay.getState()).toBe('drawing');
@@ -102,8 +102,8 @@ describe('Overlay — arrow', () => {
     expect(overlay.getState()).toBe('idle');
     expect(created[0]).toMatchObject({
       kind: 'arrow',
-      from: { dx: 10, dy: 10 },
-      to: { dx: 40, dy: 30 },
+      offset: { dx: 40, dy: 30 }, // the head (drag end), at the anchored char's box
+      tail: { dx: -30, dy: -20 }, // the start, relative to the head
       anchor: { exact: 'q' },
     });
   });
@@ -199,8 +199,8 @@ describe('Overlay — rendering', () => {
         id: 'a',
         kind: 'arrow',
         createdAt: 0,
-        from: { dx: 0, dy: 0 },
-        to: { dx: 4, dy: 4 },
+        offset: { dx: 4, dy: 4 },
+        tail: { dx: -4, dy: -4 },
         target: targetFor('#para', 'p'),
         anchor: anchorOver('brown'),
       },

@@ -6,10 +6,11 @@ import type { Changelog } from '@/src/core/model';
 
 type ChangelogKey = `local:${string}`;
 
-// v3: a text annotation's on-page text is now its `note` (was a separate
-// `content` field) — bumping the key discards data with the old shape.
+// v4: callout/text/arrow share one point-anchored shape — an arrow now stores a
+// single anchor point (`offset`, the head) plus a head-relative `tail`, replacing
+// the old box-relative `from`/`to`. Bumping the key discards data with the old shape.
 function changelogKey(tabId: number, url: string): ChangelogKey {
-  return `local:changelog:v3:${String(tabId)}:${url}`;
+  return `local:changelog:v4:${String(tabId)}:${url}`;
 }
 
 export function saveChangelog(tabId: number, changelog: Changelog): Promise<void> {

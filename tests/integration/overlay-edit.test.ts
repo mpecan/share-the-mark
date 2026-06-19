@@ -100,8 +100,8 @@ describe('Overlay — editing', () => {
         id: 'a',
         kind: 'arrow',
         createdAt: 0,
-        from: { dx: 0, dy: 0 },
-        to: { dx: 10, dy: 10 },
+        offset: { dx: 10, dy: 10 }, // the head
+        tail: { dx: -10, dy: -10 }, // relative to the head
         target: targetFor('#para', 'p'),
         anchor: anchorOver('brown'),
       },
@@ -145,8 +145,8 @@ describe('Overlay — editing', () => {
         id: 'a',
         kind: 'arrow',
         createdAt: 0,
-        from: { dx: 0, dy: 0 },
-        to: { dx: 10, dy: 10 },
+        offset: { dx: 10, dy: 10 }, // the head
+        tail: { dx: -10, dy: -10 }, // relative to the head
         target: targetFor('#para', 'p'),
         anchor: anchorOver('brown'),
       },
@@ -156,10 +156,39 @@ describe('Overlay — editing', () => {
     pointerOn(handle, 'pointerdown', 30, 30);
     pointer(overlay, 'pointermove', 35, 38);
     pointer(overlay, 'pointerup', 35, 38);
+    // The head moved by (5,8); the tail stayed put, so its head-relative vector
+    // counter-shifts. Absolute geometry: head (15,18), tail unchanged at (0,0).
     expect(updated[0]).toMatchObject({
       kind: 'arrow',
-      from: { dx: 0, dy: 0 },
-      to: { dx: 15, dy: 18 },
+      offset: { dx: 15, dy: 18 },
+      tail: { dx: -15, dy: -18 },
+    });
+  });
+
+  it('drags the arrow tail without moving the anchored head', () => {
+    const overlay = makeOverlay({ tool: 'select' });
+    overlay.setAnnotations([
+      {
+        id: 'a',
+        kind: 'arrow',
+        createdAt: 0,
+        offset: { dx: 10, dy: 10 }, // the head
+        tail: { dx: -10, dy: -10 }, // relative to the head
+        target: targetFor('#para', 'p'),
+        anchor: anchorOver('brown'),
+      },
+    ]);
+    const handle = container.querySelector(':scope [data-stm-handle="from"]');
+    if (!handle) throw new Error('handle not found');
+    pointerOn(handle, 'pointerdown', 0, 0);
+    pointer(overlay, 'pointermove', 5, 8);
+    pointer(overlay, 'pointerup', 5, 8);
+    // Only the tail vector moves; the head keeps its offset and its text anchor.
+    expect(updated[0]).toMatchObject({
+      kind: 'arrow',
+      offset: { dx: 10, dy: 10 },
+      tail: { dx: -5, dy: -2 },
+      anchor: { exact: 'brown' },
     });
   });
 
@@ -170,8 +199,8 @@ describe('Overlay — editing', () => {
         id: 'a',
         kind: 'arrow',
         createdAt: 0,
-        from: { dx: 0, dy: 0 },
-        to: { dx: 10, dy: 10 },
+        offset: { dx: 10, dy: 10 }, // the head
+        tail: { dx: -10, dy: -10 }, // relative to the head
         target: targetFor('#para', 'p'),
         anchor: anchorOver('brown'),
       },
@@ -181,10 +210,12 @@ describe('Overlay — editing', () => {
     pointerOn(line, 'pointerdown', 20, 20);
     pointer(overlay, 'pointermove', 25, 27);
     pointer(overlay, 'pointerup', 25, 27);
+    // Moving the whole arrow shifts the head; the tail rides along (its
+    // head-relative vector is unchanged). Absolute: head (15,17), tail (5,7).
     expect(updated[0]).toMatchObject({
       kind: 'arrow',
-      from: { dx: 5, dy: 7 },
-      to: { dx: 15, dy: 17 },
+      offset: { dx: 15, dy: 17 },
+      tail: { dx: -10, dy: -10 },
     });
   });
 
