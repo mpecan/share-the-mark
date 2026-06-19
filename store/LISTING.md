@@ -1,7 +1,6 @@
 # Store listing copy — share the mark
 
-Paste-ready copy for the Chrome Web Store, Firefox AMO, and Edge Add-ons
-dashboards. Keep this in sync with `package.json` / `wxt.config.ts`.
+Paste-ready copy for the Chrome Web Store, Firefox AMO, and Edge Add-ons dashboards. Keep this in sync with `package.json` / `wxt.config.ts`.
 
 ## Name
 
@@ -9,8 +8,7 @@ share the mark
 
 ## Summary (≤132 chars, Chrome short description)
 
-Annotate any web page and export a Markdown changelog plus an annotated
-screenshot to your clipboard.
+Annotate any web page and export a Markdown changelog plus an annotated screenshot to your clipboard.
 
 ## Category
 
@@ -18,17 +16,9 @@ Developer Tools (Chrome/Edge) · "Other" or "Web Development" (Firefox)
 
 ## Detailed description
 
-share the mark turns any live web page into a design-feedback canvas. Draw
-callouts, notes, arrows, highlights, and element comments directly on the page,
-then export everything as a clean Markdown changelog plus an annotated PNG — copied
-straight to your clipboard, ready to paste into an issue, PR, or doc.
+share the mark turns any live web page into a design-feedback canvas. Draw callouts, notes, arrows, highlights, and element comments directly on the page, then export everything as a clean Markdown changelog plus an annotated PNG — copied straight to your clipboard, ready to paste into an issue, PR, or doc.
 
-Annotations are anchored to the page's content (not fixed pixel coordinates), so
-they survive scrolling, resizing, and re-renders. Each callout resolves to a CSS
-selector for the element it points at, so the exported changelog tells you (or your
-coding agent) exactly what to change. Because the marks are content-anchored, you
-can also copy a share link and a teammate sees them redrawn on the live page — no
-screenshot needed.
+Annotations are anchored to the page's content (not fixed pixel coordinates), so they survive scrolling, resizing, and re-renders. Each callout resolves to a CSS selector for the element it points at, so the exported changelog tells you (or your coding agent) exactly what to change. Because the marks are content-anchored, you can also copy a share link and a teammate sees them redrawn on the live page — no screenshot needed.
 
 Features
 
@@ -36,15 +26,13 @@ Features
 - A select tool to move, edit, and re-anchor existing marks
 - Markdown changelog export with resolved element selectors
 - Annotated screenshot export (composited locally)
-- Share a mark across machines: copy a link (no screenshot) that redraws the marks
-  on the live page when a teammate opens it
+- Share a mark across machines: copy a link (no screenshot) that redraws the marks on the live page when a teammate opens it
 - An in-page changelog panel you can collapse out of the way
 - Optional: hand a brief to a local coding agent via the companion
   `share-the-mark` CLI (off by default; nothing leaves your machine)
 
 Privacy
-Everything stays on your device. No accounts, no servers, no telemetry. See the
-privacy policy: https://github.com/mpecan/share-the-mark/blob/main/PRIVACY.md
+Everything stays on your device. No accounts, no servers, no telemetry. See the privacy policy: https://github.com/mpecan/share-the-mark/blob/main/PRIVACY.md
 
 ## Privacy policy URL
 
@@ -52,9 +40,7 @@ https://github.com/mpecan/share-the-mark/blob/main/PRIVACY.md
 
 ## Permission justifications (Chrome Web Store / Edge review form)
 
-- activeTab — inject the annotation overlay into the tab the user is actively
-  annotating, only after they click the toolbar button. The extension requests NO
-  host access at install (no "read and change all your data on all websites").
+- activeTab — inject the annotation overlay into the tab the user is actively annotating, only after they click the toolbar button. The extension requests NO host access at install (no "read and change all your data on all websites").
 - scripting — inject the overlay/panel into the active page on activation.
 - storage — persist the user's annotations (per tab/URL) and settings locally.
 - host permission http://127.0.0.1/* (OPTIONAL) — not requested at install. Only requested at runtime if the user enables "Agent integration" in Options, to send a brief to a local companion daemon they run themselves on loopback. No remote hosts are ever contacted.
@@ -76,8 +62,10 @@ Annotate web pages and export the annotations as Markdown plus a screenshot.
 ## Firefox AMO notes
 
 - Extension ID: share-the-mark@mpecan.dev (set via browser_specific_settings).
-- Source code submission: upload `share-the-mark-<version>-sources.zip` (produced
-  by `pnpm zip:firefox`). Build instructions below.
+- Data collection: declared as none in the manifest
+  (`browser_specific_settings.gecko.data_collection_permissions.required = ["none"]`,
+  required by AMO since Firefox 140). The extension collects and transmits no data.
+- Source code submission: upload `share-the-mark-<version>-sources.zip` (produced by `pnpm zip:firefox`). Build instructions below.
 - Build instructions for reviewers:
   1. Install Node 22 and pnpm 10 (`corepack enable`).
   2. `pnpm install`
