@@ -49,13 +49,17 @@ https://github.com/mpecan/share-the-mark/blob/main/PRIVACY.md
 ## Permission justifications (Chrome Web Store / Edge review form)
 
 - activeTab — inject the annotation overlay into the tab the user is actively
-  annotating, only after they click the toolbar button.
-- scripting — mount the overlay/panel into the active page on activation.
+  annotating, only after they click the toolbar button. The extension requests NO
+  host access at install (no "read and change all your data on all websites").
+- scripting — inject the overlay/panel into the active page on activation.
 - storage — persist the user's annotations (per tab/URL) and settings locally.
 - host permission http://127.0.0.1/* (OPTIONAL) — not requested at install. Only
   requested at runtime if the user enables "Agent integration" in Options, to send
   a brief to a local companion daemon they run themselves on loopback. No remote
   hosts are ever contacted.
+- host permission <all_urls> (OPTIONAL) — not requested at install. Only requested
+  at runtime, for the single site, when the user opens a "shared mark" link, so the
+  marks can be re-drawn on that page. The user is prompted per site and can decline.
 - Remote code: none. All code is bundled in the package.
 
 ## Single purpose (Chrome)

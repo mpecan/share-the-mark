@@ -1,17 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { gzipSync } from 'node:zlib';
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { test } from './fixtures';
-
-// Minimal chrome typing for code evaluated inside the MV3 service worker.
-declare global {
-  var chrome: {
-    tabs: {
-      query: (q: { active: boolean; currentWindow: boolean }) => Promise<{ id?: number }[]>;
-      sendMessage: (tabId: number, message: unknown) => Promise<unknown>;
-    };
-  };
-}
 
 // Store-listing screenshot generator (not a gate — tagged @screenshots, excluded
 // from `pnpm e2e`; run with `pnpm screenshots`). It seeds a curated multi-tool
@@ -27,7 +19,9 @@ declare global {
    unicorn/switch-case-braces,
    unicorn/no-break-in-nested-loop,
    unicorn/consistent-existence-index-check,
+   unicorn/no-unsafe-string-replacement,
    @typescript-eslint/no-unnecessary-condition,
+   @typescript-eslint/no-confusing-void-expression,
    @typescript-eslint/non-nullable-type-assertion-style --
    A non-shipped screenshot generator (tagged @screenshots, not in the CI gate or the
    bundle): it mirrors the extension's portable cyrb53/base64url encoding and runs DOM
@@ -35,9 +29,12 @@ declare global {
    here. Verified by running it and inspecting the PNGs. */
 
 const OUT = path.resolve('store/screenshots');
-const PAGE_URL = 'https://stm.test/';
 const DEMO_HTML = fs.readFileSync(path.resolve('tests/fixtures/demo.html'), 'utf8');
 const VIEWPORT = { width: 1280, height: 800 };
+// A neutral domain shown in the exported-Markdown shot in place of the real
+// localhost test origin (the demo page is served locally so the extension-opened
+// tab actually loads — Playwright's route doesn't intercept extension navigations).
+const DISPLAY_ORIGIN = 'https://acme.example';
 
 // Mirrors src/core/share cyrb53 — replicated so this generator doesn't depend on
 // the extension's module-alias resolution under Playwright's loader.
@@ -116,15 +113,22 @@ const PLAN: PlanItem[] = [
 
 test('@screenshots generate store screenshots', async ({ context, extensionId }) => {
   fs.mkdirSync(OUT, { recursive: true });
-  await context.route(PAGE_URL, (route) =>
-    route.fulfill({ contentType: 'text/html', body: DEMO_HTML }),
-  );
 
-  // 1) Compute valid anchors against the live fixture DOM.
+  // Serve the demo page locally so the extension-opened tab actually loads it
+  // (Playwright's context.route doesn't intercept extension-initiated navigations).
+  const server = createServer((_req, res) => {
+    res.writeHead(200, { 'content-type': 'text/html' });
+    res.end(DEMO_HTML);
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const PAGE_URL = `http://127.0.0.1:${String((server.address() as AddressInfo).port)}/`;
+
+  // 1) Compute valid anchors against the live fixture DOM. (The content script no
+  // longer auto-runs — activeTab — but this page only needs a laid-out DOM.)
   const seed = await context.newPage();
   await seed.setViewportSize(VIEWPORT);
   await seed.goto(PAGE_URL);
-  await seed.waitForFunction(() => document.documentElement.dataset['stmReady'] === 'true');
+  await seed.waitForLoadState('load');
   const annotations = await seed.evaluate((plan: PlanItem[]) => {
     const textNodes = (el: Element): Text[] => {
       const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
@@ -269,7 +273,7 @@ test('@screenshots generate store screenshots', async ({ context, extensionId })
 
   const md = await context.newPage();
   await md.setViewportSize(VIEWPORT);
-  await md.setContent(markdownPage(markdown));
+  await md.setContent(markdownPage(markdown.replaceAll(PAGE_URL, `${DISPLAY_ORIGIN}/`)));
   await md.screenshot({ path: path.join(OUT, '02-markdown.png') });
   await md.close();
 
@@ -281,4 +285,7 @@ test('@screenshots generate store screenshots', async ({ context, extensionId })
   await options.waitForTimeout(200);
   await options.screenshot({ path: path.join(OUT, '04-options.png') });
   await options.close();
+
+  server.closeAllConnections();
+  await new Promise<void>((resolve) => server.close(() => resolve()));
 });

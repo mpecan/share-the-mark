@@ -42,12 +42,23 @@ import {
 } from '@/src/capture';
 import '@/src/panel/panel.css';
 
+// Injected on demand under `activeTab` (no broad host permission) — see
+// entrypoints/background.ts. `registration: 'runtime'` keeps the script out of the
+// manifest's `content_scripts`, so the install requests no host access. The e2e
+// build re-adds a static, fixture-scoped registration in the wxt.config hook (since
+// headless Chromium can't gesture-grant activeTab).
 export default defineContentScript({
   matches: ['<all_urls>'],
+  registration: 'runtime',
   runAt: 'document_idle',
   cssInjectionMode: 'ui',
 
   async main(ctx) {
+    // The background injects on demand and may hit a tab that already ran the
+    // script (e.g. the import path), so guard against a double mount.
+    if (document.documentElement.dataset['stmInjected'] === 'true') return;
+    document.documentElement.dataset['stmInjected'] = 'true';
+
     const settings = await getSettings();
     const tabId = await sendMessage('getTabId', undefined);
     const renderOptions: RenderOptions = {
@@ -182,8 +193,9 @@ export default defineContentScript({
       },
     });
 
-    // An imported brief shows immediately — no activation gesture required.
-    if (claimed) ui.mount();
+    // Injecting the content script *is* the activation — mount immediately. (Re-
+    // activation after Stop goes through the activateAnnotationMode message below.)
+    ui.mount();
 
     // Build the composited export payload (Markdown + annotated PNG). Returns
     // null if the screenshot/composite step fails (it needs a user gesture); the

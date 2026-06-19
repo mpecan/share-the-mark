@@ -12,11 +12,11 @@ jobs:
   quality:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version-file: .tool-versions
           cache: pnpm
@@ -39,6 +39,11 @@ jobs:
       - name: Build (Chrome)
         run: pnpm build
 
+      # Guards the activeTab least-privilege posture on the *production* build (the
+      # e2e step below rebuilds with broad host into a separate output dir).
+      - name: Check permissions
+        run: pnpm check:perms
+
       - name: Build (Firefox)
         run: pnpm build:firefox
 
@@ -58,7 +63,7 @@ jobs:
 
       - name: Upload extension artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: extension-zips
           path: .output/*.zip
@@ -75,7 +80,7 @@ jobs:
       run:
         working-directory: cli
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -83,7 +88,7 @@ jobs:
           components: clippy, rustfmt
 
       - name: Cache cargo
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry

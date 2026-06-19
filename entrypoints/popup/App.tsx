@@ -5,9 +5,10 @@ import { decodeToken } from '@/src/share';
 import { savePendingImport } from '@/src/storage';
 import type { ShareBrief, ShareError } from '@/src/core/share';
 
-// Popup UI (SPEC §5.8): toggle annotation mode on the active tab, open the options
-// page, and import a cross-machine share link (SPEC §12). Annotation messages
-// target the active tab's content script.
+// Popup UI (SPEC §5.8): activate annotation mode on the active tab, open the options
+// page, and import a cross-machine share link (SPEC §12). The content script is
+// injected on demand under `activeTab` (no broad host permission) — the background
+// does the injection; the popup just supplies the active tab id.
 async function activeTabId(): Promise<number | undefined> {
   const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
   return tab?.id;
@@ -15,13 +16,19 @@ async function activeTabId(): Promise<number | undefined> {
 
 async function activate(): Promise<void> {
   const tabId = await activeTabId();
-  if (tabId !== undefined) await sendMessage('activateAnnotationMode', undefined, tabId);
+  if (tabId !== undefined) await sendMessage('ensureActive', tabId);
   window.close();
 }
 
 async function deactivate(): Promise<void> {
   const tabId = await activeTabId();
-  if (tabId !== undefined) await sendMessage('deactivateAnnotationMode', undefined, tabId);
+  if (tabId !== undefined) {
+    try {
+      await sendMessage('deactivateAnnotationMode', undefined, tabId);
+    } catch {
+      // Harmless if the script isn't running on this tab — no receiver.
+    }
+  }
   window.close();
 }
 
@@ -33,10 +40,14 @@ const IMPORT_ERROR: Record<ShareError, string> = {
   integrity: 'This share link looks corrupted — try copying it again.',
 };
 
-// Open a shared mark: decode the pasted token, then stash it and open the page in a
-// new tab. That tab's content script claims the brief on load and renders the marks
-// (see claimPendingImport / content.ts). The brief travels through storage, not the
-// URL, so it survives the navigation without a `tabs` permission.
+// Skip the per-origin permission prompt in the e2e build (headless can't grant);
+// the e2e build keeps a broad host grant so injection works without it.
+const IS_E2E = import.meta.env.MODE === 'e2e';
+
+// Open a shared mark: decode the pasted token, request access to the shared site so
+// its tab can render the marks, stash the brief, and let the background open + inject
+// it (see openSharedImport / claimPendingImport). The brief travels through storage,
+// not the URL, so it survives the navigation.
 function ImportSection(): JSX.Element {
   const [token, setToken] = useState('');
   const [brief, setBrief] = useState<ShareBrief | null>(null);
@@ -60,8 +71,25 @@ function ImportSection(): JSX.Element {
   }
 
   async function openShared(target: ShareBrief): Promise<void> {
-    await savePendingImport({ brief: target, createdAt: Date.now() });
-    await browser.tabs.create({ url: target.url, active: true });
+    const origin = `${new URL(target.url).origin}/*`;
+    if (IS_E2E) {
+      await savePendingImport({ brief: target, createdAt: Date.now() });
+      await sendMessage('openSharedImport', { url: target.url });
+      window.close();
+      return;
+    }
+    // Stash the brief first (fire-and-forget keeps the click gesture intact for the
+    // request), then ask for access to the shared site. On "Allow" the tab opens
+    // immediately — the background opens it from the permissions.onAdded event, so it
+    // works even if this popup closed while the prompt had focus (no second paste).
+    // Already-granted origins resolve without a prompt; this popup opens it directly.
+    void savePendingImport({ brief: target, createdAt: Date.now() });
+    const isGranted = await browser.permissions.request({ origins: [origin] });
+    if (!isGranted) {
+      setError('Allow access to the site to place the shared marks.');
+      return;
+    }
+    await sendMessage('openSharedImport', { url: target.url });
     window.close();
   }
 

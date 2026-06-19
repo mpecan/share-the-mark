@@ -353,8 +353,10 @@ No sync storage in M1.
 - **`background.ts`** — handles `captureVisibleTab`; otherwise minimal. Assume
   an ephemeral MV3 service worker (Chrome): hold no in-memory state across
   invocations; rehydrate from storage.
-- **`content.ts`** — injects overlay + panel into a shadow root on demand
-  (activated from the popup). Matches `<all_urls>`, `run_at: document_idle`.
+- **`content.ts`** — overlay + panel in a shadow root. `registration: 'runtime'`
+  (not in the manifest's `content_scripts`), injected on demand by the background
+  under `activeTab` when the user activates from the popup — so the install requests
+  no broad host access. Auto-mounts on injection; guards against a double mount.
 - **`popup/`** — React. Activate/deactivate annotation mode, open options.
 - **`options/`** — React. Settings (default tool, stroke defaults, Markdown
   extraction prefs).
@@ -366,11 +368,15 @@ No sync storage in M1.
 - **Always** use WXT's unified `browser.*` global; never reference `chrome.*`.
 - Single MV3 build for Chromium targets and Firefox. WXT resolves the
   background service-worker vs event-page difference and namespace differences.
-- **Permissions (M1, least-privilege):** `activeTab`, `scripting`, `storage`.
-  No `host_permissions`; `tabs.captureVisibleTab` works under `activeTab` +
-  user gesture. Add `clipboardWrite` only if a target browser rejects
-  gesture-based image writes (document the reason inline in `wxt.config.ts` if
-  added).
+- **Permissions (least-privilege):** `activeTab`, `scripting`, `storage`, and **no
+  `host_permissions`** — so there is no "read and change all your data on all
+  websites" install warning. The content script is injected under `activeTab` +
+  user gesture (`scripting.executeScript`); `tabs.captureVisibleTab` works the same
+  way. `<all_urls>` is declared **optional** (warning-free at install) and requested
+  per-origin at runtime only when the user opens a shared mark (§12). A
+  `build:manifestGenerated` hook strips the `<all_urls>` that runtime registration
+  would otherwise add to `host_permissions`; `pnpm check:perms` guards the property.
+  The daemon loopback host is likewise optional (§10 M2).
 - **Changelog UI is in-page** (shadow root), not a native side panel, precisely
   so M1 stays identical across browsers. Native `sidePanel` (Chrome) /
   `sidebar_action` (Firefox) is an M2 enhancement.
