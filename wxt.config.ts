@@ -34,8 +34,15 @@ export default defineConfig({
       ? { optional_host_permissions: OPTIONAL_HOSTS }
       : {
           optional_permissions: OPTIONAL_HOSTS,
-          // AMO requires a stable extension id.
-          browser_specific_settings: { gecko: { id: 'share-the-mark@mpecan.dev' } },
+          browser_specific_settings: {
+            gecko: {
+              // AMO requires a stable extension id.
+              id: 'share-the-mark@mpecan.dev',
+              // AMO (Firefox 140+) requires a data-collection declaration. The
+              // extension collects nothing — everything stays on the user's device.
+              data_collection_permissions: { required: ['none'] },
+            },
+          },
         }),
   }),
   hooks: {
