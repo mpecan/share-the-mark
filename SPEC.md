@@ -522,3 +522,161 @@ capture/drawing/model) plus the cross-platform Rust **`share-the-mark` CLI** und
 
 Still deferred: `FileSystemSink` (File System Access API), native side panel,
 Firefox e2e via `web-ext`.
+
+**M3 — Distribution & discoverability.** Make both halves installable by real
+users and able to find each other (§11). Extension submitted to the Chrome Web
+Store + Firefox AMO (listing copy in `store/LISTING.md`); a tag-triggered release
+workflow publishes CLI binaries (+ checksums), a signed self-distributed Firefox
+`.xpi`, and the Chrome zip to GitHub Releases; the CLI reaches users via a
+Homebrew tap, `cargo install` / `cargo-binstall`, a `curl | sh` installer, and an
+`npx` wrapper. In-product cross-discovery wires the Options toggle, the panel's
+daemon-unreachable state, the `serve` banner, and a new `share-the-mark setup` /
+`doctor` command to the opposite half's install path.
+
+**M4 — Cross-machine sharing (share tokens).** Human-to-human handoff with no
+daemon and no screenshot (§12): a compressed `stm1:` token carrying
+`{ url, annotations }` is copied to the clipboard and pasted into the recipient's
+extension, which opens the URL and re-renders the marks live against the content
+anchors. Additive — the daemon and the M2 agent brief are untouched.
+
+## 11. Distribution & discoverability
+
+Two independently-distributed halves (extension + CLI) that must each onboard
+alone and find each other. **Foundational framing: `127.0.0.1` means the same
+machine.** There are two handoff modes, and the CLI is never on the annotator's
+critical path:
+
+- **Clipboard / share token (§12)** — the cross-person, cross-machine path:
+  annotate → copy → paste; no CLI.
+- **Local daemon (§5.4 `DaemonSink`, §10 M2)** — the same-machine power-up: one
+  person annotates and runs the agent on the same box.
+
+The extension is therefore independently complete; the CLI is revealed only when
+the user actually runs an agent locally.
+
+### 11.1 Discoverability spine
+
+One canonical install hub (the README, optionally GH Pages): store buttons, the
+CLI one-liners, the Firefox `.xpi` link, and a short "how the halves fit." Every
+surface links to it — store listing, CLI banner, skill, options page — so the two
+halves never drift in their install story.
+
+### 11.2 Entry points
+
+- **Extension-first → wants the agent.** The Options "Agent integration" toggle
+  reveals CLI install one-liners + the hub link at the moment of intent; the
+  panel's daemon-unreachable state becomes an actionable "install the CLI" CTA
+  instead of a dead-end string.
+- **CLI-first → wants to annotate.** `serve` / `start` print a banner with the
+  extension store links; a `share-the-mark setup` / `doctor` command installs the
+  skill, prints daemon status, and `open`s the right store for the default
+  browser (the `open` crate is already a dependency); `SKILL.md` links the
+  extension.
+- **Store-averse.** Firefox: a self-distributed **signed `.xpi`** (AMO signing
+  API / `web-ext sign`) on GitHub Releases installs in one click and auto-updates
+  without a public listing. Chrome: no clean no-store path on stable — document
+  unpacked-from-zip for tinkerers and enterprise force-install for orgs; the Web
+  Store is the real unblock.
+
+### 11.3 CLI install matrix
+
+The blocker is shared: CI builds the 3-OS matrix but uploads nothing. A
+tag-triggered release workflow uploads per-OS/arch tarballs + `.sha256`; every
+channel layers on top.
+
+- **GitHub Releases** — per-target tarballs + checksums; the foundation every
+  other channel reads from.
+- **Homebrew** — a formula in the existing common-tools tap, bumped by the
+  release workflow.
+- **cargo / cargo-binstall** — `cargo publish` plus a `[package.metadata.binstall]`
+  asset-name pattern so binstall finds the prebuilt asset.
+- **`curl | sh`** — an in-repo `install.sh` that detects OS/arch and pulls the
+  matching Release asset.
+- **npm wrapper** — a package whose postinstall downloads the prebuilt binary
+  (the esbuild/swc pattern); exposes `npx share-the-mark` for the Node audience.
+
+### 11.4 Version compatibility
+
+`/health` already returns the daemon version; the extension must read it. On a
+major / declared-floor mismatch, surface a soft "update your CLI" notice rather
+than failing silently; the `POST /brief` body carries the extension version so the
+daemon can warn the other way. Compatibility is a declared floor, not lockstep —
+the halves release independently.
+
+## 12. Cross-machine sharing (`stm1:` share tokens)
+
+Human-to-human handoff with **no daemon and no screenshot**. Annotations are
+content-anchored and viewport-independent (§5.3, point-anchored model), so the
+page itself is the screenshot: open the same URL anywhere and `resolveGeometry`
+re-derives the marks against the live DOM. The transferred artifact is the model,
+not a raster. Scope is deliberate — a new cross-machine *mode*, additive; the
+daemon, `DaemonSink`, M2 persistence, and the agent brief (Markdown + PNG) are
+untouched.
+
+### 12.1 Token format
+
+```
+stm1:<base64url( gzip( JSON({ v, url, title, capturedAt, fingerprint, annotations }) ) )>
+```
+
+- `gzip` via the native `CompressionStream` / `DecompressionStream` — no
+  dependency, so the §8.7 size budget is unaffected; the TextQuote prefix/suffix
+  context compresses well.
+- `fingerprint` — a small pure non-crypto hash (cyrb53) over the content fields
+  (`url`, `title`, `capturedAt`, `annotations`), used as a **paste-integrity**
+  check: a chat client that truncates or mangles the token fails to validate
+  rather than importing garbage. Page-drift detection is the placement summary
+  (§12.4), not this.
+- `v` and the `stm1:` magic gate compatibility; an older recipient reports
+  "needs a newer version" rather than mis-parsing a newer token.
+
+### 12.2 Modules
+
+- **`src/core/share` (pure)** — envelope type; `buildBrief(changelog)`;
+  `validateBrief(unknown)` (discriminated result, never throws); `isSameTarget`
+  (host+path URL compare). Held to the §8.4 100% core bar; no stream APIs, to stay
+  browser-free.
+- **`src/share` (glue)** — `token.ts` (`encodeToken` / `decodeToken`: gzip +
+  base64url around the pure builders) and `import.ts` (`claimPendingImport`,
+  `summarizePlacement`), kept pure-ish for unit tests.
+- **`src/storage/pending-import.ts`** — a single-slot handoff (`savePendingImport`
+  / `loadPendingImport` / `clearPendingImport`).
+- **Export — panel "Copy share link"** — `content.ts` serializes the live
+  `Changelog` → `encodeToken` → `navigator.clipboard.writeText` (text only, no
+  `image`); publishes the token to `dataset.stmLastShare` for e2e.
+- **Import (new) — popup "Open a shared mark…"** — paste → `decodeToken` →
+  `validateBrief` → preview "N marks" → `savePendingImport` +
+  `browser.tabs.create({ url })`. No `tabs` permission and no new message: the
+  new tab's content script `claimPendingImport` on startup (fresh slot +
+  `isSameTarget`), hydrates via the existing `replaceAll` action, clears the slot,
+  and auto-mounts so the marks show without a "Start annotating" click.
+- **Drift UX — panel placement summary** — `summarizePlacement` counts placed vs
+  `resolveGeometry === null`; renders "placed N of M" and lists orphaned marks
+  (note/text preserved), with a "page changed since capture" note when any orphan.
+
+### 12.3 Two design calls
+
+- **Share is its own action, not an `ExportSink`.** The sinks consume the
+  rendered `{ markdown, image }` payload; the token needs the annotation *model*.
+  A sibling action serializes it directly rather than fighting the interface.
+- **Import hydrates via a storage handoff, not a live message.** The popup stashes
+  the decoded brief in a single storage slot and opens the target URL in a new tab;
+  that tab's content script claims the slot on startup. This needs no `tabs`
+  permission (can't match an existing tab by URL) and no message race against a
+  still-loading tab — and it matches the real flow, since a recipient pasting a
+  token from chat usually isn't on the page yet.
+
+### 12.4 Drift handling — best-effort
+
+Always render what resolves. The panel reports "placed N of M" and lists orphaned
+marks (their note/text preserved) so nothing is lost; an orphan count > 0 is the
+"page changed since capture" signal (the `fingerprint` is integrity only, §12.1),
+never a hard block. Auth-walled or ephemeral URLs that won't reload the same
+content are the failure floor — the marks can't place, and the summary says so.
+
+### 12.5 Validation & security (pure, tested)
+
+Reject non-`http(s)` URLs; cap the token length (before decoding) and the
+annotation count (`MAX_ANNOTATIONS`); version-gate on `v`. Import executes no
+code — it is data → a validated model — and the popup previews the page and mark
+count before the user opens the tab.

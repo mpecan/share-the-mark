@@ -8,15 +8,30 @@ import {
   type Handoff,
   type PanelSnapshot,
   type PanelStore,
+  type ShareNotice,
 } from '@/src/panel';
 import {
   changelogReducer,
+  renumberCallouts,
   type Changelog,
   type ChangelogAction,
   type ToolKind,
 } from '@/src/core/model';
 import { buildExportPayload, changelogToMarkdown, type ExportPayload } from '@/src/core/export';
-import { getSettings, loadChangelog, saveChangelog } from '@/src/storage';
+import { buildBrief } from '@/src/core/share';
+import {
+  claimPendingImport,
+  encodeToken,
+  summarizePlacement,
+  type PlacementSummary,
+} from '@/src/share';
+import {
+  clearPendingImport,
+  getSettings,
+  loadChangelog,
+  loadPendingImport,
+  saveChangelog,
+} from '@/src/storage';
 import { resolveGeometry } from '@/src/anchor';
 import {
   ClipboardSink,
@@ -52,12 +67,31 @@ export default defineContentScript({
 
     let activeTool: ToolKind = settings.defaultTool;
     let handoff: Handoff | null = null;
+    let share: ShareNotice | null = null;
+    let placement: PlacementSummary | null = null;
+
+    // Cross-machine import (SPEC §12): if the popup stashed a brief for this URL
+    // and the tab just landed here, hydrate the marks and summarize placement so
+    // they render the moment the page is ready — no "Start annotating" click.
+    const claimed = claimPendingImport({
+      pending: await loadPendingImport(),
+      href: location.href,
+      now: Date.now(),
+    });
+    if (claimed) {
+      changelog = { ...changelog, annotations: renumberCallouts(claimed.annotations) };
+      void clearPendingImport();
+      void saveChangelog(tabId, changelog);
+      placement = summarizePlacement(changelog.annotations, document);
+    }
 
     // External store the panel subscribes to; React owns its own re-renders.
     const buildSnapshot = (): PanelSnapshot => ({
       annotations: changelog.annotations,
       activeTool,
       handoff,
+      share,
+      placement,
     });
     let snapshot: PanelSnapshot = buildSnapshot();
     const listeners = new Set<() => void>();
@@ -131,6 +165,9 @@ export default defineContentScript({
             onSendToAgent: () => {
               void sendToAgent();
             },
+            onCopyShareLink: () => {
+              void copyShareLink();
+            },
           }),
         );
 
@@ -144,6 +181,9 @@ export default defineContentScript({
         mounted?.panelRoot.unmount();
       },
     });
+
+    // An imported brief shows immediately — no activation gesture required.
+    if (claimed) ui.mount();
 
     // Build the composited export payload (Markdown + annotated PNG). Returns
     // null if the screenshot/composite step fails (it needs a user gesture); the
@@ -165,6 +205,23 @@ export default defineContentScript({
 
     function setHandoff(next: Handoff | null): void {
       handoff = next;
+      publish();
+    }
+
+    // Copy a cross-machine share token (SPEC §12): the annotation model for this
+    // URL, gzipped — no screenshot. The recipient pastes it into their extension,
+    // which opens the page and re-renders the marks against the live DOM.
+    async function copyShareLink(): Promise<void> {
+      const captured: Changelog = { ...changelog, capturedAt: Date.now() };
+      const token = await encodeToken(buildBrief(captured));
+      // Publish for e2e/debugging before the clipboard write (which needs a gesture).
+      document.documentElement.dataset['stmLastShare'] = token;
+      try {
+        await navigator.clipboard.writeText(token);
+        share = { kind: 'copied' };
+      } catch {
+        share = { kind: 'error', message: 'couldn’t copy the share link' };
+      }
       publish();
     }
 

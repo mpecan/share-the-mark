@@ -106,6 +106,45 @@ describe('ChangelogPanel', () => {
     expect(onSendToAgent).toHaveBeenCalledTimes(1);
   });
 
+  it('disables copy share link with no annotations', () => {
+    renderPanel();
+    expect(screen.getByRole('button', { name: /copy share link/i })).toBeDisabled();
+  });
+
+  it('emits copy share link', async () => {
+    const onCopyShareLink = vi.fn();
+    renderPanel({ annotations: [callout('a', 1)], onCopyShareLink });
+    await userEvent.click(screen.getByRole('button', { name: /copy share link/i }));
+    expect(onCopyShareLink).toHaveBeenCalledTimes(1);
+  });
+
+  it('confirms a copied share link and reports a copy error', () => {
+    renderPanel({ annotations: [callout('a', 1)], share: { kind: 'copied' } });
+    expect(screen.getByText(/share link copied/i)).toBeInTheDocument();
+
+    renderPanel({ annotations: [callout('a', 1)], share: { kind: 'error', message: 'nope' } });
+    expect(screen.getByText('nope')).toBeInTheDocument();
+  });
+
+  it('summarizes placement and lists orphans after an import', () => {
+    renderPanel({
+      annotations: [callout('a', 1)],
+      placement: { placed: 2, total: 3, orphans: [{ id: 'x', label: 'Fix footer' }] },
+    });
+    expect(screen.getByText(/of 3 shared marks/i)).toBeInTheDocument();
+    expect(screen.getByText(/page changed since capture/i)).toBeInTheDocument();
+    expect(screen.getByText('Fix footer')).toBeInTheDocument();
+  });
+
+  it('omits the orphan note when every mark placed', () => {
+    renderPanel({
+      annotations: [callout('a', 1)],
+      placement: { placed: 1, total: 1, orphans: [] },
+    });
+    expect(screen.getByText(/of 1 shared marks/i)).toBeInTheDocument();
+    expect(screen.queryByText(/page changed since capture/i)).not.toBeInTheDocument();
+  });
+
   it('shows the handoff command after sending', () => {
     renderPanel({
       annotations: [callout('a', 1)],

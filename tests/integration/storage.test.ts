@@ -2,17 +2,26 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_SETTINGS,
   clearChangelog,
+  clearPendingImport,
   getSettings,
   loadChangelog,
+  loadPendingImport,
+  savePendingImport,
   saveChangelog,
   saveSettings,
   watchSettings,
   type Settings,
 } from '@/src/storage';
+import { buildBrief } from '@/src/core/share';
+import type { PendingImport } from '@/src/share';
 import type { Changelog } from '@/src/core/model';
 
 function sampleChangelog(url: string): Changelog {
   return { id: 'c1', url, title: 'T', capturedAt: 0, annotations: [] };
+}
+
+function samplePending(url: string): PendingImport {
+  return { brief: buildBrief(sampleChangelog(url)), createdAt: 100 };
 }
 
 describe('settings storage', () => {
@@ -59,5 +68,19 @@ describe('changelog storage', () => {
     await saveChangelog(3, changelog);
     await clearChangelog(3, 'https://b');
     expect(await loadChangelog(3, 'https://b')).toBeNull();
+  });
+});
+
+describe('pending-import storage', () => {
+  it('returns null when no import is pending', async () => {
+    expect(await loadPendingImport()).toBeNull();
+  });
+
+  it('round-trips and clears a single pending slot', async () => {
+    const pending = samplePending('https://a');
+    await savePendingImport(pending);
+    expect(await loadPendingImport()).toEqual(pending);
+    await clearPendingImport();
+    expect(await loadPendingImport()).toBeNull();
   });
 });

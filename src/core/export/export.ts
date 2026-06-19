@@ -31,7 +31,7 @@ export interface ExportSink {
   write(payload: ExportPayload): Promise<ExportResult>;
 }
 
-function annotationLabel(annotation: Annotation): string {
+export function annotationLabel(annotation: Annotation): string {
   const note = annotation.note?.trim() ?? '';
   return note === '' ? `(${annotation.kind})` : note;
 }
