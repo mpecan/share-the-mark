@@ -10,6 +10,17 @@ repository = "https://github.com/mpecan/share-the-mark"
 name = "share-the-mark"
 path = "src/main.rs"
 
+# `cargo binstall` downloads the prebuilt binary from the GitHub Release the
+# `release-cli.yml` workflow publishes (tag `cli-v<version>`, assets named
+# `share-the-mark-<target>.<archive>` with the binary at the archive root).
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/cli-v{ version }/{ name }-{ target }.{ archive-format }"
+pkg-fmt = "tgz"
+bin-dir = "{ bin }{ binary-ext }"
+
+[package.metadata.binstall.overrides.x86_64-pc-windows-msvc]
+pkg-fmt = "zip"
+
 [dependencies]
 clap = { version = "4", features = ["derive"] }
 tiny_http = "0.12"

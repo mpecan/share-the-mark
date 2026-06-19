@@ -586,20 +586,23 @@ halves never drift in their install story.
 
 ### 11.3 CLI install matrix
 
-The blocker is shared: CI builds the 3-OS matrix but uploads nothing. A
-tag-triggered release workflow uploads per-OS/arch tarballs + `.sha256`; every
-channel layers on top.
+A tag-triggered release workflow (`.github/workflows/release-cli.yml`, on `cli-v*`)
+uploads per-target tarballs + `.sha256` to a GitHub Release; every channel layers on
+top.
 
-- **GitHub Releases** — per-target tarballs + checksums; the foundation every
-  other channel reads from.
-- **Homebrew** — a formula in the existing common-tools tap, bumped by the
-  release workflow.
-- **cargo / cargo-binstall** — `cargo publish` plus a `[package.metadata.binstall]`
-  asset-name pattern so binstall finds the prebuilt asset.
-- **`curl | sh`** — an in-repo `install.sh` that detects OS/arch and pulls the
-  matching Release asset.
+- **GitHub Releases** — *done.* `release-cli.yml` builds the 5-target matrix
+  (linux gnu x86_64/aarch64, darwin x86_64/aarch64, windows msvc) via
+  `taiki-e/upload-rust-binary-action` and attaches `share-the-mark-<target>.<archive>`
+  + checksums; the foundation every other channel reads from.
+- **`curl | sh`** — *done.* In-repo `install.sh` detects OS/arch and pulls the
+  matching Release asset (with checksum verification).
+- **cargo-binstall** — *metadata done.* `[package.metadata.binstall]` in
+  `cli/Cargo.toml` points binstall at the Release assets; needs a `cargo publish`
+  to crates.io so `cargo binstall share-the-mark` can resolve the crate.
+- **Homebrew** — a formula in the existing common-tools tap, bumped by the release
+  workflow (pending the tap integration).
 - **npm wrapper** — a package whose postinstall downloads the prebuilt binary
-  (the esbuild/swc pattern); exposes `npx share-the-mark` for the Node audience.
+  (the esbuild/swc pattern); exposes `npx share-the-mark` (pending).
 
 ### 11.4 Version compatibility
 

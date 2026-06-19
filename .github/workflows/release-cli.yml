@@ -1,0 +1,48 @@
+name: Release CLI
+
+# Tag-triggered release of the `share-the-mark` CLI (cli/). The CLI versions
+# independently of the extension, so it uses its own tag prefix: push `cli-vX.Y.Z`
+# (matching cli/Cargo.toml's version) to build prebuilt binaries for every target
+# and attach them — with SHA-256 checksums — to a GitHub Release. The install
+# channels (Homebrew, cargo-binstall, curl|sh) all read from these assets.
+
+on:
+  push:
+    tags: ['cli-v*']
+
+permissions:
+  contents: write
+
+jobs:
+  upload:
+    name: ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: x86_64-apple-darwin
+            os: macos-latest
+          - target: aarch64-apple-darwin
+            os: macos-latest
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+
+      # Builds cli/ for the target (cross-compiling via `cross` where needed),
+      # archives the binary as `share-the-mark-<target>.{tar.gz,zip}` with a
+      # `.sha256`, and uploads it to the release for this tag (creating it if absent).
+      - name: Build and upload
+        uses: taiki-e/upload-rust-binary-action@v1
+        with:
+          bin: share-the-mark
+          target: ${{ matrix.target }}
+          manifest-path: cli/Cargo.toml
+          archive: $bin-$target
+          checksum: sha256
+          token: ${{ secrets.GITHUB_TOKEN }}

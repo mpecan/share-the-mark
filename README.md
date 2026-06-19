@@ -99,10 +99,28 @@ access), so there's nothing to reload — just open a tab and **Start annotating
 `share-the-mark` is a small cross-platform (macOS/Linux/Windows) Rust CLI under [`cli/`](cli)
 that receives change-briefs from the extension and exposes them to a coding agent.
 
+**Install** (pick one):
+
 ```bash
-cargo install --path cli      # build & install the `share-the-mark` binary
-share-the-mark serve                     # run the ingest daemon (or `share-the-mark start` to background it)
-share-the-mark skill install             # install the Claude Code skill into ~/.claude/skills
+# Prebuilt binary via curl | sh (macOS/Linux)
+curl -fsSL https://raw.githubusercontent.com/mpecan/share-the-mark/main/install.sh | sh
+
+# Prebuilt binary via cargo-binstall (all platforms)
+cargo binstall share-the-mark
+
+# Homebrew (macOS/Linux)
+brew install mpecan/tap/share-the-mark
+
+# From source (needs a Rust toolchain)
+cargo install --path cli
+```
+
+You can also download a binary for your platform from the
+[Releases](https://github.com/mpecan/share-the-mark/releases) page. Then:
+
+```bash
+share-the-mark serve          # run the ingest daemon (or `share-the-mark start` to background it)
+share-the-mark skill install  # install the Claude Code skill into ~/.claude/skills
 ```
 
 Then, in the extension panel, click **Send to agent**. The daemon stores the brief
