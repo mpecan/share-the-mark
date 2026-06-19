@@ -1,6 +1,7 @@
 import { Component, useSyncExternalStore, type ErrorInfo, type JSX, type ReactNode } from 'react';
 import { ChangelogPanel } from './ChangelogPanel';
 import type { Annotation, ToolKind } from '@/src/core/model';
+import type { PlacementSummary } from '@/src/share';
 
 // React wrapper for the changelog panel (SPEC §5.8). The content script owns the
 // state and exposes it as an external store; the panel subscribes via
@@ -11,10 +12,17 @@ import type { Annotation, ToolKind } from '@/src/core/model';
 /** Result of a "Send to agent" attempt, surfaced as a handoff line in the panel. */
 export type Handoff = { kind: 'sent'; command: string } | { kind: 'error'; message: string };
 
+/** Result of a "Copy share link" attempt (SPEC §12). */
+export type ShareNotice = { kind: 'copied' } | { kind: 'error'; message: string };
+
 export interface PanelSnapshot {
   annotations: readonly Annotation[];
   activeTool: ToolKind;
   handoff: Handoff | null;
+  /** Feedback after copying a cross-machine share link. */
+  share?: ShareNotice | null;
+  /** Summary shown after importing a shared brief: placed vs orphaned marks. */
+  placement?: PlacementSummary | null;
 }
 
 export interface PanelStore {
@@ -29,6 +37,7 @@ export interface PanelHandlers {
   onClearAll: () => void;
   onExport: () => void;
   onSendToAgent: () => void;
+  onCopyShareLink?: () => void;
 }
 
 export interface PanelAppProps extends PanelHandlers {
@@ -69,6 +78,7 @@ export function PanelApp({
   onClearAll,
   onExport,
   onSendToAgent,
+  onCopyShareLink,
 }: PanelAppProps): JSX.Element {
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
   return (
@@ -77,12 +87,15 @@ export function PanelApp({
         annotations={snapshot.annotations}
         activeTool={snapshot.activeTool}
         handoff={snapshot.handoff}
+        share={snapshot.share ?? null}
+        placement={snapshot.placement ?? null}
         onSelectTool={onSelectTool}
         onEditNote={onEditNote}
         onDelete={onDelete}
         onClearAll={onClearAll}
         onExport={onExport}
         onSendToAgent={onSendToAgent}
+        onCopyShareLink={onCopyShareLink}
       />
     </PanelErrorBoundary>
   );

@@ -1,6 +1,7 @@
 import { useState, type JSX } from 'react';
 import type { Annotation, ToolKind } from '@/src/core/model';
-import type { Handoff } from './PanelApp';
+import type { PlacementSummary } from '@/src/share';
+import type { Handoff, ShareNotice } from './PanelApp';
 
 // In-page changelog panel (SPEC §5.8). Rendered with React into the closed
 // shadow root alongside the overlay. Static-ish UI only — the hot drawing path
@@ -11,12 +12,15 @@ export interface ChangelogPanelProps {
   annotations: readonly Annotation[];
   activeTool: ToolKind;
   handoff: Handoff | null;
+  share?: ShareNotice | null;
+  placement?: PlacementSummary | null;
   onSelectTool: (tool: ToolKind) => void;
   onEditNote: (id: string, note: string) => void;
   onDelete: (id: string) => void;
   onClearAll: () => void;
   onExport: () => void;
   onSendToAgent: () => void;
+  onCopyShareLink?: (() => void) | undefined;
 }
 
 const ICONS: Record<ToolKind, JSX.Element> = {
@@ -57,12 +61,15 @@ export function ChangelogPanel({
   annotations,
   activeTool,
   handoff,
+  share,
+  placement,
   onSelectTool,
   onEditNote,
   onDelete,
   onClearAll,
   onExport,
   onSendToAgent,
+  onCopyShareLink,
 }: ChangelogPanelProps): JSX.Element {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
@@ -120,6 +127,26 @@ export function ChangelogPanel({
       <p className="stm-panel__active">
         Tool: <strong>{activeTool}</strong>
       </p>
+
+      {placement != null && (
+        <div className="stm-panel__placement" role="status">
+          <p>
+            Placed <strong>{placement.placed}</strong> of {placement.total} shared marks.
+          </p>
+          {placement.orphans.length > 0 && (
+            <>
+              <p className="stm-panel__placement-note">
+                This page changed since capture — these couldn’t be placed:
+              </p>
+              <ul className="stm-panel__orphans">
+                {placement.orphans.map((orphan) => (
+                  <li key={orphan.id}>{orphan.label}</li>
+                ))}
+              </ul>
+            </>
+          )}
+        </div>
+      )}
 
       <div className="stm-panel__body">
         {annotations.length === 0 ? (
@@ -213,6 +240,14 @@ export function ChangelogPanel({
           >
             Send to agent
           </button>
+          <button
+            type="button"
+            className="stm-panel__share"
+            onClick={onCopyShareLink}
+            disabled={annotations.length === 0}
+          >
+            Copy share link
+          </button>
         </div>
         {handoff !== null &&
           (handoff.kind === 'sent' ? (
@@ -221,6 +256,12 @@ export function ChangelogPanel({
             </p>
           ) : (
             <p className="stm-panel__handoff stm-panel__handoff--error">{handoff.message}</p>
+          ))}
+        {share != null &&
+          (share.kind === 'copied' ? (
+            <p className="stm-panel__handoff">✓ share link copied — paste it to a teammate.</p>
+          ) : (
+            <p className="stm-panel__handoff stm-panel__handoff--error">{share.message}</p>
           ))}
       </footer>
     </section>
