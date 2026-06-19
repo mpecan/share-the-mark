@@ -1,6 +1,6 @@
 # Privacy Policy — share the mark
 
-_Last updated: 2026-06-18_
+_Last updated: 2026-06-20_
 
 **share the mark** is a browser extension for annotating web pages and exporting a
 Markdown changelog plus an annotated screenshot. It is built to keep everything on
@@ -10,8 +10,8 @@ your machine.
 
 - **Annotations and screenshots** you create are held in the browser's local
   extension storage (`storage.local`) for the current tab/URL, and are written to
-  your **clipboard** when you choose "Copy to clipboard". They are never sent to us
-  or to any remote server.
+  your **clipboard** when you choose "Copy to clipboard" or "Copy share link". They
+  are never sent to us or to any remote server.
 - **Page capture** (`tabs.captureVisibleTab`) runs only when you actively export,
   under a user gesture, to produce the annotated screenshot. The image stays local.
 - **Settings** (default tool, colors, Markdown options) are stored in local
@@ -33,12 +33,24 @@ The extension can optionally send a brief to a **local** companion daemon
 to that loopback address on your machine and never leave your computer. Disabling
 the toggle revokes the permission.
 
+## Sharing a mark
+
+"Copy share link" copies a compact text token of your annotations (the page URL
+plus the marks — **no screenshot**) to your **clipboard**. Nothing is uploaded; you
+choose where to paste it. When someone opens a shared link, the extension asks for
+permission to access **that one site** and reopens the page so the marks can be
+redrawn locally against the live content. The `<all_urls>` host permission is
+optional, requested per site at that moment, and can be declined.
+
 ## Permissions and why they are needed
 
 - `activeTab` + `scripting` — inject the annotation overlay into the page you are
-  actively annotating.
+  actively annotating, on demand, only after you click the toolbar button. The
+  extension requests no host access at install.
 - `storage` — persist your annotations and settings locally.
 - `127.0.0.1/*` (optional) — talk to the local agent daemon, only if you enable it.
+- `<all_urls>` (optional) — requested per site only when you open a shared mark, to
+  redraw the marks on that page. Never requested at install.
 
 ## Contact
 

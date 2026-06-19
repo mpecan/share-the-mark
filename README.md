@@ -35,13 +35,20 @@ Captured: 2026-06-17T00:00:00.000Z
    Element: `[data-testid="promo"]`
 ```
 
+You can also **Copy share link** — a compact token of just the annotations (no
+screenshot). Paste it to a teammate; when they open it, the extension reopens the
+page and redraws the marks against the live content, so a review travels across
+machines without a screenshot ever leaving anyone's device.
+
 ## Status
 
-**Milestone 1 (annotation core) is complete:** all seven tools, the selector
-engine, the in-page changelog panel, screenshot capture + compositing, clipboard
-export, per-tab/URL persistence, and an options page. Milestone 2 (filesystem and
-native-host export sinks, a native side panel, Firefox e2e) is planned and
-additive — see `SPEC.md`.
+**Shipped:** the annotation core (five drawing tools plus a select tool,
+content-anchored selectors, the in-page changelog panel, screenshot capture +
+compositing, clipboard export, per-tab/URL persistence, options page); **agent
+integration** through the local `share-the-mark` CLI/daemon (below); and
+**cross-machine sharing** via copy-paste share links. The content script is
+**injected on demand under `activeTab`**, so the install requests no host access.
+Deferred: a `FileSystemSink`, a native side panel, and Firefox e2e — see `SPEC.md`.
 
 ## Install (from source)
 
@@ -65,8 +72,8 @@ pnpm build:firefox  # outputs .output/firefox-mv2
 - **Firefox:** `about:debugging#/runtime/this-firefox` → **Load Temporary
   Add-on** → select `.output/firefox-mv2/manifest.json`.
 
-Content scripts inject on page load, so reload any already-open tab after
-installing.
+The overlay is injected only when you click the toolbar button (no broad host
+access), so there's nothing to reload — just open a tab and **Start annotating**.
 
 ## Usage
 
@@ -83,7 +90,8 @@ installing.
    double-click a text label to retype it. Dropping a callout, text label, or
    arrow head over new text re-anchors it there.
 4. Add notes/comments in the panel; delete markers with ✕.
-5. Click **Copy to clipboard** and paste the Markdown + screenshot anywhere, or
+5. Click **Copy to clipboard** and paste the Markdown + screenshot anywhere,
+   **Copy share link** to hand the marks to a teammate on another machine, or
    **Send to agent** to hand the brief to the local `share-the-mark` daemon (see below).
 
 ## Connect a coding agent (the `share-the-mark` CLI)
@@ -123,10 +131,13 @@ lingers as a stray. `share-the-mark status` checks if one is running.
 
 ## Permissions
 
-Least-privilege (Manifest V3): `activeTab`, `scripting`, `storage`, plus a single
-loopback `host_permission` (`http://127.0.0.1/*`) so the **Send to agent** sink can
-reach the local `share-the-mark` daemon. No web-origin host permissions —
-`tabs.captureVisibleTab` works under `activeTab` + a user gesture.
+Least-privilege (Manifest V3): `activeTab`, `scripting`, `storage`, and **no
+`host_permissions`** — so the install requests no broad site access (no "read and
+change all your data on all websites"). The overlay is injected on demand under
+`activeTab`; `tabs.captureVisibleTab` works the same way. Two host patterns are
+declared **optional** (requested at runtime, never at install): `http://127.0.0.1/*`
+for **Send to agent** (the local daemon), and `<all_urls>`, requested **per site**
+only when you open a shared mark so the marks can be redrawn there.
 
 ## Development
 
