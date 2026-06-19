@@ -1,7 +1,11 @@
 import { test as base, chromium, type BrowserContext } from '@playwright/test';
 import path from 'node:path';
 
-const pathToExtension = path.resolve('.output/chrome-mv3');
+// The e2e build (`wxt build -m e2e`, run by the `e2e`/`screenshots` scripts) outputs
+// here. It keeps a broad host grant so the worker can inject the content script, since
+// headless Chromium can't gesture-grant activeTab (the shipped `chrome-mv3` build does
+// not — see wxt.config.ts / check:perms).
+const pathToExtension = path.resolve('.output/chrome-mv3-e2e');
 
 // Playwright fixture that loads the built unpacked extension into a persistent
 // Chromium context and exposes its generated extension id (SPEC §8.4).
