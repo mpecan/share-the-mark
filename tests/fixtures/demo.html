@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Acme — ship your product</title>
+    <style>
+      :root {
+        --ink: #0f172a;
+        --muted: #64748b;
+        --line: #e2e8f0;
+        --accent: #4f46e5;
+        --bg: #ffffff;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family:
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          'Segoe UI',
+          Roboto,
+          Helvetica,
+          Arial,
+          sans-serif;
+        color: var(--ink);
+        background: var(--bg);
+      }
+      .wrap {
+        max-width: 1040px;
+        margin: 0 auto;
+        padding: 0 40px;
+      }
+      nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 22px 0;
+        border-bottom: 1px solid var(--line);
+      }
+      nav .brand {
+        font-weight: 700;
+        font-size: 19px;
+        letter-spacing: -0.01em;
+      }
+      nav .links {
+        display: flex;
+        gap: 28px;
+        align-items: center;
+        font-size: 15px;
+        color: var(--muted);
+      }
+      #nav-signup {
+        color: var(--accent);
+        font-weight: 600;
+        text-decoration: none;
+      }
+      .hero {
+        padding: 72px 0 56px;
+        text-align: center;
+      }
+      #hero {
+        margin: 0 auto;
+        max-width: 600px;
+        font-size: 44px;
+        line-height: 1.08;
+        letter-spacing: -0.025em;
+        font-weight: 800;
+      }
+      #subtitle {
+        margin: 22px auto 0;
+        max-width: 540px;
+        font-size: 19px;
+        line-height: 1.5;
+        color: var(--muted);
+      }
+      .cta-row {
+        margin-top: 34px;
+        display: flex;
+        gap: 14px;
+        justify-content: center;
+      }
+      #cta {
+        padding: 13px 24px;
+        font-size: 16px;
+        font-weight: 600;
+        color: #fff;
+        background: var(--accent);
+        border: 0;
+        border-radius: 10px;
+        cursor: pointer;
+      }
+      .ghost {
+        padding: 13px 24px;
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--ink);
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        cursor: pointer;
+      }
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+        padding: 24px 0 80px;
+      }
+      .card {
+        padding: 24px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: #fff;
+      }
+      .card h3 {
+        margin: 0 0 8px;
+        font-size: 17px;
+      }
+      .card p {
+        margin: 0;
+        font-size: 15px;
+        line-height: 1.55;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <nav>
+        <span class="brand" id="brand">Acme</span>
+        <span class="links">
+          <span>Product</span>
+          <span>Pricing</span>
+          <span>Docs</span>
+          <a id="nav-signup" href="#">Sign up</a>
+        </span>
+      </nav>
+
+      <header class="hero">
+        <h1 id="hero">Build something your customers love</h1>
+        <p id="subtitle">
+          The fastest way to ship, measure, and iterate on your product — without rewriting your
+          stack.
+        </p>
+        <div class="cta-row">
+          <button id="cta" type="button">Get started</button>
+          <button class="ghost" type="button">Live demo</button>
+        </div>
+      </header>
+
+      <section class="cards">
+        <div class="card" id="card-speed">
+          <h3>Fast by default</h3>
+          <p>Static-first pages that load in milliseconds on every device.</p>
+        </div>
+        <div class="card" id="card-secure">
+          <h3>Secure by design</h3>
+          <p>Single sign-on, audit logs, and encryption included on every plan.</p>
+        </div>
+        <div class="card" id="card-scale">
+          <h3>Scales with you</h3>
+          <p>From your first user to your millionth, with no migrations to run.</p>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>

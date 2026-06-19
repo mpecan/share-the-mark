@@ -83,11 +83,23 @@ Annotate web pages and export the annotations as Markdown plus a screenshot.
      add-on. (The `cli/` directory is the optional, separate Rust companion and is
      not part of the extension build.)
 
-## Screenshots checklist (add PNGs to this folder)
+## Screenshots
 
 Required: at least one. Recommended 1280×800 (Chrome) — also accepts 640×400.
 
-1. A page with several annotations + the changelog panel open.
-2. The exported Markdown changelog (e.g. pasted into an editor/PR).
-3. The collapsed panel / tool palette.
-4. The Options page showing the "Agent integration" toggle.
+Generated automatically into `store/screenshots/` by **`pnpm screenshots`** (after
+`pnpm build`). It seeds a generic demo page (`tests/fixtures/demo.html`) with one
+mark per tool via the real share-link import flow, then captures:
+
+| File               | Shows                                                                                                     | Suggested caption                                            |
+| ------------------ | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `01-annotated.png` | A page under review with callouts, a note, an arrow, a highlight, an element box, and the changelog panel | "Mark up any page — five tools, anchored to the content."    |
+| `02-markdown.png`  | The exported Markdown change-brief (real export output)                                                   | "Export a Markdown changelog with element selectors."        |
+| `04-options.png`   | The Options page with the "Agent integration" toggle                                                      | "Everything stays on your device. Agent hand-off is opt-in." |
+
+To restyle the shots, edit `tests/fixtures/demo.html` (the page) or the `PLAN`
+array in `tests/e2e/screenshots.spec.ts` (the marks), then re-run `pnpm screenshots`.
+
+Not auto-generated (the panel/overlay live in a closed shadow root, so toggling the
+collapsed state can't be driven from outside): the optional collapsed-panel shot —
+capture it by hand if you want a fourth image.
