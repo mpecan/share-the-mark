@@ -26,7 +26,9 @@ straight to your clipboard, ready to paste into an issue, PR, or doc.
 Annotations are anchored to the page's content (not fixed pixel coordinates), so
 they survive scrolling, resizing, and re-renders. Each callout resolves to a CSS
 selector for the element it points at, so the exported changelog tells you (or your
-coding agent) exactly what to change.
+coding agent) exactly what to change. Because the marks are content-anchored, you
+can also copy a share link and a teammate sees them redrawn on the live page — no
+screenshot needed.
 
 Features
 
@@ -34,6 +36,8 @@ Features
 - A select tool to move, edit, and re-anchor existing marks
 - Markdown changelog export with resolved element selectors
 - Annotated screenshot export (composited locally)
+- Share a mark across machines: copy a link (no screenshot) that redraws the marks
+  on the live page when a teammate opens it
 - An in-page changelog panel you can collapse out of the way
 - Optional: hand a brief to a local coding agent via the companion
   `share-the-mark` CLI (off by default; nothing leaves your machine)
@@ -53,13 +57,8 @@ https://github.com/mpecan/share-the-mark/blob/main/PRIVACY.md
   host access at install (no "read and change all your data on all websites").
 - scripting — inject the overlay/panel into the active page on activation.
 - storage — persist the user's annotations (per tab/URL) and settings locally.
-- host permission http://127.0.0.1/* (OPTIONAL) — not requested at install. Only
-  requested at runtime if the user enables "Agent integration" in Options, to send
-  a brief to a local companion daemon they run themselves on loopback. No remote
-  hosts are ever contacted.
-- host permission <all_urls> (OPTIONAL) — not requested at install. Only requested
-  at runtime, for the single site, when the user opens a "shared mark" link, so the
-  marks can be re-drawn on that page. The user is prompted per site and can decline.
+- host permission http://127.0.0.1/* (OPTIONAL) — not requested at install. Only requested at runtime if the user enables "Agent integration" in Options, to send a brief to a local companion daemon they run themselves on loopback. No remote hosts are ever contacted.
+- host permission <all_urls> (OPTIONAL) — not requested at install. Only requested at runtime, for the single site, when the user opens a "shared mark" link, so the marks can be re-drawn on that page. The user is prompted per site and can decline.
 - Remote code: none. All code is bundled in the package.
 
 ## Single purpose (Chrome)
