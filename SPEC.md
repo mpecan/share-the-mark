@@ -504,7 +504,7 @@ Markdown contains correct `Element:` selector lines that `resolveSelector`
 round-trips; coverage thresholds met; Chromium e2e green; Chrome + Firefox zips
 build.
 
-**M2 — Persistence & agent interaction (in progress).** The agent path ships as a
+**M2 — Persistence & agent interaction (shipped).** The agent path ships as a
 `DaemonSink` (behind the §5.4 `ExportSink` interface, no changes to
 capture/drawing/model) plus the cross-platform Rust **`share-the-mark` CLI** under `cli/`:
 
@@ -539,8 +539,8 @@ Homebrew tap, `cargo install` / `cargo-binstall`, a `curl | sh` installer, and a
 daemon-unreachable state, the `serve` banner, and a new `share-the-mark setup` /
 `doctor` command to the opposite half's install path.
 
-**M4 — Cross-machine sharing (share tokens).** Human-to-human handoff with no
-daemon and no screenshot (§12): a compressed `stm1:` token carrying
+**M4 — Cross-machine sharing (share tokens) (shipped).** Human-to-human handoff
+with no daemon and no screenshot (§12): a compressed `stm1:` token carrying
 `{ url, annotations }` is copied to the clipboard and pasted into the recipient's
 extension, which opens the URL and re-renders the marks live against the content
 anchors. Additive — the daemon and the M2 agent brief are untouched.
