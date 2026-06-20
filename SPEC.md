@@ -584,25 +584,31 @@ halves never drift in their install story.
   unpacked-from-zip for tinkerers and enterprise force-install for orgs; the Web
   Store is the real unblock.
 
-### 11.3 CLI install matrix
+### 11.3 Releasing & the CLI install matrix
 
-A tag-triggered release workflow (`.github/workflows/release-cli.yml`, on `cli-v*`)
-uploads per-target tarballs + `.sha256` to a GitHub Release; every channel layers on
-top.
+**release-please** (`release-please-config.json`, `.release-please-manifest.json`,
+`.github/workflows/release-please.yml`) drives versioning from Conventional Commits.
+It maintains a release PR per package — the extension (`.`, node, tag `extension-v*`)
+and the CLI (`cli/`, rust, tag `cli-v*`) version independently; merging one bumps the
+version + CHANGELOG and publishes a GitHub Release. It runs under a GitHub App token so
+those Releases trigger the publish workflows (GITHUB_TOKEN-published releases don't).
 
-- **GitHub Releases** — *done.* `release-cli.yml` builds the 5-target matrix
-  (linux gnu x86_64/aarch64, darwin x86_64/aarch64, windows msvc) via
-  `taiki-e/upload-rust-binary-action` and attaches `share-the-mark-<target>.<archive>`
-  + checksums; the foundation every other channel reads from.
-- **`curl | sh`** — *done.* In-repo `install.sh` detects OS/arch and pulls the
-  matching Release asset (with checksum verification).
-- **cargo-binstall** — *metadata done.* `[package.metadata.binstall]` in
-  `cli/Cargo.toml` points binstall at the Release assets; needs a `cargo publish`
-  to crates.io so `cargo binstall share-the-mark` can resolve the crate.
-- **Homebrew** — a formula in the existing common-tools tap, bumped by the release
-  workflow (pending the tap integration).
-- **npm wrapper** — a package whose postinstall downloads the prebuilt binary
-  (the esbuild/swc pattern); exposes `npx share-the-mark` (pending).
+A `cli-v*` Release fans out via `release-cli.yml` (`on: release: published`); an
+`extension-v*` Release attaches the store zips via `release-extension.yml`. The CLI
+install matrix layers on the Release assets:
+
+- **GitHub Releases** — *done.* The 5-target matrix (linux gnu x86_64/aarch64, darwin
+  x86_64/aarch64, windows msvc) via `taiki-e/upload-rust-binary-action` attaches
+  `share-the-mark-<target>.<archive>` + checksums; the foundation every channel reads.
+- **`curl | sh`** — *done.* In-repo `install.sh` detects OS/arch and pulls the matching
+  Release asset (with checksum verification).
+- **cargo / cargo-binstall** — *done.* An idempotent `cargo publish` job puts the crate
+  on crates.io (so `cargo install share-the-mark` works); `[package.metadata.binstall]`
+  in `cli/Cargo.toml` points `cargo binstall` at the Release assets.
+- **Homebrew** — *done.* The workflow generates `Formula/share-the-mark.rb` (per-target
+  url + sha256) and pushes it to the `mpecan/homebrew-tools` tap via the App token:
+  `brew install mpecan/tools/share-the-mark`.
+- **npm wrapper** — deferred (`npx share-the-mark`, esbuild-style binary download).
 
 ### 11.4 Version compatibility
 

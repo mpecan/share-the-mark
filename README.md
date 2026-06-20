@@ -109,7 +109,7 @@ curl -fsSL https://raw.githubusercontent.com/mpecan/share-the-mark/main/install.
 cargo binstall share-the-mark
 
 # Homebrew (macOS/Linux)
-brew install mpecan/tap/share-the-mark
+brew install mpecan/tools/share-the-mark
 
 # From source (needs a Rust toolchain)
 cargo install --path cli

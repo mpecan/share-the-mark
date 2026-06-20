@@ -1,20 +1,29 @@
 name: Release CLI
 
-# Tag-triggered release of the `share-the-mark` CLI (cli/). The CLI versions
-# independently of the extension, so it uses its own tag prefix: push `cli-vX.Y.Z`
-# (matching cli/Cargo.toml's version) to build prebuilt binaries for every target
-# and attach them — with SHA-256 checksums — to a GitHub Release. The install
-# channels (Homebrew, cargo-binstall, curl|sh) all read from these assets.
+# Publishes the `share-the-mark` CLI when release-please publishes a `cli-v<ver>`
+# Release (or via manual dispatch). Fans out to prebuilt binaries, crates.io, and
+# the Homebrew tap. The CLI versions independently of the extension — see
+# release-please-config.json.
 
 on:
-  push:
-    tags: ['cli-v*']
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to (re)build, e.g. cli-v0.1.0'
+        required: true
+        type: string
 
 permissions:
   contents: write
 
+env:
+  RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
+
 jobs:
-  upload:
+  binaries:
+    if: startsWith(inputs.tag || github.event.release.tag_name, 'cli-v')
     name: ${{ matrix.target }}
     strategy:
       fail-fast: false
@@ -33,10 +42,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_TAG }}
 
       # Builds cli/ for the target (cross-compiling via `cross` where needed),
-      # archives the binary as `share-the-mark-<target>.{tar.gz,zip}` with a
-      # `.sha256`, and uploads it to the release for this tag (creating it if absent).
+      # archives `share-the-mark-<target>.{tar.gz,zip}` with a `.sha256`, and uploads
+      # them to the release for this tag.
       - name: Build and upload
         uses: taiki-e/upload-rust-binary-action@v1
         with:
@@ -45,4 +56,129 @@ jobs:
           manifest-path: cli/Cargo.toml
           archive: $bin-$target
           checksum: sha256
+          ref: refs/tags/${{ env.RELEASE_TAG }}
           token: ${{ secrets.GITHUB_TOKEN }}
+
+  crates:
+    if: startsWith(inputs.tag || github.event.release.tag_name, 'cli-v')
+    name: Publish to crates.io
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: cli
+      - name: cargo publish (idempotent)
+        working-directory: cli
+        run: |
+          LOCAL=$(cargo metadata --format-version 1 --no-deps | jq -r '.packages[] | select(.name=="share-the-mark") | .version')
+          PUBLISHED=$(cargo search share-the-mark --limit 1 | sed -n 's/^share-the-mark = "\([^"]*\)".*/\1/p' || true)
+          if [ "$LOCAL" = "$PUBLISHED" ]; then
+            echo "::notice::share-the-mark@$LOCAL already published, skipping"
+          else
+            cargo publish
+          fi
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+  homebrew:
+    if: startsWith(inputs.tag || github.event.release.tag_name, 'cli-v')
+    name: Update Homebrew tap
+    needs: binaries
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compute version
+        id: version
+        run: echo "version=${RELEASE_TAG#cli-v}" >> "$GITHUB_OUTPUT"
+
+      - name: Download checksums
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for T in aarch64-apple-darwin x86_64-apple-darwin x86_64-unknown-linux-gnu; do
+            gh release download "$RELEASE_TAG" --repo "${{ github.repository }}" \
+              --pattern "share-the-mark-$T.tar.gz.sha256" --output "$T.sha256"
+          done
+          {
+            echo "SHA_ARM_MAC=$(cut -d' ' -f1 < aarch64-apple-darwin.sha256)"
+            echo "SHA_INTEL_MAC=$(cut -d' ' -f1 < x86_64-apple-darwin.sha256)"
+            echo "SHA_LINUX=$(cut -d' ' -f1 < x86_64-unknown-linux-gnu.sha256)"
+          } >> "$GITHUB_ENV"
+
+      - name: Generate app token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.REPOSITORY_BUTLER_APP_ID }}
+          private-key: ${{ secrets.REPOSITORY_BUTLER_PEM }}
+          repositories: homebrew-tools
+
+      - name: Checkout tap
+        uses: actions/checkout@v7
+        with:
+          repository: mpecan/homebrew-tools
+          token: ${{ steps.app-token.outputs.token }}
+          path: homebrew-tools
+
+      - name: Generate formula
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          python3 - <<'PY'
+          import os, textwrap
+          v = os.environ["VERSION"]
+          base = f"https://github.com/mpecan/share-the-mark/releases/download/cli-v{v}"
+          formula = textwrap.dedent(f"""
+            class ShareTheMark < Formula
+              desc "Receive design-feedback change-briefs from the share-the-mark browser extension"
+              homepage "https://github.com/mpecan/share-the-mark"
+              version "{v}"
+              license "MIT"
+
+              on_macos do
+                on_arm do
+                  url "{base}/share-the-mark-aarch64-apple-darwin.tar.gz"
+                  sha256 "{os.environ['SHA_ARM_MAC']}"
+                end
+                on_intel do
+                  url "{base}/share-the-mark-x86_64-apple-darwin.tar.gz"
+                  sha256 "{os.environ['SHA_INTEL_MAC']}"
+                end
+              end
+
+              on_linux do
+                on_intel do
+                  url "{base}/share-the-mark-x86_64-unknown-linux-gnu.tar.gz"
+                  sha256 "{os.environ['SHA_LINUX']}"
+                end
+              end
+
+              def install
+                bin.install "share-the-mark"
+              end
+
+              test do
+                assert_match "share-the-mark", shell_output("#{{bin}}/share-the-mark --version")
+              end
+            end
+          """).strip()
+          os.makedirs("homebrew-tools/Formula", exist_ok=True)
+          with open("homebrew-tools/Formula/share-the-mark.rb", "w") as f:
+              f.write(formula + "\n")
+          PY
+
+      - name: Commit and push
+        working-directory: homebrew-tools
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/share-the-mark.rb
+          if git diff --staged --quiet; then
+            echo "Formula unchanged, skipping commit"
+            exit 0
+          fi
+          git commit -m "share-the-mark ${{ steps.version.outputs.version }}"
+          git push

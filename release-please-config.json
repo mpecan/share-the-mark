@@ -1,0 +1,17 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "separate-pull-requests": true,
+  "include-component-in-tag": true,
+  "bootstrap-sha": "19b4fdcb8c2cfebe6f6637c9e9d4253ba9d1121b",
+  "packages": {
+    ".": {
+      "release-type": "node",
+      "component": "extension",
+      "package-name": "share-the-mark"
+    },
+    "cli": {
+      "release-type": "rust",
+      "component": "cli"
+    }
+  }
+}
