@@ -1,0 +1,33 @@
+name: release-please
+
+# Drives versioning for the whole repo from Conventional Commits. Maintains a
+# release PR per package (the extension at `.`, the CLI at `cli/`); merging one
+# bumps the version + CHANGELOG and publishes a GitHub Release, tagged
+# `extension-v<ver>` / `cli-v<ver>`. Those Releases trigger the publish workflows
+# (release-cli.yml, release-extension.yml).
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      # A GitHub App token (not the default GITHUB_TOKEN): a Release published with
+      # GITHUB_TOKEN would NOT trigger the downstream `on: release` workflows.
+      - name: Generate app token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.REPOSITORY_BUTLER_APP_ID }}
+          private-key: ${{ secrets.REPOSITORY_BUTLER_PEM }}
+
+      - uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          # Defaults to release-please-config.json + .release-please-manifest.json.
