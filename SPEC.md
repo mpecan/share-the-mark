@@ -610,13 +610,17 @@ install matrix layers on the Release assets:
   `brew install mpecan/tools/share-the-mark`.
 - **npm wrapper** — deferred (`npx share-the-mark`, esbuild-style binary download).
 
-### 11.4 Version compatibility
+### 11.4 Version compatibility — *done*
 
-`/health` already returns the daemon version; the extension must read it. On a
-major / declared-floor mismatch, surface a soft "update your CLI" notice rather
-than failing silently; the `POST /brief` body carries the extension version so the
-daemon can warn the other way. Compatibility is a declared floor, not lockstep —
-the halves release independently.
+The two halves release independently, so compatibility is a **declared floor**, not
+lockstep. `GET /health` returns the daemon `version` and the `minExtension` it
+supports. Before "Send to agent", the extension reads `/health` and runs
+`checkDaemonCompat` (`src/core/version`, pure + 100% covered) in both directions
+against its own `runtime.getManifest().version` and a `MIN_DAEMON_VERSION` floor: if
+the daemon is below the extension's floor it shows "update your CLI"; if the
+extension is below the daemon's `minExtension` it shows "update the extension" —
+instead of sending to a daemon that can't read the brief (and before paying for the
+screenshot). It **fails open**: a missing or unparseable version never blocks a send.
 
 ## 12. Cross-machine sharing (`stm1:` share tokens)
 

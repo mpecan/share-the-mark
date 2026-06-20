@@ -21,7 +21,7 @@ describe('DaemonSink', () => {
   });
 
   it('reports availability via the daemonHealth message', async () => {
-    send.mockResolvedValue(true);
+    send.mockResolvedValue({ reachable: true, version: '0.2.0', minExtension: '1.0.0' });
     await expect(new DaemonSink().isAvailable()).resolves.toBe(true);
     expect(send).toHaveBeenCalledWith('daemonHealth', undefined);
   });

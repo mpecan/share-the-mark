@@ -108,9 +108,11 @@ export default defineBackground(() => {
   onMessage('daemonHealth', async () => {
     try {
       const res = await fetch(`${DAEMON_BASE}/health`);
-      return res.ok;
+      if (!res.ok) return { reachable: false };
+      const body = (await res.json()) as { version?: string; minExtension?: string };
+      return { reachable: true, version: body.version, minExtension: body.minExtension };
     } catch {
-      return false;
+      return { reachable: false };
     }
   });
 
