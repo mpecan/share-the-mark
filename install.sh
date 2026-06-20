@@ -39,6 +39,8 @@ fi
 [ -n "$version" ] || die "could not determine the latest release — set SHARE_THE_MARK_VERSION"
 
 archive="${BIN}-${target}.tar.gz"
+# The checksum is named after the archive base name, not the full archive.
+checksum="${BIN}-${target}.sha256"
 base="https://github.com/$REPO/releases/download/$version"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
@@ -47,8 +49,8 @@ echo "Downloading $BIN $version ($target)…"
 curl -fsSL "$base/$archive" -o "$tmp/$archive" || die "download failed: $base/$archive"
 
 # Best-effort checksum verification (skipped if no sha256 tool is available).
-if curl -fsSL "$base/$archive.sha256" -o "$tmp/$archive.sha256" 2>/dev/null; then
-  expected="$(cut -d' ' -f1 <"$tmp/$archive.sha256")"
+if curl -fsSL "$base/$checksum" -o "$tmp/$checksum" 2>/dev/null; then
+  expected="$(cut -d' ' -f1 <"$tmp/$checksum")"
   if command -v sha256sum >/dev/null 2>&1; then
     actual="$(sha256sum "$tmp/$archive" | cut -d' ' -f1)"
   elif command -v shasum >/dev/null 2>&1; then

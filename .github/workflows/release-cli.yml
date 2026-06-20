@@ -98,9 +98,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # upload-rust-binary-action names the checksum after the archive base name
+          # (share-the-mark-<target>.sha256), not the full archive (…tar.gz.sha256).
           for T in aarch64-apple-darwin x86_64-apple-darwin x86_64-unknown-linux-gnu; do
             gh release download "$RELEASE_TAG" --repo "${{ github.repository }}" \
-              --pattern "share-the-mark-$T.tar.gz.sha256" --output "$T.sha256"
+              --pattern "share-the-mark-$T.sha256" --output "$T.sha256"
           done
           {
             echo "SHA_ARM_MAC=$(cut -d' ' -f1 < aarch64-apple-darwin.sha256)"
