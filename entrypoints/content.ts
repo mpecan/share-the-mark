@@ -1,6 +1,8 @@
 import { createElement } from 'react';
 import { createRoot } from 'react-dom/client';
+import { browser } from 'wxt/browser';
 import { onMessage, sendMessage } from '@/src/messaging';
+import { checkDaemonCompat, type DaemonCompat } from '@/src/core/version';
 import { Overlay } from '@/src/overlay';
 import {
   PanelApp,
@@ -41,6 +43,16 @@ import {
   type RenderOptions,
 } from '@/src/capture';
 import '@/src/panel/panel.css';
+
+// The oldest `share-the-mark` daemon this extension speaks to (SPEC §11.4). A
+// declared floor — the two halves release independently.
+const MIN_DAEMON_VERSION = '0.1.0';
+
+function compatMessage(compat: Extract<DaemonCompat, { ok: false }>): string {
+  return compat.reason === 'daemon-too-old'
+    ? `your share-the-mark CLI is out of date (need ≥ ${compat.need}) — update it and retry`
+    : `update the share-the-mark extension (the CLI needs ≥ ${compat.need}) and retry`;
+}
 
 // Injected on demand under `activeTab` (no broad host permission) — see
 // entrypoints/background.ts. `registration: 'runtime'` keeps the script out of the
@@ -256,13 +268,26 @@ export default defineContentScript({
         });
         return;
       }
-      const payload = await buildPayload();
-      if (!payload) return;
-      const sink = new DaemonSink();
-      if (!(await sink.isAvailable())) {
+      const health = await sendMessage('daemonHealth', undefined);
+      if (!health.reachable) {
         setHandoff({ kind: 'error', message: 'daemon not reachable — run `share-the-mark serve`' });
         return;
       }
+      // Version handshake (SPEC §11.4): warn on a floor mismatch instead of sending
+      // to a daemon that can't read the brief — before paying for a screenshot.
+      const compat = checkDaemonCompat({
+        extensionVersion: browser.runtime.getManifest().version,
+        minDaemonVersion: MIN_DAEMON_VERSION,
+        daemonVersion: health.version,
+        daemonMinExtension: health.minExtension,
+      });
+      if (!compat.ok) {
+        setHandoff({ kind: 'error', message: compatMessage(compat) });
+        return;
+      }
+      const payload = await buildPayload();
+      if (!payload) return;
+      const sink = new DaemonSink();
       try {
         const result = await sink.write(payload);
         if (result.ref) setHandoff({ kind: 'sent', command: `share-the-mark show ${result.ref}` });

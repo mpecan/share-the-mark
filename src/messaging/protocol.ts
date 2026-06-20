@@ -8,6 +8,14 @@ export interface BriefMessage {
   imageBase64: string;
 }
 
+/** What the daemon's `/health` reports (SPEC §11.4). `reachable` is false when the
+ * daemon isn't running; the version fields drive the compatibility check. */
+export interface DaemonHealth {
+  reachable: boolean;
+  version?: string | undefined;
+  minExtension?: string | undefined;
+}
+
 // Typed message bus across extension contexts — SPEC §5.6. The background-only
 // round-trips: `captureVisibleTab` (content scripts can't call it), and the M2
 // daemon calls (`daemonHealth`/`sendBrief`) which need the loopback host
@@ -33,8 +41,8 @@ export interface ProtocolMap {
   getTabId: () => number;
   /** Has the user granted the optional loopback host permission (Options page)? */
   daemonPermitted: () => boolean;
-  /** Is the local `share-the-mark` daemon reachable? */
-  daemonHealth: () => boolean;
+  /** Is the local `share-the-mark` daemon reachable, and what version is it? */
+  daemonHealth: () => DaemonHealth;
   /** POST a brief to the daemon; returns its assigned id. */
   sendBrief: (brief: BriefMessage) => { id: string };
 }

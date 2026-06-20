@@ -14,8 +14,9 @@ export const DAEMON_ORIGIN = 'http://127.0.0.1/*';
 export class DaemonSink implements ExportSink {
   readonly id = 'daemon';
 
-  isAvailable(): Promise<boolean> {
-    return sendMessage('daemonHealth', undefined);
+  async isAvailable(): Promise<boolean> {
+    const health = await sendMessage('daemonHealth', undefined);
+    return health.reachable;
   }
 
   async write(payload: ExportPayload): Promise<ExportResult> {

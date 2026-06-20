@@ -28,6 +28,11 @@ struct MetaIn {
     captured_at: i64,
 }
 
+/// The oldest extension version this daemon is compatible with. Surfaced from
+/// `/health` so the extension can warn (rather than silently misbehave) when the
+/// two halves drift — SPEC §11.4. A declared floor, not lockstep.
+const MIN_EXTENSION: &str = "1.0.0";
+
 /// Bind the loopback ingest server. Port 0 picks an ephemeral port.
 pub fn bind(port: u16) -> Result<Server> {
     let addr = format!("127.0.0.1:{port}");
@@ -76,7 +81,11 @@ fn handle(mut request: Request, store: &Store, requests: &mut Requests, running:
         (Method::Options, _) => json_response(204, json!({})),
         (Method::Get, "/health") => json_response(
             200,
-            json!({ "ok": true, "version": env!("CARGO_PKG_VERSION") }),
+            json!({
+                "ok": true,
+                "version": env!("CARGO_PKG_VERSION"),
+                "minExtension": MIN_EXTENSION,
+            }),
         ),
         (Method::Post, "/brief") => ingest(&mut request, store, requests),
         (Method::Post, "/request") => create_request(&mut request, requests),
@@ -239,6 +248,9 @@ mod tests {
         let base = format!("http://127.0.0.1:{port}");
         let health = ureq::get(&format!("{base}/health")).call().unwrap();
         assert_eq!(health.status(), 200);
+        let health_body = health.into_json::<Value>().unwrap();
+        assert_eq!(health_body["version"], env!("CARGO_PKG_VERSION"));
+        assert_eq!(health_body["minExtension"], MIN_EXTENSION);
 
         let res = ureq::post(&format!("{base}/brief"))
             .send_json(json!({
