@@ -111,9 +111,14 @@ cargo binstall share-the-mark
 # Homebrew (macOS/Linux)
 brew install mpecan/tools/share-the-mark
 
-# From source (needs a Rust toolchain)
-cargo install --path cli
+# From source (needs a Rust toolchain + Node, for the embedded annotation UI)
+mise run cli:install        # builds the embed bundle, then `cargo install --path cli`
 ```
+
+> Installing from source with a bare `cargo install --path cli` skips the embed-bundle
+> build, so the local-serve UI (`request <path>`) would be empty. Use `mise run cli:install`
+> (above), or run `pnpm build:embed` first. Prebuilt binaries / crates.io / Homebrew all
+> bundle the UI already.
 
 You can also download a binary for your platform from the
 [Releases](https://github.com/mpecan/share-the-mark/releases) page. Then:
