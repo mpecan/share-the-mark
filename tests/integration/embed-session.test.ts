@@ -3,10 +3,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, waitFor, within } from '@testing-library/react';
 import { createAnnotationSession, type AnnotationSession, type HostAdapters } from '@/src/embed';
 import { buildBrief } from '@/src/core/share';
+import { DEFAULT_SETTINGS } from '@/src/storage';
 import type { CompositeDeps, CompositeSurface, DrawContext, LoadedImage } from '@/src/capture';
 import type { Annotation, Changelog } from '@/src/core/model';
 import type { ExportPayload, ExportResult, ExportSink } from '@/src/core/export';
-import type { TargetRef } from '@/src/core/selector';
+import { targetFor } from './overlay-harness';
 
 type WriteFn = (payload: ExportPayload) => Promise<ExportResult>;
 
@@ -16,18 +17,17 @@ type WriteFn = (payload: ExportPayload) => Promise<ExportResult>;
 // through faked `HostAdapters` and the real overlay + panel (which render under
 // happy-dom). A guard test pins the "no extension imports" invariant.
 
-const target: TargetRef = {
-  selector: '#missing',
-  fallbacks: [],
-  tag: 'div',
-  rect: { x: 0, y: 0, width: 0, height: 0 },
-};
-
 // An element mark is the simplest seed (no text anchor); its selector resolves to
 // nothing in the test DOM, so it's an orphan for placement and yields an empty
 // resolved set for compositing — exactly the cheap export path we want.
 function seedAnnotation(): Annotation {
-  return { id: 'seed', kind: 'element', createdAt: 0, note: 'a note', target };
+  return {
+    id: 'seed',
+    kind: 'element',
+    createdAt: 0,
+    note: 'a note',
+    target: targetFor('#missing', 'div'),
+  };
 }
 
 function seedChangelog(): Changelog {
@@ -75,19 +75,23 @@ function fakeCompositeDeps(): CompositeDeps {
   return { loadImage: () => Promise.resolve(image), createSurface: () => surface };
 }
 
-function sink(result: ExportResult = {}): ExportSink {
-  return {
-    id: 'fake',
-    isAvailable: () => Promise.resolve(true),
-    write: vi.fn<(payload: ExportPayload) => Promise<ExportResult>>(() => Promise.resolve(result)),
-  };
+// A fake ExportSink plus its `write` spy returned alongside, so a caller can assert
+// on the spy directly (a member reference like `s.write` would trip unbound-method).
+function fakeSink(
+  opts: { result?: ExportResult; isAvailable?: boolean; shouldReject?: boolean } = {},
+): { sink: ExportSink; write: ReturnType<typeof vi.fn<WriteFn>> } {
+  const { result = {}, isAvailable = true, shouldReject = false } = opts;
+  const write = vi.fn<WriteFn>(() =>
+    shouldReject ? Promise.reject(new Error('write failed')) : Promise.resolve(result),
+  );
+  return { sink: { id: 'fake', isAvailable: () => Promise.resolve(isAvailable), write }, write };
 }
 
 function makeDaemon(over: Partial<HostAdapters['daemon']> = {}): HostAdapters['daemon'] {
   return {
     permitted: () => Promise.resolve(true),
     health: () => Promise.resolve({ reachable: true, version: '9.9.9', minExtension: '0.0.1' }),
-    sink: sink({ ref: 'abc' }),
+    sink: fakeSink({ result: { ref: 'abc' } }).sink,
     ...over,
   };
 }
@@ -96,23 +100,15 @@ function makeDaemon(over: Partial<HostAdapters['daemon']> = {}): HostAdapters['d
 // fallbacks are exercised; nothing here asserts on the generated id or timestamp.
 function makeAdapters(over: Partial<HostAdapters> = {}): HostAdapters {
   return {
-    getSettings: () =>
-      Promise.resolve({
-        defaultTool: 'callout',
-        strokeColor: '#e11d48',
-        strokeWidth: 3,
-        highlightColor: '#fde047',
-        markdownStrip: [],
-      }),
+    getSettings: () => Promise.resolve(DEFAULT_SETTINGS),
     changelog: { load: () => Promise.resolve(seedChangelog()), save: () => Promise.resolve() },
     pendingImport: { load: () => Promise.resolve(null), clear: () => Promise.resolve() },
     captureScreenshot: () => Promise.resolve('data:image/png;base64,AAAA'),
     clipboard: { writeText: () => Promise.resolve() },
-    clipboardSink: sink(),
+    clipboardSink: fakeSink().sink,
     daemon: makeDaemon(),
     getVersion: () => '9.9.9',
     openOptions: noop,
-    compositeDeps: fakeCompositeDeps(),
     ...over,
   };
 }
@@ -122,7 +118,9 @@ let active: AnnotationSession | null = null;
 async function mount(
   adapters: HostAdapters,
 ): Promise<{ container: HTMLElement; session: AnnotationSession }> {
-  const session = await createAnnotationSession(adapters);
+  // Inject the canvas stub here (an internal, non-host seam) so export paths build a
+  // payload without a real 2D canvas under happy-dom.
+  const session = await createAnnotationSession(adapters, { compositeDeps: fakeCompositeDeps() });
   active = session;
   const container = document.createElement('div');
   document.body.append(container);
@@ -163,13 +161,7 @@ describe('createAnnotationSession', () => {
   it('hydrates a claimed import and summarizes placement', async () => {
     const clear = vi.fn(() => Promise.resolve());
     const save = vi.fn(() => Promise.resolve());
-    const brief = buildBrief({
-      id: 'b',
-      url: location.href,
-      title: 't',
-      capturedAt: 0,
-      annotations: [seedAnnotation()],
-    });
+    const brief = buildBrief(seedChangelog());
     const { container } = await mount(
       makeAdapters({
         changelog: { load: () => Promise.resolve(null), save },
@@ -182,12 +174,8 @@ describe('createAnnotationSession', () => {
   });
 
   it('exports the composited payload to the clipboard sink', async () => {
-    const write = vi.fn<WriteFn>(() => Promise.resolve({}));
-    const { container } = await mount(
-      makeAdapters({
-        clipboardSink: { id: 'fake', isAvailable: () => Promise.resolve(true), write },
-      }),
-    );
+    const { sink, write } = fakeSink();
+    const { container } = await mount(makeAdapters({ clipboardSink: sink }));
     fireEvent.click(within(container).getByRole('button', { name: 'Copy to clipboard' }));
     await waitFor(() => {
       expect(write).toHaveBeenCalledTimes(1);
@@ -196,12 +184,8 @@ describe('createAnnotationSession', () => {
   });
 
   it('skips the write when the clipboard sink is unavailable', async () => {
-    const write = vi.fn<WriteFn>(() => Promise.resolve({}));
-    const { container } = await mount(
-      makeAdapters({
-        clipboardSink: { id: 'fake', isAvailable: () => Promise.resolve(false), write },
-      }),
-    );
+    const { sink, write } = fakeSink({ isAvailable: false });
+    const { container } = await mount(makeAdapters({ clipboardSink: sink }));
     fireEvent.click(within(container).getByRole('button', { name: 'Copy to clipboard' }));
     await waitFor(() => {
       expect(document.documentElement.dataset['stmLastExport']).toBeDefined();
@@ -210,10 +194,10 @@ describe('createAnnotationSession', () => {
   });
 
   it('returns no payload (and never writes) when the screenshot fails', async () => {
-    const write = vi.fn<WriteFn>(() => Promise.resolve({}));
+    const { sink, write } = fakeSink();
     const { container } = await mount(
       makeAdapters({
-        clipboardSink: { id: 'fake', isAvailable: () => Promise.resolve(true), write },
+        clipboardSink: sink,
         captureScreenshot: () => Promise.reject(new Error('no gesture')),
       }),
     );
@@ -244,14 +228,11 @@ describe('createAnnotationSession', () => {
 
   it('guides to setup when the daemon is not permitted, and opens options', async () => {
     const openOptions = vi.fn();
-    const write = vi.fn<WriteFn>(() => Promise.resolve({ ref: 'abc' }));
+    const { sink, write } = fakeSink({ result: { ref: 'abc' } });
     const { container } = await mount(
       makeAdapters({
         openOptions,
-        daemon: makeDaemon({
-          permitted: () => Promise.resolve(false),
-          sink: { id: 'daemon', isAvailable: () => Promise.resolve(true), write },
-        }),
+        daemon: makeDaemon({ permitted: () => Promise.resolve(false), sink }),
       }),
     );
     fireEvent.click(within(container).getByRole('button', { name: 'Send to agent' }));
@@ -299,13 +280,11 @@ describe('createAnnotationSession', () => {
   });
 
   it('does not write to the daemon when the payload build fails', async () => {
-    const write = vi.fn<WriteFn>(() => Promise.resolve({ ref: 'abc' }));
+    const { sink, write } = fakeSink({ result: { ref: 'abc' } });
     const { container } = await mount(
       makeAdapters({
         captureScreenshot: () => Promise.reject(new Error('no gesture')),
-        daemon: makeDaemon({
-          sink: { id: 'daemon', isAvailable: () => Promise.resolve(true), write },
-        }),
+        daemon: makeDaemon({ sink }),
       }),
     );
     fireEvent.click(within(container).getByRole('button', { name: 'Send to agent' }));
@@ -316,17 +295,17 @@ describe('createAnnotationSession', () => {
   });
 
   it('surfaces the handoff command when the brief is sent', async () => {
-    const { container } = await mount(
-      makeAdapters({ daemon: makeDaemon({ sink: sink({ ref: 'abc' }) }) }),
-    );
+    // The default daemon sink returns { ref: 'abc' }.
+    const { container } = await mount(makeAdapters());
     fireEvent.click(within(container).getByRole('button', { name: 'Send to agent' }));
     expect(await within(container).findByText('share-the-mark show abc')).toBeInTheDocument();
   });
 
   it('shows no handoff when the daemon returns no ref', async () => {
-    const { container } = await mount(makeAdapters({ daemon: makeDaemon({ sink: sink({}) }) }));
-    const send = within(container).getByRole('button', { name: 'Send to agent' });
-    fireEvent.click(send);
+    const { container } = await mount(
+      makeAdapters({ daemon: makeDaemon({ sink: fakeSink().sink }) }),
+    );
+    fireEvent.click(within(container).getByRole('button', { name: 'Send to agent' }));
     await waitFor(() => {
       expect(within(container).getByRole('button', { name: 'Send to agent' })).toBeEnabled();
     });
@@ -334,12 +313,9 @@ describe('createAnnotationSession', () => {
   });
 
   it('reports a daemon write failure', async () => {
-    const failing: ExportSink = {
-      id: 'daemon',
-      isAvailable: () => Promise.resolve(true),
-      write: () => Promise.reject(new Error('boom')),
-    };
-    const { container } = await mount(makeAdapters({ daemon: makeDaemon({ sink: failing }) }));
+    const { container } = await mount(
+      makeAdapters({ daemon: makeDaemon({ sink: fakeSink({ shouldReject: true }).sink }) }),
+    );
     fireEvent.click(within(container).getByRole('button', { name: 'Send to agent' }));
     expect(await within(container).findByText(/failed to send/)).toBeInTheDocument();
   });

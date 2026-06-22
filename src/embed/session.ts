@@ -27,7 +27,7 @@ import {
   type PlacementSummary,
 } from '@/src/share';
 import { resolveGeometry, type ResolvedAnnotation } from '@/src/anchor';
-import { compositeAnnotations } from '@/src/capture/composite';
+import { compositeAnnotations, type CompositeDeps } from '@/src/capture/composite';
 import type { RenderOptions } from '@/src/capture/render';
 import type { AnnotationSession, HostAdapters } from './ports';
 
@@ -51,11 +51,24 @@ function compatHandoff(compat: Extract<DaemonCompat, { ok: false }>): Handoff {
   return { kind: 'error', message, action: { label: 'How to update', href: HUB_URL } };
 }
 
-export async function createAnnotationSession(adapters: HostAdapters): Promise<AnnotationSession> {
+// `deps` carries internal, non-host injection points (canvas plumbing for tests);
+// the extension passes nothing and `compositeAnnotations` uses its default surface.
+// Kept off `HostAdapters` so the host contract stays "host capabilities only".
+export async function createAnnotationSession(
+  adapters: HostAdapters,
+  deps: { compositeDeps?: CompositeDeps } = {},
+): Promise<AnnotationSession> {
   const now = adapters.now ?? (() => Date.now());
   const createId = adapters.createId ?? (() => crypto.randomUUID());
 
-  const settings = await adapters.getSettings();
+  // Independent reads — run them together so startup (the content-script injection
+  // path) costs max(...) latency, not the sum of three storage round-trips.
+  const [settings, stored, pending] = await Promise.all([
+    adapters.getSettings(),
+    adapters.changelog.load(location.href),
+    adapters.pendingImport.load(),
+  ]);
+
   const renderOptions: RenderOptions = {
     strokeColor: settings.strokeColor,
     strokeWidth: settings.strokeWidth,
@@ -63,7 +76,7 @@ export async function createAnnotationSession(adapters: HostAdapters): Promise<A
     scale: devicePixelRatio || 1,
   };
 
-  let changelog: Changelog = (await adapters.changelog.load(location.href)) ?? {
+  let changelog: Changelog = stored ?? {
     id: createId(),
     url: location.href,
     title: document.title,
@@ -79,11 +92,7 @@ export async function createAnnotationSession(adapters: HostAdapters): Promise<A
   // Cross-machine import (SPEC §12): if the host stashed a brief for this URL and
   // the tab just landed here, hydrate the marks and summarize placement so they
   // render the moment the page is ready — no "Start annotating" click.
-  const claimed = claimPendingImport({
-    pending: await adapters.pendingImport.load(),
-    href: location.href,
-    now: now(),
-  });
+  const claimed = claimPendingImport({ pending, href: location.href, now: now() });
   if (claimed) {
     changelog = { ...changelog, annotations: renumberCallouts(claimed.annotations) };
     void adapters.pendingImport.clear();
@@ -145,7 +154,7 @@ export async function createAnnotationSession(adapters: HostAdapters): Promise<A
         screenshot,
         resolved,
         renderOptions,
-        adapters.compositeDeps,
+        deps.compositeDeps,
       );
       return await buildExportPayload(captured, image);
     } catch {

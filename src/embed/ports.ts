@@ -1,6 +1,5 @@
 import type { Changelog } from '@/src/core/model';
 import type { ExportSink } from '@/src/core/export';
-import type { CompositeDeps } from '@/src/capture/composite';
 import type { PendingImport } from '@/src/share';
 import type { Settings } from '@/src/storage';
 import type { DaemonHealth } from '@/src/messaging';
@@ -47,11 +46,6 @@ export interface HostAdapters {
   getVersion(): string;
   /** Open the host's setup surface (the extension Options page). */
   openOptions(): void;
-  /**
-   * Canvas/image plumbing for compositing. Injected so the session is testable
-   * without a real 2D canvas; the extension omits it to use the default surface.
-   */
-  compositeDeps?: CompositeDeps;
   /** Injectable clock/id for tests; default to `Date.now`/`crypto.randomUUID`. */
   now?: () => number;
   createId?: () => string;
