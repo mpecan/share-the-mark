@@ -1,11 +1,19 @@
 # mise task runner — `mise tasks` to list, `mise run <task>` to run.
-# Node is pinned in .tool-versions (read automatically); pnpm via corepack
-# (packageManager field); the CLI uses your system Rust toolchain (rustup).
+# Node is pinned in .tool-versions (read automatically); pnpm is pinned in
+# [tools] below so `jdx/mise-action` puts it on PATH in CI (corepack's shims
+# aren't reliably there); the CLI uses your system Rust toolchain (rustup).
 #
 # Local review flow (Firefox or Chrome):
 #   1. mise run dev:firefox     # loads the extension into Firefox (hot-reload)
 #   2. mise run cli:install      # put `share-the-mark` on PATH (or use `mise run serve`)
 #   3. the agent runs: share-the-mark request <url>  → annotate → "Send to agent"
+
+[tools]
+# Match the package.json `packageManager` pin. Managed by mise (not corepack) so
+# the mise-driven CLI jobs get a working `pnpm` on PATH. Node stays in
+# .tool-versions — mise reads it automatically and the quality job's setup-node
+# consumes it too.
+pnpm = "10.14.0"
 
 # ── Extension: load in a browser for local testing (WXT dev, hot-reload) ──
 [tasks.dev]
@@ -62,20 +70,31 @@ run = "pnpm e2e"
 description = "Check the bundle size budget"
 run = "pnpm size"
 
+# ── Embed bundle: built (esbuild) and baked into the CLI binary (SPEC §13.6) ──
+# Every CLI task that *compiles* depends on this so build.rs finds the bundle at
+# ../.output/embed/local.global.js (relative to cli/) — the single source of truth
+# for the cross-toolchain build order.
+[tasks."build:embed"]
+description = "Build the embed bundles (esbuild → .output/embed/*.global.js)"
+run = "pnpm build:embed"
+
 # ── CLI (share-the-mark): build, test, run ──
 [tasks."cli:build"]
 description = "Build the share-the-mark CLI (debug)"
 dir = "cli"
+depends = ["build:embed"]
 run = "cargo build"
 
 [tasks."cli:test"]
 description = "Run the share-the-mark CLI tests"
 dir = "cli"
+depends = ["build:embed"]
 run = "cargo test"
 
 [tasks."cli:clippy"]
 description = "Lint the share-the-mark CLI (clippy, deny warnings)"
 dir = "cli"
+depends = ["build:embed"]
 run = "cargo clippy --all-targets -- -D warnings"
 
 [tasks."cli:fmt"]
@@ -87,9 +106,32 @@ run = "cargo fmt --check"
 description = "All share-the-mark CLI gates: fmt + clippy + test"
 depends = ["cli:fmt", "cli:clippy", "cli:test"]
 
+[tasks."cli:ci"]
+description = "CLI gates for CI: fmt + clippy + test (via cli:check) + release build"
+dir = "cli"
+# Reuse the gate tasks (single-sourced flags); only the release build is new. Each
+# gate already depends on build:embed, so the bundle is baked in (built once).
+depends = ["cli:check"]
+run = "cargo build --release"
+
+# Vendor the built bundle into the crate (cli/embed/), so `cargo publish` packages it
+# (Cargo.toml `include`) and release binaries embed it. Shared by both release jobs.
+[tasks."cli:vendor-embed"]
+description = "Vendor the embed bundle into the crate (for cargo publish / release builds)"
+dir = "cli"
+depends = ["build:embed"]
+run = """
+mkdir -p embed
+cp ../.output/embed/local.global.js embed/local.global.js
+cp ../.output/embed/playwright-runner.mjs embed/playwright-runner.mjs
+test -s embed/local.global.js
+test -s embed/playwright-runner.mjs
+"""
+
 [tasks."cli:install"]
 description = "Install the share-the-mark binary to ~/.cargo/bin"
 dir = "cli"
+depends = ["build:embed"]
 run = "cargo install --path ."
 
 [tasks.serve]

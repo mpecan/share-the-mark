@@ -9,4 +9,31 @@ export default [
     gzip: true,
     running: false,
   },
+  {
+    // The standalone embed IIFE injected for channel A (SPEC §13.4/§13.8) — React +
+    // the annotation core in one self-contained script. Run `pnpm build:embed` first.
+    name: 'Embed bundle (standalone injection)',
+    path: '.output/embed/embed.global.js',
+    limit: '120 kB',
+    gzip: true,
+    running: false,
+  },
+  {
+    // The dev `<script>` widget IIFE (channel B, §13.5) — the embed core + the
+    // default html-to-image page-capture provider, exposing `window.ShareTheMark`.
+    name: 'Widget bundle (ShareTheMark.init)',
+    path: '.output/embed/share-the-mark.global.js',
+    limit: '100 kB',
+    gzip: true,
+    running: false,
+  },
+  {
+    // The local-serve IIFE (channel C, §13.6) — self-mounting; the daemon injects it
+    // into the artifact it serves, and it POSTs the brief back same-origin.
+    name: 'Local bundle (daemon-served)',
+    path: '.output/embed/local.global.js',
+    limit: '100 kB',
+    gzip: true,
+    running: false,
+  },
 ];

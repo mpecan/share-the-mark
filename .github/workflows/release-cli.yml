@@ -40,10 +40,24 @@ jobs:
           - target: x86_64-pc-windows-msvc
             os: windows-latest
     runs-on: ${{ matrix.os }}
+    # Fail the build (in build.rs) if the bundle is somehow absent, rather than
+    # shipping a binary with an empty embed.
+    env:
+      SHARE_THE_MARK_REQUIRE_EMBED: '1'
     steps:
       - uses: actions/checkout@v7
         with:
           ref: ${{ env.RELEASE_TAG }}
+
+      - uses: jdx/mise-action@v2
+
+      # Build + vendor the embed bundle into the crate so build.rs bakes it into the
+      # binary (build.rs runs host-side, so the embed survives cross-compilation).
+      - name: Build & vendor the embed bundle
+        shell: bash
+        run: |
+          pnpm install --frozen-lockfile
+          mise run cli:vendor-embed
 
       # Builds cli/ for the target (cross-compiling via `cross` where needed),
       # archives `share-the-mark-<target>.{tar.gz,zip}` with a `.sha256`, and uploads
@@ -63,6 +77,9 @@ jobs:
     if: startsWith(inputs.tag || github.event.release.tag_name, 'cli-v')
     name: Publish to crates.io
     runs-on: ubuntu-latest
+    # `cargo publish` verifies the crate by building it; fail loud if the embed is absent.
+    env:
+      SHARE_THE_MARK_REQUIRE_EMBED: '1'
     steps:
       - uses: actions/checkout@v7
         with:
@@ -71,6 +88,16 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: cli
+      - uses: jdx/mise-action@v2
+
+      # Vendor the built bundle into the crate so the *published* crate carries it
+      # (Cargo.toml `include` packages it; it stays gitignored locally). `cargo
+      # install` from crates.io then bakes it in via build.rs.
+      - name: Build & vendor the embed bundle
+        run: |
+          pnpm install --frozen-lockfile
+          mise run cli:vendor-embed
+
       - name: cargo publish (idempotent)
         working-directory: cli
         run: |
@@ -79,7 +106,8 @@ jobs:
           if [ "$LOCAL" = "$PUBLISHED" ]; then
             echo "::notice::share-the-mark@$LOCAL already published, skipping"
           else
-            cargo publish
+            # --allow-dirty: the vendored embed/local.global.js is gitignored/untracked.
+            cargo publish --allow-dirty
           fi
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}

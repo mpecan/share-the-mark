@@ -111,9 +111,14 @@ cargo binstall share-the-mark
 # Homebrew (macOS/Linux)
 brew install mpecan/tools/share-the-mark
 
-# From source (needs a Rust toolchain)
-cargo install --path cli
+# From source (needs a Rust toolchain + Node, for the embedded annotation UI)
+mise run cli:install        # builds the embed bundle, then `cargo install --path cli`
 ```
+
+> Installing from source with a bare `cargo install --path cli` skips the embed-bundle
+> build, so the local-serve UI (`request <path>`) would be empty. Use `mise run cli:install`
+> (above), or run `pnpm build:embed` first. Prebuilt binaries / crates.io / Homebrew all
+> bundle the UI already.
 
 You can also download a binary for your platform from the
 [Releases](https://github.com/mpecan/share-the-mark/releases) page. Then:
@@ -145,13 +150,79 @@ teaches it to run `share-the-mark pending` / `share-the-mark show <id>`). The ag
 it and click **Send to agent**, then returns the brief — which wakes a
 backgrounded agent (e.g. Claude Code) so it can act on your comments.
 
-CLI: `share-the-mark setup | request <url> | pending | list | show <id> | serve | start | stop | status | skill install`.
+**Annotate a remote URL without the extension (`--playwright`).** Add `--playwright`
+to a URL request and the CLI drives a headed [Playwright](https://playwright.dev)
+browser it controls, injecting the panel directly (Channel A — CSP-immune, no extension):
+
+```bash
+share-the-mark request --playwright https://example.com   # opens a browser you annotate in
+```
+
+Annotate the page it opens and click **Send to agent**; the brief flows back exactly as
+above (close the window to cancel). This needs Node and Playwright available — it's
+resolved from your project's `node_modules`, the current directory, or a global install
+(`npm i -g playwright && playwright install chromium`), never bundled into the binary.
+For local files, use the plain `request <path>` (below) instead.
+
+**Annotate a local artifact (no extension).** Point `request` at a local HTML file or
+directory and the daemon serves it on its loopback origin with the annotation panel
+already injected — no extension needed (SPEC §13.6):
+
+```bash
+share-the-mark request ./preview.html     # serves + opens it, blocks for your feedback
+```
+
+Draw on the page and click **Copy to clipboard** / send; the brief posts straight back to
+the daemon and the command returns it. Ideal for an agent that just generated an HTML
+artifact and wants your design feedback on it. The injected bundle is **baked into the
+binary** — an installed `share-the-mark` is self-contained. Building from this repo,
+use `mise run cli:build` (it builds the bundle first); override the served bundle for
+dev with `--bundle <path>` or `SHARE_THE_MARK_EMBED_BUNDLE`.
+
+CLI: `share-the-mark setup | request [--playwright] <url-or-path> | pending | list | show <id> | serve | start | stop | status | skill install`.
 Config via flags or `SHARE_THE_MARK_PORT` / `SHARE_THE_MARK_DIR`.
 
 **Daemon lifecycle.** `share-the-mark serve` / `share-the-mark start` run until you `share-the-mark stop` them.
 A daemon that `share-the-mark request` auto-starts gets an idle timeout (default 30 min,
 `--idle-timeout` / `SHARE_THE_MARK_IDLE`) and shuts itself down once unused — so it never
 lingers as a stray. `share-the-mark status` checks if one is running.
+
+## Embed it without the extension (dev/staging widget)
+
+The annotation UI ships as a self-contained `<script>` you can drop into your own
+dev/staging build — no extension install — to collect design feedback (SPEC §13.5).
+Build the bundle (`pnpm build:embed` → `.output/embed/share-the-mark.global.js`), host
+it, and:
+
+```html
+<script src="https://your-cdn.example/share-the-mark.global.js"></script>
+<script>
+  // Gate it so it never ships to production.
+  if (import.meta.env?.DEV) {
+    ShareTheMark.init({
+      // Receive the annotation Markdown + composited PNG. Omit to copy Markdown to the clipboard.
+      onSubmit: (payload) => sendToYourBacklog(payload.markdown),
+    });
+  }
+</script>
+```
+
+`init(config)` returns a handle: `stm.open()`, `stm.close()`, `stm.destroy()`,
+`stm.exportNow()`. The widget renders into an isolated **shadow root**, captures the
+page itself via a bundled default (`html-to-image`, overridable with
+`config.screenshot`), and makes **no network calls** of its own — `onSubmit` is where
+_you_ send the feedback. A runnable example lives in [`demo/index.html`](./demo/index.html).
+
+**Content-Security-Policy** the _host_ page needs (only the first is for the library):
+
+- `script-src` — allow the bundle's origin (e.g. `script-src 'self' https://your-cdn.example`).
+- `img-src data:` — the panel preview and composited export use `data:` PNG URLs.
+- `connect-src` — only for _your_ `onSubmit` destination; the library needs none.
+- The panel's styles are injected into the shadow root and are generally exempt from
+  the page's `style-src`; add `'unsafe-inline'` only if a strict policy flags them.
+
+Cross-origin images on the page may taint the capture canvas (a `foreignObject`
+limitation); first-party dev pages are typically unaffected.
 
 ## Permissions
 

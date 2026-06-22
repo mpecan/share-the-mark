@@ -1,7 +1,7 @@
 import { useState, type JSX } from 'react';
 import type { Annotation, ToolKind } from '@/src/core/model';
 import type { PlacementSummary } from '@/src/share';
-import type { Handoff, HandoffAction, ShareNotice } from './PanelApp';
+import type { Handoff, HandoffAction, PanelActions, ShareNotice } from './PanelApp';
 
 // In-page changelog panel (SPEC §5.8). Rendered with React into the closed
 // shadow root alongside the overlay. Static-ish UI only — the hot drawing path
@@ -22,6 +22,7 @@ export interface ChangelogPanelProps {
   onSendToAgent: () => void;
   onCopyShareLink?: (() => void) | undefined;
   onOpenOptions?: (() => void) | undefined;
+  actions?: PanelActions | undefined;
 }
 
 const ICONS: Record<ToolKind, JSX.Element> = {
@@ -95,9 +96,11 @@ export function ChangelogPanel({
   onSendToAgent,
   onCopyShareLink,
   onOpenOptions,
+  actions,
 }: ChangelogPanelProps): JSX.Element {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
+  const exportLabel = actions?.exportLabel ?? 'Copy to clipboard';
   return (
     <section className="stm-panel" data-collapsed={isCollapsed} aria-label="Changelog">
       <header className="stm-panel__head">
@@ -255,24 +258,28 @@ export function ChangelogPanel({
             onClick={onExport}
             disabled={annotations.length === 0}
           >
-            Copy to clipboard
+            {exportLabel}
           </button>
-          <button
-            type="button"
-            className="stm-panel__send"
-            onClick={onSendToAgent}
-            disabled={annotations.length === 0}
-          >
-            Send to agent
-          </button>
-          <button
-            type="button"
-            className="stm-panel__share"
-            onClick={onCopyShareLink}
-            disabled={annotations.length === 0}
-          >
-            Copy share link
-          </button>
+          {(actions?.showSendToAgent ?? true) && (
+            <button
+              type="button"
+              className="stm-panel__send"
+              onClick={onSendToAgent}
+              disabled={annotations.length === 0}
+            >
+              Send to agent
+            </button>
+          )}
+          {(actions?.showShareLink ?? true) && (
+            <button
+              type="button"
+              className="stm-panel__share"
+              onClick={onCopyShareLink}
+              disabled={annotations.length === 0}
+            >
+              Copy share link
+            </button>
+          )}
         </div>
         {handoff !== null &&
           (handoff.kind === 'sent' ? (

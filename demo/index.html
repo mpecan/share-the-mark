@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>share-the-mark — embed demo</title>
+    <style>
+      body {
+        font:
+          16px/1.5 system-ui,
+          sans-serif;
+        max-width: 40rem;
+        margin: 3rem auto;
+        padding: 0 1rem;
+      }
+      h1 {
+        font-size: 1.6rem;
+      }
+      button {
+        padding: 0.6rem 1rem;
+        font: inherit;
+      }
+    </style>
+    <!-- Build first: `pnpm build:embed`, then open this file (or serve it). -->
+    <script src="../.output/embed/share-the-mark.global.js"></script>
+    <script>
+      window.addEventListener('DOMContentLoaded', () => {
+        // No onSubmit → the export copies the Markdown changelog to the clipboard.
+        // Supply onSubmit to route feedback into your own system instead.
+        ShareTheMark.init({
+          onSubmit: (payload) => {
+            console.log('[share-the-mark] feedback:\n' + payload.markdown);
+          },
+        });
+      });
+    </script>
+  </head>
+  <body>
+    <main>
+      <h1>share-the-mark embed demo</h1>
+      <p>
+        Pick a tool in the panel (bottom-right), draw on this page, then hit
+        <strong>Copy to clipboard</strong> / Send. The annotation Markdown is logged to the console
+        (and the composited screenshot is built via the default <code>html-to-image</code> capture).
+      </p>
+      <button data-testid="primary-action">Primary action</button>
+    </main>
+  </body>
+</html>

@@ -5,6 +5,9 @@ import { WxtVitest } from 'wxt/testing';
 // CI-enforced coverage thresholds (stricter for the pure core).
 export default defineConfig({
   plugins: [WxtVitest()],
+  // The widget bundle inlines the panel CSS via this esbuild `define`; mirror it
+  // here as empty so `src/embed/widget.ts` is importable under vitest.
+  define: { __STM_PANEL_CSS__: '""' },
   test: {
     globals: true,
     environment: 'happy-dom',
@@ -21,6 +24,17 @@ export default defineConfig({
         // cannot run under happy-dom; the orchestration it backs is tested via
         // dependency injection. See src/capture/composite.ts.
         'src/capture/composite-surface.ts',
+        // Channel-A injection glue (SPEC §13.4): the IIFE entry (binding globals,
+        // DOM boot) and the Node-side Playwright helper can't run under happy-dom;
+        // both are exercised by tests/e2e/embed-playwright.spec.ts. mount.ts (the
+        // logic they wrap) stays covered.
+        'src/embed/standalone.ts',
+        'src/embed/playwright.ts',
+        'src/embed/playwright-runner.ts',
+        'src/embed/local.ts',
+        // Default DOM-capture provider (html-to-image / real foreignObject canvas);
+        // same rationale as composite-surface.ts. Exercised by the channel-B e2e.
+        'src/embed/screenshot.ts',
       ],
       thresholds: {
         lines: 90,

@@ -5,6 +5,20 @@ edition = "2021"
 description = "share-the-mark CLI: receive design-feedback change-briefs from the browser extension and expose them to a coding agent"
 license = "MIT"
 repository = "https://github.com/mpecan/share-the-mark"
+build = "build.rs"
+# `include` makes packaging EXCLUSIVE — anything unlisted is dropped from the crate.
+# `skill/**/*` and the `embed/*` artifacts are loaded via include_str!/include_bytes!,
+# so they MUST be listed. The `embed/*` files are gitignored (built, not committed) but
+# `include` packages them regardless of VCS, so `cargo install` from crates.io embeds
+# them (the publish job vendors them there; see release-cli.yml).
+include = [
+  "src/**/*",
+  "skill/**/*",
+  "embed/local.global.js",
+  "embed/playwright-runner.mjs",
+  "build.rs",
+  "Cargo.toml",
+]
 
 [[bin]]
 name = "share-the-mark"

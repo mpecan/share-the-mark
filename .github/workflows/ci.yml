@@ -76,11 +76,15 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        working-directory: cli
+    # No working-directory: the CLI gates run via mise (`cli:ci`), whose `build:embed`
+    # dependency builds the embed bundle (Node) from the repo root before cargo — so
+    # the binary embeds the real frontend artifact and the cross-toolchain build order
+    # lives in one place (mise), matching local `mise run cli:ci`.
     steps:
       - uses: actions/checkout@v7
+
+      # Installs Node 22 from .tool-versions and makes `mise` available.
+      - uses: jdx/mise-action@v2
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -96,14 +100,33 @@ jobs:
             cli/target
           key: cargo-${{ matrix.os }}-${{ hashFiles('cli/Cargo.lock') }}
 
-      - name: Format
-        run: cargo fmt --check
+      - name: Install JS deps (for the embed bundle build)
+        run: pnpm install --frozen-lockfile
 
-      - name: Clippy
-        run: cargo clippy --all-targets -- -D warnings
+      - name: CLI gates (fmt + clippy + test + release build, embed baked in)
+        run: mise run cli:ci
 
-      - name: Test
-        run: cargo test
-
-      - name: Build (release)
-        run: cargo build --release
+  # Channel C (SPEC §13.6) end-to-end: the Rust daemon serves a local artifact with
+  # the embedded panel injected, a real browser annotates it, and the brief round-
+  # trips. Needs both toolchains + a browser, so it's its own job (ubuntu only — the
+  # loop isn't OS-specific). Tagged `@cli`, excluded from the `quality` job's e2e.
+  cli-e2e:
+    name: cli e2e (local-serve)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: jdx/mise-action@v2
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Cache cargo
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            cli/target
+          key: cargo-cli-e2e-${{ hashFiles('cli/Cargo.lock') }}
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Channel C local-serve e2e
+        run: pnpm e2e:cli

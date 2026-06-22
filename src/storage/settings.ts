@@ -1,24 +1,10 @@
 import { storage } from 'wxt/utils/storage';
-import type { ToolKind } from '@/src/core/model';
+import { DEFAULT_SETTINGS, type Settings } from './settings-defaults';
 
 // Typed settings persisted to storage.local — SPEC §5.7. No sync storage in M1.
-
-export interface Settings {
-  defaultTool: ToolKind;
-  strokeColor: string;
-  strokeWidth: number;
-  highlightColor: string;
-  /** Extra selectors stripped during Markdown extraction. */
-  markdownStrip: string[];
-}
-
-export const DEFAULT_SETTINGS: Settings = {
-  defaultTool: 'callout',
-  strokeColor: '#e11d48',
-  strokeWidth: 3,
-  highlightColor: '#fde047',
-  markdownStrip: [],
-};
+// The `Settings` shape + `DEFAULT_SETTINGS` live in `settings-defaults.ts` (browser-
+// free) so the embed can reuse them without pulling WXT; re-exported here.
+export { DEFAULT_SETTINGS, type Settings } from './settings-defaults';
 
 const settingsItem = storage.defineItem<Settings>('local:settings', {
   fallback: DEFAULT_SETTINGS,
