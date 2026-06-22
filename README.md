@@ -172,7 +172,7 @@ already injected — no extension needed (SPEC §13.6):
 share-the-mark request ./preview.html     # serves + opens it, blocks for your feedback
 ```
 
-Draw on the page and click **Copy to clipboard** / send; the brief posts straight back to
+Draw on the page and click **Send to agent**; the brief posts straight back to
 the daemon and the command returns it. Ideal for an agent that just generated an HTML
 artifact and wants your design feedback on it. The injected bundle is **baked into the
 binary** — an installed `share-the-mark` is self-contained. Building from this repo,
