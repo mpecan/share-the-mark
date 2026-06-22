@@ -34,8 +34,11 @@ export interface HostAdapters {
   captureScreenshot(): Promise<string>;
   /** Plain text to the clipboard — the cross-machine share token (SPEC §12). */
   clipboard: { writeText(text: string): Promise<void> };
-  /** Sink for the composited Markdown + PNG export (SPEC §5.4). */
-  clipboardSink: ExportSink;
+  /**
+   * Sink for the composited Markdown + PNG export (SPEC §5.4). A host injects
+   * `ClipboardSink` (the extension) or `BindingSink` (automation / local-serve).
+   */
+  exportSink: ExportSink;
   /** The local `share-the-mark` daemon path (SPEC §5.4, M2). */
   daemon: {
     permitted(): Promise<boolean>;

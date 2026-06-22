@@ -6,7 +6,12 @@ import { buildBrief } from '@/src/core/share';
 import { DEFAULT_SETTINGS } from '@/src/storage';
 import type { CompositeDeps, CompositeSurface, DrawContext, LoadedImage } from '@/src/capture';
 import type { Annotation, Changelog } from '@/src/core/model';
-import type { ExportPayload, ExportResult, ExportSink } from '@/src/core/export';
+import {
+  BindingSink,
+  type ExportPayload,
+  type ExportResult,
+  type ExportSink,
+} from '@/src/core/export';
 import { targetFor } from './overlay-harness';
 
 type WriteFn = (payload: ExportPayload) => Promise<ExportResult>;
@@ -105,7 +110,7 @@ function makeAdapters(over: Partial<HostAdapters> = {}): HostAdapters {
     pendingImport: { load: () => Promise.resolve(null), clear: () => Promise.resolve() },
     captureScreenshot: () => Promise.resolve('data:image/png;base64,AAAA'),
     clipboard: { writeText: () => Promise.resolve() },
-    clipboardSink: fakeSink().sink,
+    exportSink: fakeSink().sink,
     daemon: makeDaemon(),
     getVersion: () => '9.9.9',
     openOptions: noop,
@@ -175,7 +180,7 @@ describe('createAnnotationSession', () => {
 
   it('exports the composited payload to the clipboard sink', async () => {
     const { sink, write } = fakeSink();
-    const { container } = await mount(makeAdapters({ clipboardSink: sink }));
+    const { container } = await mount(makeAdapters({ exportSink: sink }));
     fireEvent.click(within(container).getByRole('button', { name: 'Copy to clipboard' }));
     await waitFor(() => {
       expect(write).toHaveBeenCalledTimes(1);
@@ -183,9 +188,21 @@ describe('createAnnotationSession', () => {
     expect(document.documentElement.dataset['stmLastExport']).toContain('# Change brief');
   });
 
+  it('drives a BindingSink (the non-clipboard export path) end to end', async () => {
+    const deliver = vi.fn<(payload: ExportPayload) => Promise<void>>(() => Promise.resolve());
+    const { container } = await mount(makeAdapters({ exportSink: new BindingSink(deliver) }));
+    fireEvent.click(within(container).getByRole('button', { name: 'Copy to clipboard' }));
+    await waitFor(() => {
+      expect(deliver).toHaveBeenCalledTimes(1);
+    });
+    const payload = deliver.mock.calls[0]?.[0];
+    expect(payload?.markdown).toContain('# Change brief');
+    expect(payload?.image).toBeInstanceOf(Blob);
+  });
+
   it('skips the write when the clipboard sink is unavailable', async () => {
     const { sink, write } = fakeSink({ isAvailable: false });
-    const { container } = await mount(makeAdapters({ clipboardSink: sink }));
+    const { container } = await mount(makeAdapters({ exportSink: sink }));
     fireEvent.click(within(container).getByRole('button', { name: 'Copy to clipboard' }));
     await waitFor(() => {
       expect(document.documentElement.dataset['stmLastExport']).toBeDefined();
@@ -197,7 +214,7 @@ describe('createAnnotationSession', () => {
     const { sink, write } = fakeSink();
     const { container } = await mount(
       makeAdapters({
-        clipboardSink: sink,
+        exportSink: sink,
         captureScreenshot: () => Promise.reject(new Error('no gesture')),
       }),
     );

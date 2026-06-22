@@ -47,7 +47,7 @@ export default defineContentScript({
       pendingImport: { load: loadPendingImport, clear: clearPendingImport },
       captureScreenshot: requestScreenshot,
       clipboard: { writeText: (text) => navigator.clipboard.writeText(text) },
-      clipboardSink: new ClipboardSink(),
+      exportSink: new ClipboardSink(),
       daemon: {
         permitted: () => sendMessage('daemonPermitted', undefined),
         health: () => sendMessage('daemonHealth', undefined),

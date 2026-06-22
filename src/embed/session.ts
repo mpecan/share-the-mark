@@ -179,17 +179,18 @@ export async function createAnnotationSession(
     publish();
   }
 
-  async function exportToClipboard(): Promise<void> {
+  async function runExport(): Promise<void> {
     const payload = await buildPayload();
     if (!payload) return;
-    if (await adapters.clipboardSink.isAvailable()) await adapters.clipboardSink.write(payload);
+    if (await adapters.exportSink.isAvailable()) await adapters.exportSink.write(payload);
   }
 
   // Send the brief to the local `share-the-mark` daemon and surface the handoff token.
-  // TODO(step 2): the error-handoff copy and the `open-options` action are
+  // TODO(channel A/C): the error-handoff copy and the `open-options` action are
   // extension-specific UI; a non-extension channel has no Options page. Extract a
   // handoff *presenter* (core emits structured reason codes, the host phrases them)
-  // when the embed channels land. Kept inline here for a zero-behavior-change lift.
+  // once a channel gives a second consumer to design against. Kept inline here for
+  // a zero-behavior-change lift.
   async function sendToAgent(): Promise<void> {
     // The loopback host permission is opt-in; without it the background fetch can't
     // reach the daemon, so guide the user to enable it rather than build a payload
@@ -276,7 +277,7 @@ export async function createAnnotationSession(
           dispatch({ type: 'replaceAll', annotations: [] });
         },
         onExport: () => {
-          void exportToClipboard();
+          void runExport();
         },
         onSendToAgent: () => {
           void sendToAgent();
@@ -303,5 +304,5 @@ export async function createAnnotationSession(
     panelRoot = null;
   }
 
-  return { mountView, unmountView, exportAnnotations: exportToClipboard };
+  return { mountView, unmountView, exportAnnotations: runExport };
 }
