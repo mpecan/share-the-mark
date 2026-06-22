@@ -1,7 +1,7 @@
 import type { Changelog } from '@/src/core/model';
 import type { ExportSink } from '@/src/core/export';
 import type { PendingImport } from '@/src/share';
-import type { Settings } from '@/src/storage';
+import type { Settings } from '@/src/storage/settings-defaults';
 import type { DaemonHealth } from '@/src/messaging';
 
 // The host ports the browser-free annotation session (SPEC §13.2) depends on.

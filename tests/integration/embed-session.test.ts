@@ -4,7 +4,6 @@ import { act, fireEvent, waitFor, within } from '@testing-library/react';
 import { createAnnotationSession, type AnnotationSession, type HostAdapters } from '@/src/embed';
 import { buildBrief } from '@/src/core/share';
 import { DEFAULT_SETTINGS } from '@/src/storage';
-import type { CompositeDeps, CompositeSurface, DrawContext, LoadedImage } from '@/src/capture';
 import type { Annotation, Changelog } from '@/src/core/model';
 import {
   BindingSink,
@@ -13,6 +12,7 @@ import {
   type ExportSink,
 } from '@/src/core/export';
 import { targetFor } from './overlay-harness';
+import { fakeCompositeDeps } from '../fixtures/composite';
 
 type WriteFn = (payload: ExportPayload) => Promise<ExportResult>;
 
@@ -46,39 +46,6 @@ function seedChangelog(): Changelog {
 }
 
 const noop = (): void => undefined;
-
-function noopContext(): DrawContext {
-  return {
-    strokeStyle: '',
-    fillStyle: '',
-    lineWidth: 0,
-    font: '',
-    textAlign: 'start',
-    textBaseline: 'alphabetic',
-    globalAlpha: 1,
-    save: noop,
-    restore: noop,
-    beginPath: noop,
-    moveTo: noop,
-    lineTo: noop,
-    arc: noop,
-    fillRect: noop,
-    strokeRect: noop,
-    stroke: noop,
-    fill: noop,
-    fillText: noop,
-  };
-}
-
-function fakeCompositeDeps(): CompositeDeps {
-  const image: LoadedImage = { width: 10, height: 10, source: {} as CanvasImageSource };
-  const surface: CompositeSurface = {
-    context: noopContext(),
-    drawImage: noop,
-    toBlob: () => Promise.resolve(new Blob(['png'], { type: 'image/png' })),
-  };
-  return { loadImage: () => Promise.resolve(image), createSurface: () => surface };
-}
 
 // A fake ExportSink plus its `write` spy returned alongside, so a caller can assert
 // on the spy directly (a member reference like `s.write` would trip unbound-method).
@@ -372,17 +339,28 @@ describe('createAnnotationSession', () => {
     expect(save).toHaveBeenCalled();
   });
 
-  it('imports none of the extension-only modules (browser-free invariant)', () => {
-    const source = readFileSync(`${process.cwd()}/src/embed/session.ts`, 'utf8');
-    for (const forbidden of [
-      'wxt/browser',
-      'wxt/utils/storage',
-      '@/src/messaging',
-      '@/src/capture/screenshot',
-      '@/src/capture/clipboard-sink',
-      '@/src/capture/daemon-sink',
-    ]) {
-      expect(source).not.toContain(`from '${forbidden}'`);
-    }
-  });
+  // The browser-free invariant: the embed orchestrator and its mount() wrapper must
+  // import none of the extension-coupled modules, or they'd drag WXT/the message bus
+  // into the standalone bundle (channel A) and break injection.
+  it.each(['src/embed/session.ts', 'src/embed/mount.ts'])(
+    '%s imports none of the extension-only modules',
+    (file) => {
+      const source = readFileSync(`${process.cwd()}/${file}`, 'utf8');
+      for (const forbidden of [
+        'wxt/browser',
+        'wxt/utils/storage',
+        '@/src/messaging',
+        '@/src/capture/screenshot',
+        '@/src/capture/clipboard-sink',
+        '@/src/capture/daemon-sink',
+        // The barrels that re-export the coupled modules above:
+        "from '@/src/capture'",
+        "from '@/src/storage'",
+      ]) {
+        expect(source).not.toContain(
+          forbidden.startsWith('from ') ? forbidden : `from '${forbidden}'`,
+        );
+      }
+    },
+  );
 });

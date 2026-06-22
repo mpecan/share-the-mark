@@ -21,6 +21,12 @@ export default defineConfig({
         // cannot run under happy-dom; the orchestration it backs is tested via
         // dependency injection. See src/capture/composite.ts.
         'src/capture/composite-surface.ts',
+        // Channel-A injection glue (SPEC §13.4): the IIFE entry (binding globals,
+        // DOM boot) and the Node-side Playwright helper can't run under happy-dom;
+        // both are exercised by tests/e2e/embed-playwright.spec.ts. mount.ts (the
+        // logic they wrap) stays covered.
+        'src/embed/standalone.ts',
+        'src/embed/playwright.ts',
       ],
       thresholds: {
         lines: 90,

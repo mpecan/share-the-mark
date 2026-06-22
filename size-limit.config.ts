@@ -9,4 +9,13 @@ export default [
     gzip: true,
     running: false,
   },
+  {
+    // The standalone embed IIFE injected for channel A (SPEC §13.4/§13.8) — React +
+    // the annotation core in one self-contained script. Run `pnpm build:embed` first.
+    name: 'Embed bundle (standalone injection)',
+    path: '.output/embed/embed.global.js',
+    limit: '120 kB',
+    gzip: true,
+    running: false,
+  },
 ];
