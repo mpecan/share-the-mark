@@ -546,7 +546,7 @@ with no daemon and no screenshot (§12): a compressed `stm1:` token carrying
 extension, which opens the URL and re-renders the marks live against the content
 anchors. Additive — the daemon and the M2 agent brief are untouched.
 
-**M5 — Extension-less / embeddable delivery (§13).** Factor the overlay+panel
+**M5 — Extension-less / embeddable delivery (§13) (shipped).** Factor the overlay+panel
 orchestration out of `content.ts` into a browser-free `src/embed` core
 (`mount(adapters)`), add a `BindingSink`, and ship three no-extension channels:
 Playwright injection (A), a dev/staging `<script>`/npm widget (B), and a
@@ -730,6 +730,35 @@ feedback flows back to wake the agent (the "Claude Code shares an artifact and
 asks for feedback" loop). Additive: the extension, the §5.4 sinks, the M2 daemon,
 and the §12 share tokens are untouched; this factors out a reusable core they all
 already sit on.
+
+> **Revision (as-built, M5):** all three channels shipped on the browser-free
+> `src/embed` core (`mount()` + `StorageAdapter`/`ScreenshotProvider` adapters)
+> with `content.ts` reduced to WXT-adapter construction, plus `BindingSink`. The
+> embed IIFE is built by `scripts/build-embed.mjs` into three bundles
+> (`embed.global.js` for A, `share-the-mark.global.js` / `ShareTheMark.init` for
+> B, `local.global.js` for C). Two deltas to §13.6 worth carrying:
+> - **The local-serve verb is `share-the-mark request <path|dir>`** (register →
+>   serve → block for the brief), *not* `serve --artifact`; `serve`/`start` are the
+>   long-running daemon. `request` POSTs the artifact to `/request`; the daemon
+>   serves it at `/artifact/<id>/…` with the panel `<script>` injected per HTML
+>   response, and the panel POSTs the brief back to `/brief` (same loopback
+>   origin). The injected `local.global.js` is **baked into the binary**
+>   (`include_bytes!` via `build.rs`), so an installed CLI is self-contained;
+>   `--bundle <path>` / `SHARE_THE_MARK_EMBED_BUNDLE` override it for dev.
+> - **The emitted CSP** is `default-src 'self'; script-src 'self' 'unsafe-inline';
+>   style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'
+>   data: blob:; font-src 'self' data:`. `connect-src` **must** include `data:`/`blob:`
+>   because the screenshot compositor `fetch()`es the captured PNG as a `data:` URL —
+>   a `@cli` Channel C browser e2e (`tests/e2e/cli-local-serve.spec.ts`) caught the
+>   omission (the export failed silently and no brief was sent).
+>
+> **Deferred against §13.6/§13.8:** the daemon is **loopback-bound (`127.0.0.1`)**
+> but its JSON API still returns `Access-Control-Allow-Origin: *` and does **not**
+> validate `Origin`; the "scope CORS to the page origin / never `*` / validate
+> Origin" hardening is not yet done (low risk while loopback-only, but tracked). No
+> SSE/WebSocket back-channel (the agent polls via `pending`/`show`); no npm
+> `@share-the-mark/embed` publish yet (the IIFE ships built, not packaged); no
+> Firefox Channel A e2e.
 
 ### 13.1 The enabling fact — the UI is already browser-free
 
