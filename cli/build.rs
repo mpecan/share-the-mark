@@ -17,6 +17,7 @@ fn main() {
 
     // A change to any candidate (incl. one appearing/disappearing) re-runs this script.
     println!("cargo:rerun-if-env-changed=SHARE_THE_MARK_EMBED_BUNDLE");
+    println!("cargo:rerun-if-env-changed=SHARE_THE_MARK_REQUIRE_EMBED");
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=embed/local.global.js");
     println!("cargo:rerun-if-changed=../.output/embed/local.global.js");
@@ -35,6 +36,15 @@ fn main() {
                 .unwrap_or_else(|e| panic!("could not copy embed bundle {}: {e}", src.display()));
         }
         None => {
+            // Shipping builds (release / publish / install) set SHARE_THE_MARK_REQUIRE_EMBED
+            // so a missing bundle fails loud at the build, not silently as an empty binary.
+            // Bare `cargo build` / rust-analyzer / crates.io consumers leave it unset and get
+            // a compilable placeholder + warning.
+            assert!(
+                env::var_os("SHARE_THE_MARK_REQUIRE_EMBED").is_none(),
+                "share-the-mark: embed bundle required but not found. Run `mise run build:embed` \
+                 (or vendor it to cli/embed/local.global.js) before this build."
+            );
             fs::write(&dest, b"").expect("could not write placeholder embed bundle");
             println!(
                 "cargo:warning=share-the-mark: embed bundle not found — baked an empty \

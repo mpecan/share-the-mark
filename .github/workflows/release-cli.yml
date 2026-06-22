@@ -40,6 +40,10 @@ jobs:
           - target: x86_64-pc-windows-msvc
             os: windows-latest
     runs-on: ${{ matrix.os }}
+    # Fail the build (in build.rs) if the bundle is somehow absent, rather than
+    # shipping a binary with an empty embed.
+    env:
+      SHARE_THE_MARK_REQUIRE_EMBED: '1'
     steps:
       - uses: actions/checkout@v7
         with:
@@ -47,17 +51,14 @@ jobs:
 
       - uses: jdx/mise-action@v2
 
-      # Build the embed bundle and vendor it into the crate so build.rs bakes it into
-      # the binary (build.rs runs host-side, so the embed survives cross-compilation).
+      # Build + vendor the embed bundle into the crate so build.rs bakes it into the
+      # binary (build.rs runs host-side, so the embed survives cross-compilation).
       - name: Build & vendor the embed bundle
         shell: bash
         run: |
           corepack enable
           pnpm install --frozen-lockfile
-          mise run build:embed
-          mkdir -p cli/embed
-          cp .output/embed/local.global.js cli/embed/local.global.js
-          test -s cli/embed/local.global.js
+          mise run cli:vendor-embed
 
       # Builds cli/ for the target (cross-compiling via `cross` where needed),
       # archives `share-the-mark-<target>.{tar.gz,zip}` with a `.sha256`, and uploads
@@ -77,6 +78,9 @@ jobs:
     if: startsWith(inputs.tag || github.event.release.tag_name, 'cli-v')
     name: Publish to crates.io
     runs-on: ubuntu-latest
+    # `cargo publish` verifies the crate by building it; fail loud if the embed is absent.
+    env:
+      SHARE_THE_MARK_REQUIRE_EMBED: '1'
     steps:
       - uses: actions/checkout@v7
         with:
@@ -94,10 +98,7 @@ jobs:
         run: |
           corepack enable
           pnpm install --frozen-lockfile
-          mise run build:embed
-          mkdir -p cli/embed
-          cp .output/embed/local.global.js cli/embed/local.global.js
-          test -s cli/embed/local.global.js
+          mise run cli:vendor-embed
 
       - name: cargo publish (idempotent)
         working-directory: cli

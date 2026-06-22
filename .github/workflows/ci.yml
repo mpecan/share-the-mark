@@ -78,7 +78,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     # No working-directory: the CLI gates run via mise (`cli:ci`), whose `build:embed`
     # dependency builds the embed bundle (Node) from the repo root before cargo — so
-    # the binary embeds the real frontend artifact. mise is the single build orchestrator.
+    # the binary embeds the real frontend artifact and the cross-toolchain build order
+    # lives in one place (mise), matching local `mise run cli:ci`.
     steps:
       - uses: actions/checkout@v7
 

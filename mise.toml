@@ -99,14 +99,23 @@ description = "All share-the-mark CLI gates: fmt + clippy + test"
 depends = ["cli:fmt", "cli:clippy", "cli:test"]
 
 [tasks."cli:ci"]
-description = "CLI gates for CI: fmt + clippy + test + release build (embed baked in)"
+description = "CLI gates for CI: fmt + clippy + test (via cli:check) + release build"
+dir = "cli"
+# Reuse the gate tasks (single-sourced flags); only the release build is new. Each
+# gate already depends on build:embed, so the bundle is baked in (built once).
+depends = ["cli:check"]
+run = "cargo build --release"
+
+# Vendor the built bundle into the crate (cli/embed/), so `cargo publish` packages it
+# (Cargo.toml `include`) and release binaries embed it. Shared by both release jobs.
+[tasks."cli:vendor-embed"]
+description = "Vendor the embed bundle into the crate (for cargo publish / release builds)"
 dir = "cli"
 depends = ["build:embed"]
 run = """
-cargo fmt --check
-cargo clippy --all-targets -- -D warnings
-cargo test
-cargo build --release
+mkdir -p embed
+cp ../.output/embed/local.global.js embed/local.global.js
+test -s embed/local.global.js
 """
 
 [tasks."cli:install"]
