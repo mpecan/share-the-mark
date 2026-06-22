@@ -107,3 +107,30 @@ jobs:
 
       - name: CLI gates (fmt + clippy + test + release build, embed baked in)
         run: mise run cli:ci
+
+  # Channel C (SPEC §13.6) end-to-end: the Rust daemon serves a local artifact with
+  # the embedded panel injected, a real browser annotates it, and the brief round-
+  # trips. Needs both toolchains + a browser, so it's its own job (ubuntu only — the
+  # loop isn't OS-specific). Tagged `@cli`, excluded from the `quality` job's e2e.
+  cli-e2e:
+    name: cli e2e (local-serve)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: jdx/mise-action@v2
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Cache cargo
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            cli/target
+          key: cargo-cli-e2e-${{ hashFiles('cli/Cargo.lock') }}
+      - name: Install deps
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Channel C local-serve e2e
+        run: pnpm e2e:cli

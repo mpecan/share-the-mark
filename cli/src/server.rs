@@ -14,10 +14,12 @@ use crate::store::{new_id, now_millis, Meta, Store};
 
 // CSP emitted on served artifact HTML (Channel C, SPEC §13.6). Tight by default —
 // these are local dev artifacts. `'unsafe-inline'` style covers React + the
-// shadow-root <style>; `data:`/`blob:` cover the capture + panel preview;
-// `connect-src 'self'` permits the same-origin POST /brief.
+// shadow-root <style>; `img-src data: blob:` covers the panel preview; `connect-src
+// 'self' data: blob:` permits the same-origin POST /brief AND the in-page
+// `fetch(data:…)` the screenshot compositor uses to load the captured PNG.
 const ARTIFACT_CSP: &str = "default-src 'self'; script-src 'self' 'unsafe-inline'; \
-style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; font-src 'self' data:";
+style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' data: blob:; \
+font-src 'self' data:";
 
 /// The JSON the extension POSTs to `/brief`.
 #[derive(Deserialize)]
