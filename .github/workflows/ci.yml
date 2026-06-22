@@ -101,9 +101,7 @@ jobs:
           key: cargo-${{ matrix.os }}-${{ hashFiles('cli/Cargo.lock') }}
 
       - name: Install JS deps (for the embed bundle build)
-        run: |
-          corepack enable
-          pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: CLI gates (fmt + clippy + test + release build, embed baked in)
         run: mise run cli:ci
@@ -128,9 +126,7 @@ jobs:
             cli/target
           key: cargo-cli-e2e-${{ hashFiles('cli/Cargo.lock') }}
       - name: Install deps
-        run: |
-          corepack enable
-          pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
       - name: Channel C local-serve e2e
         run: pnpm e2e:cli

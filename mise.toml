@@ -1,11 +1,19 @@
 # mise task runner — `mise tasks` to list, `mise run <task>` to run.
-# Node is pinned in .tool-versions (read automatically); pnpm via corepack
-# (packageManager field); the CLI uses your system Rust toolchain (rustup).
+# Node is pinned in .tool-versions (read automatically); pnpm is pinned in
+# [tools] below so `jdx/mise-action` puts it on PATH in CI (corepack's shims
+# aren't reliably there); the CLI uses your system Rust toolchain (rustup).
 #
 # Local review flow (Firefox or Chrome):
 #   1. mise run dev:firefox     # loads the extension into Firefox (hot-reload)
 #   2. mise run cli:install      # put `share-the-mark` on PATH (or use `mise run serve`)
 #   3. the agent runs: share-the-mark request <url>  → annotate → "Send to agent"
+
+[tools]
+# Match the package.json `packageManager` pin. Managed by mise (not corepack) so
+# the mise-driven CLI jobs get a working `pnpm` on PATH. Node stays in
+# .tool-versions — mise reads it automatically and the quality job's setup-node
+# consumes it too.
+pnpm = "10.14.0"
 
 # ── Extension: load in a browser for local testing (WXT dev, hot-reload) ──
 [tasks.dev]
