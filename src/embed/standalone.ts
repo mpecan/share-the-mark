@@ -46,6 +46,11 @@ function boot(): void {
       styles: __STM_PANEL_CSS__,
       screenshot: captureScreenshot,
       onExport,
+      // Channel A has one delivery path (the binding → driver/daemon), so show a single
+      // button labelled for it — "Send to agent"/"Copy share link" are extension-only
+      // and inert here. Matches the `request --playwright` banner; the automation
+      // `attach()` path drives `exportNow()` and ignores the buttons.
+      panelActions: { exportLabel: 'Send to agent', showSendToAgent: false, showShareLink: false },
     });
     // Publish the handle on the page global so the channel driver can call it.
     // eslint-disable-next-line unicorn/no-global-object-property-assignment -- intentional page↔driver handoff
