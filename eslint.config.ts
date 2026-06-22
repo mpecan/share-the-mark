@@ -23,6 +23,7 @@ export default defineConfig(
     'playwright-report/**',
     'test-results/**',
     'stats.html',
+    'demo/**',
   ]),
 
   js.configs.recommended,

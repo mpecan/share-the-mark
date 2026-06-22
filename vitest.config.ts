@@ -5,6 +5,9 @@ import { WxtVitest } from 'wxt/testing';
 // CI-enforced coverage thresholds (stricter for the pure core).
 export default defineConfig({
   plugins: [WxtVitest()],
+  // The widget bundle inlines the panel CSS via this esbuild `define`; mirror it
+  // here as empty so `src/embed/widget.ts` is importable under vitest.
+  define: { __STM_PANEL_CSS__: '""' },
   test: {
     globals: true,
     environment: 'happy-dom',
@@ -27,6 +30,9 @@ export default defineConfig({
         // logic they wrap) stays covered.
         'src/embed/standalone.ts',
         'src/embed/playwright.ts',
+        // Default DOM-capture provider (html-to-image / real foreignObject canvas);
+        // same rationale as composite-surface.ts. Exercised by the channel-B e2e.
+        'src/embed/screenshot.ts',
       ],
       thresholds: {
         lines: 90,

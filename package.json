@@ -46,6 +46,7 @@
     "@webext-core/messaging": "^3.0.2",
     "dom-anchor-text-position": "^5.0.0",
     "dom-anchor-text-quote": "^4.0.2",
+    "html-to-image": "^1.11.13",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "turndown": "^7.2.4"

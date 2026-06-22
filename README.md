@@ -153,6 +153,43 @@ A daemon that `share-the-mark request` auto-starts gets an idle timeout (default
 `--idle-timeout` / `SHARE_THE_MARK_IDLE`) and shuts itself down once unused — so it never
 lingers as a stray. `share-the-mark status` checks if one is running.
 
+## Embed it without the extension (dev/staging widget)
+
+The annotation UI ships as a self-contained `<script>` you can drop into your own
+dev/staging build — no extension install — to collect design feedback (SPEC §13.5).
+Build the bundle (`pnpm build:embed` → `.output/embed/share-the-mark.global.js`), host
+it, and:
+
+```html
+<script src="https://your-cdn.example/share-the-mark.global.js"></script>
+<script>
+  // Gate it so it never ships to production.
+  if (import.meta.env?.DEV) {
+    ShareTheMark.init({
+      // Receive the annotation Markdown + composited PNG. Omit to copy Markdown to the clipboard.
+      onSubmit: (payload) => sendToYourBacklog(payload.markdown),
+    });
+  }
+</script>
+```
+
+`init(config)` returns a handle: `stm.open()`, `stm.close()`, `stm.destroy()`,
+`stm.exportNow()`. The widget renders into an isolated **shadow root**, captures the
+page itself via a bundled default (`html-to-image`, overridable with
+`config.screenshot`), and makes **no network calls** of its own — `onSubmit` is where
+_you_ send the feedback. A runnable example lives in [`demo/index.html`](./demo/index.html).
+
+**Content-Security-Policy** the _host_ page needs (only the first is for the library):
+
+- `script-src` — allow the bundle's origin (e.g. `script-src 'self' https://your-cdn.example`).
+- `img-src data:` — the panel preview and composited export use `data:` PNG URLs.
+- `connect-src` — only for _your_ `onSubmit` destination; the library needs none.
+- The panel's styles are injected into the shadow root and are generally exempt from
+  the page's `style-src`; add `'unsafe-inline'` only if a strict policy flags them.
+
+Cross-origin images on the page may taint the capture canvas (a `foreignObject`
+limitation); first-party dev pages are typically unaffected.
+
 ## Permissions
 
 Least-privilege (Manifest V3): `activeTab`, `scripting`, `storage`, and **no

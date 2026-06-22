@@ -18,4 +18,13 @@ export default [
     gzip: true,
     running: false,
   },
+  {
+    // The dev `<script>` widget IIFE (channel B, §13.5) — the embed core + the
+    // default html-to-image page-capture provider, exposing `window.ShareTheMark`.
+    name: 'Widget bundle (ShareTheMark.init)',
+    path: '.output/embed/share-the-mark.global.js',
+    limit: '100 kB',
+    gzip: true,
+    running: false,
+  },
 ];
