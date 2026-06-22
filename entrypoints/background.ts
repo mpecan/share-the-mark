@@ -84,6 +84,12 @@ export default defineBackground(() => {
   // already permitted (or in e2e). Open the URL and render the stashed brief.
   onMessage('openSharedImport', ({ data: { url } }) => openAndInject(url));
 
+  // Panel setup CTAs (SPEC §11.2): content scripts can't open the Options page
+  // themselves, so they route through the background.
+  onMessage('openOptions', () => {
+    void browser.runtime.openOptionsPage();
+  });
+
   // The robust grant path: when the user allows access to the shared site, open it
   // right away — even if the popup closed while the permission prompt had focus, so
   // they never have to paste the link a second time.

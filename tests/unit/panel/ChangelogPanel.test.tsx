@@ -161,6 +161,35 @@ describe('ChangelogPanel', () => {
     expect(screen.getByText(/daemon not reachable/i)).toBeInTheDocument();
   });
 
+  it('renders an open-options action and routes it to onOpenOptions', async () => {
+    const onOpenOptions = vi.fn();
+    renderPanel({
+      annotations: [callout('a', 1)],
+      handoff: {
+        kind: 'error',
+        message: 'no daemon yet',
+        action: { label: 'Open setup', kind: 'open-options' },
+      },
+      onOpenOptions,
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'Open setup' }));
+    expect(onOpenOptions).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders an href action as an external link to the hub', () => {
+    renderPanel({
+      annotations: [callout('a', 1)],
+      handoff: {
+        kind: 'error',
+        message: 'out of date',
+        action: { label: 'How to update', href: 'https://github.com/mpecan/share-the-mark' },
+      },
+    });
+    const link = screen.getByRole('link', { name: 'How to update' });
+    expect(link).toHaveAttribute('href', 'https://github.com/mpecan/share-the-mark');
+    expect(link).toHaveAttribute('target', '_blank');
+  });
+
   it('collapses and expands via the toggle', async () => {
     renderPanel();
     await userEvent.click(screen.getByRole('button', { name: /collapse panel/i }));

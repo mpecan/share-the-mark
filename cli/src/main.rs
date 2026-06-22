@@ -1,8 +1,10 @@
 mod cli;
 mod daemon;
+mod links;
 mod request;
 mod requests;
 mod server;
+mod setup;
 mod skill;
 mod store;
 
@@ -33,6 +35,7 @@ fn main() -> Result<()> {
                 resolve_idle(args.idle_timeout),
             )?;
             println!("share-the-mark daemon running on http://127.0.0.1:{port}");
+            println!("Annotate pages with the extension: {}", links::HUB_URL);
             Ok(())
         }
         Command::Stop { port } => {
@@ -72,6 +75,7 @@ fn main() -> Result<()> {
                 Ok(())
             }
         },
+        Command::Setup { no_browser } => setup::run(no_browser),
     }
 }
 
@@ -86,6 +90,7 @@ fn serve(port: u16, dir: PathBuf, idle_timeout: Duration) -> Result<()> {
         "share-the-mark daemon listening on http://127.0.0.1:{port}  (store: {})",
         dir.display()
     );
+    eprintln!("Annotate pages with the extension: {}", links::HUB_URL);
     server::run(server, Store::new(dir), running, idle_timeout)
 }
 

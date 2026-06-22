@@ -5,10 +5,12 @@ description: Read design-feedback change-briefs captured by the share-the-mark b
 
 # share-the-mark
 
-The **share-the-mark** browser extension lets a person annotate a live web page
-(callouts, text notes, arrows, highlights, element comments) and send the result —
-a Markdown **change-brief** plus an annotated screenshot — to a local daemon. The
-`share-the-mark` CLI is how you, the agent, read those briefs and act on the feedback.
+The [**share-the-mark** browser extension](https://github.com/mpecan/share-the-mark)
+lets a person annotate a live web page (callouts, text notes, arrows, highlights,
+element comments) and send the result — a Markdown **change-brief** plus an annotated
+screenshot — to a local daemon. The `share-the-mark` CLI is how you, the agent, read
+those briefs and act on the feedback. The two halves only work together: a brief never
+arrives unless the person has the extension installed.
 
 Each brief contains, per annotation, the author's note and a resolved CSS
 `Element:` selector pointing at the exact element on the page. Treat it as
@@ -45,4 +47,7 @@ In both cases:
    to the source, **view the screenshot** at the printed path for visual context,
    and make the requested change.
 4. If `share-the-mark` is missing, the daemon may not be installed/running — tell the user to
-   run `share-the-mark serve` (or `share-the-mark start`). `share-the-mark request` auto-starts the daemon for you.
+   run `share-the-mark setup` (installs this skill, opens the extension page, and reports
+   daemon status), then `share-the-mark serve` (or `share-the-mark start`). They also need the
+   [browser extension](https://github.com/mpecan/share-the-mark) — it's the other half.
+   `share-the-mark request` auto-starts the daemon for you.

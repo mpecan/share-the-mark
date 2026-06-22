@@ -21,6 +21,7 @@ export interface ChangelogPanelProps {
   onExport: () => void;
   onSendToAgent: () => void;
   onCopyShareLink?: (() => void) | undefined;
+  onOpenOptions?: (() => void) | undefined;
 }
 
 const ICONS: Record<ToolKind, JSX.Element> = {
@@ -70,6 +71,7 @@ export function ChangelogPanel({
   onExport,
   onSendToAgent,
   onCopyShareLink,
+  onOpenOptions,
 }: ChangelogPanelProps): JSX.Element {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
@@ -255,7 +257,28 @@ export function ChangelogPanel({
               ✓ sent — paste to your agent: <code>{handoff.command}</code>
             </p>
           ) : (
-            <p className="stm-panel__handoff stm-panel__handoff--error">{handoff.message}</p>
+            <p className="stm-panel__handoff stm-panel__handoff--error">
+              {handoff.message}
+              {handoff.action != null &&
+                ('href' in handoff.action ? (
+                  <a
+                    className="stm-panel__handoff-action"
+                    href={handoff.action.href}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {handoff.action.label}
+                  </a>
+                ) : (
+                  <button
+                    type="button"
+                    className="stm-panel__handoff-action"
+                    onClick={onOpenOptions}
+                  >
+                    {handoff.action.label}
+                  </button>
+                ))}
+            </p>
           ))}
         {share != null &&
           (share.kind === 'copied' ? (

@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { browser } from 'wxt/browser';
 import { onMessage, sendMessage } from '@/src/messaging';
 import { checkDaemonCompat, type DaemonCompat } from '@/src/core/version';
+import { HUB_URL } from '@/src/core/links';
 import { Overlay } from '@/src/overlay';
 import {
   PanelApp,
@@ -48,10 +49,12 @@ import '@/src/panel/panel.css';
 // declared floor — the two halves release independently.
 const MIN_DAEMON_VERSION = '0.1.0';
 
-function compatMessage(compat: Extract<DaemonCompat, { ok: false }>): string {
-  return compat.reason === 'daemon-too-old'
-    ? `your share-the-mark CLI is out of date (need ≥ ${compat.need}) — update it and retry`
-    : `update the share-the-mark extension (the CLI needs ≥ ${compat.need}) and retry`;
+function compatHandoff(compat: Extract<DaemonCompat, { ok: false }>): Handoff {
+  const message =
+    compat.reason === 'daemon-too-old'
+      ? `your share-the-mark CLI is out of date (need ≥ ${compat.need}) — update it and retry`
+      : `update the share-the-mark extension (the CLI needs ≥ ${compat.need}) and retry`;
+  return { kind: 'error', message, action: { label: 'How to update', href: HUB_URL } };
 }
 
 // Injected on demand under `activeTab` (no broad host permission) — see
@@ -191,6 +194,9 @@ export default defineContentScript({
             onCopyShareLink: () => {
               void copyShareLink();
             },
+            onOpenOptions: () => {
+              void sendMessage('openOptions', undefined);
+            },
           }),
         );
 
@@ -265,12 +271,18 @@ export default defineContentScript({
         setHandoff({
           kind: 'error',
           message: 'enable “Agent integration” in the extension Options to send to an agent',
+          action: { label: 'Open setup', kind: 'open-options' },
         });
         return;
       }
       const health = await sendMessage('daemonHealth', undefined);
       if (!health.reachable) {
-        setHandoff({ kind: 'error', message: 'daemon not reachable — run `share-the-mark serve`' });
+        setHandoff({
+          kind: 'error',
+          message:
+            'no daemon yet — install the share-the-mark CLI, then run `share-the-mark serve`',
+          action: { label: 'Open setup', kind: 'open-options' },
+        });
         return;
       }
       // Version handshake (SPEC §11.4): warn on a floor mismatch instead of sending
@@ -282,7 +294,7 @@ export default defineContentScript({
         daemonMinExtension: health.minExtension,
       });
       if (!compat.ok) {
-        setHandoff({ kind: 'error', message: compatMessage(compat) });
+        setHandoff(compatHandoff(compat));
         return;
       }
       const payload = await buildPayload();

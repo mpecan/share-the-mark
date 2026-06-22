@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { browser } from 'wxt/browser';
 import { DEFAULT_SETTINGS, getSettings, saveSettings, type Settings } from '@/src/storage';
 import { DAEMON_ORIGIN } from '@/src/capture';
+import { CLI_INSTALL, HUB_URL } from '@/src/core/links';
 import type { ToolKind } from '@/src/core/model';
 
 // Options page (SPEC §5.8): default tool, stroke defaults, and Markdown
@@ -12,6 +13,8 @@ export default function App() {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   // Whether the optional loopback host permission (the agent daemon) is granted.
   const [isAgentEnabled, setIsAgentEnabled] = useState(false);
+  // The CLI install command most recently copied, for inline feedback.
+  const [copiedCommand, setCopiedCommand] = useState<string | null>(null);
 
   useEffect(() => {
     void (async () => {
@@ -28,6 +31,17 @@ export default function App() {
         ? await browser.permissions.request({ origins: [DAEMON_ORIGIN] })
         : !(await browser.permissions.remove({ origins: [DAEMON_ORIGIN] }));
       setIsAgentEnabled(isGranted);
+    })();
+  }
+
+  function copyCommand(command: string): void {
+    void (async () => {
+      try {
+        await navigator.clipboard.writeText(command);
+        setCopiedCommand(command);
+      } catch {
+        // Clipboard may be unavailable; the command stays visible to copy by hand.
+      }
     })();
   }
 
@@ -132,6 +146,34 @@ export default function App() {
             </small>
           </span>
         </label>
+      </section>
+
+      <section className="options__section options__cli">
+        <strong>Install the CLI</strong>
+        <small>
+          “Send to agent” talks to a tiny local daemon — the <code>share-the-mark</code> CLI.
+          Install it, then run <code>share-the-mark serve</code>.
+        </small>
+        <ul className="options__cli-list">
+          {CLI_INSTALL.map(({ label, command }) => (
+            <li key={label} className="options__cli-row">
+              <span className="options__cli-tag">{label}</span>
+              <code>{command}</code>
+              <button
+                type="button"
+                className="options__cli-copy"
+                onClick={() => {
+                  copyCommand(command);
+                }}
+              >
+                {copiedCommand === command ? 'Copied' : 'Copy'}
+              </button>
+            </li>
+          ))}
+        </ul>
+        <a className="options__cli-link" href={HUB_URL} target="_blank" rel="noreferrer">
+          Get the extension &amp; docs ↗
+        </a>
       </section>
     </main>
   );
