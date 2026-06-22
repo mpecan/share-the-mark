@@ -9,8 +9,9 @@ The [**share-the-mark** browser extension](https://github.com/mpecan/share-the-m
 lets a person annotate a live web page (callouts, text notes, arrows, highlights,
 element comments) and send the result — a Markdown **change-brief** plus an annotated
 screenshot — to a local daemon. The `share-the-mark` CLI is how you, the agent, read
-those briefs and act on the feedback. The two halves only work together: a brief never
-arrives unless the person has the extension installed.
+those briefs and act on the feedback. The extension is the usual capture surface, but
+the CLI can also collect feedback **without it** — serving a local HTML artifact, or
+driving a headed Playwright browser for a remote URL (see `request` below).
 
 Each brief contains, per annotation, the author's note and a resolved CSS
 `Element:` selector pointing at the exact element on the page. Treat it as
@@ -18,11 +19,19 @@ actionable design/UX feedback on the corresponding source.
 
 ## Commands
 
-- `share-the-mark request <url>` — **ask the user for feedback on a page.** Opens `<url>` in
-  their browser and blocks until they annotate it and click "Send to agent", then
-  prints the resulting brief (Markdown + screenshot path) and returns. Use this to
-  proactively request design feedback; the command returning is your signal to
-  continue. `--json` for a machine-readable object; `--timeout <secs>` (default 600).
+- `share-the-mark request <target>` — **ask the user for feedback, and block until it
+  arrives.** Opens the page, waits for the user to annotate it and click "Send to
+  agent", then prints the resulting brief (Markdown + screenshot path) and returns —
+  the command returning is your signal to continue. `<target>` can be:
+  - a **URL** → opens it in the user's own browser (needs the extension installed);
+  - a **local HTML file/dir** (e.g. `./preview.html`) → the daemon serves it with the
+    panel injected, **no extension needed** — ideal right after you generate an HTML
+    artifact and want design feedback on it;
+  - `--playwright <url>` → drives a **headed Playwright browser** the CLI controls, so a
+    remote page works with **no extension** (requires Node + Playwright on PATH).
+
+  `--json` for a machine-readable object; `--timeout <secs>` (default 600).
+
 - `share-the-mark pending` — list briefs that haven't been read yet (id · source · captured).
 - `share-the-mark list` — list recent briefs (add `--all` for every brief).
 - `share-the-mark show <id>` — print a brief's Markdown to stdout and the path to its
@@ -33,7 +42,10 @@ actionable design/UX feedback on the corresponding source.
 
 **You want feedback on a page** (agent-initiated): run `share-the-mark request <url>` — e.g.
 after making a UI change, `share-the-mark request http://localhost:3000/checkout`. It opens
-the page, waits for the user, and returns the brief. Then act on it (step 3 below).
+the page, waits for the user, and returns the brief. For an HTML file you just generated,
+point it at the file (`share-the-mark request ./out/page.html`); for a remote page when the
+user has no extension, add `--playwright`. Either way the command returns the brief —
+then act on it (step 3 below).
 
 **The user has feedback for you** (user-initiated):
 
