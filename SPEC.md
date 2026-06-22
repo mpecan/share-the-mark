@@ -130,6 +130,7 @@ share-the-mark/
 │  │  └─ export/                  # ExportSink + payload builder
 │  ├─ overlay/                    # imperative canvas + svg drawing layer
 │  ├─ panel/                      # React changelog panel (rendered in shadow root)
+│  ├─ embed/                      # browser-free mount() + adapters (§13, M5)
 │  ├─ messaging/                  # typed protocol (ProtocolMap)
 │  ├─ storage/                    # typed storage.local wrappers
 │  └─ capture/                    # screenshot compositing
@@ -545,6 +546,18 @@ with no daemon and no screenshot (§12): a compressed `stm1:` token carrying
 extension, which opens the URL and re-renders the marks live against the content
 anchors. Additive — the daemon and the M2 agent brief are untouched.
 
+**M5 — Extension-less / embeddable delivery (§13).** Factor the overlay+panel
+orchestration out of `content.ts` into a browser-free `src/embed` core
+(`mount(adapters)`), add a `BindingSink`, and ship three no-extension channels:
+Playwright injection (A), a dev/staging `<script>`/npm widget (B), and a
+local-serve artifact loop that injects the panel and POSTs feedback to the M2
+daemon (C). *Acceptance:* `content.ts` consumes `mount()` with no regression
+(all §8 gates green); a Playwright spec draws a mark on an arbitrary CSP page with
+no extension loaded and asserts the exported Markdown via a binding; the embed
+IIFE builds within its size budget; the CLI serves an artifact from a loopback
+origin and a brief reaches `share-the-mark pending`. Bookmarklet/userscript/proxy are
+explicitly out of scope (§13.7).
+
 ## 11. Distribution & discoverability
 
 Two independently-distributed halves (extension + CLI) that must each onboard
@@ -704,3 +717,155 @@ Reject non-`http(s)` URLs; cap the token length (before decoding) and the
 annotation count (`MAX_ANNOTATIONS`); version-gate on `v`. Import executes no
 code — it is data → a validated model — and the popup previews the page and mark
 count before the user opens the tab.
+
+## 13. Extension-less / embeddable delivery
+
+The extension is one *delivery vehicle*, not the product. The product is the
+annotation UI (overlay + panel) and the content-anchored model. This section
+makes that UI usable **without the extension installed** in three settings:
+**(A)** driven by Playwright for automation, **(B)** dropped into a developer's
+own dev/staging build as a `<script>`/npm widget, and **(C)** the headline case —
+a CLI/agent serves an artifact locally, the user annotates it in-page, and the
+feedback flows back to wake the agent (the "Claude Code shares an artifact and
+asks for feedback" loop). Additive: the extension, the §5.4 sinks, the M2 daemon,
+and the §12 share tokens are untouched; this factors out a reusable core they all
+already sit on.
+
+### 13.1 The enabling fact — the UI is already browser-free
+
+`src/overlay/**` and `src/panel/**` import **zero** `browser.*`/WXT APIs today.
+The overlay is a pure DOM controller taking a `container: HTMLElement` plus
+callbacks (`onCreate`/`onUpdate`/`caretFromPoint`/`elementFromPoint`,
+`overlay.ts`); the panel is pure React over an injected `PanelStore` + handler
+props (`PanelApp.tsx`). `claimPendingImport`/`resolveGeometry` re-render marks
+against a live DOM with no extension dependency, and tokens use the native
+`CompressionStream`. **All** extension coupling lives in one orchestration file
+(`entrypoints/content.ts`) and three thin seams: screenshot capture
+(`browser.tabs.captureVisibleTab` via `requestScreenshot()`), WXT `storage`, and
+the `defineExtensionMessaging` bus. So this is a **packaging/adapter** job, not a
+rewrite of the hot path.
+
+### 13.2 The embeddable core (`src/embed`)
+
+Factor the orchestration that today lives inline in `content.ts` into a
+browser-free `mount()` that the extension *and* the new channels both call:
+
+```ts
+interface HostAdapters {
+  container: HTMLElement;                       // any node; shadow root recommended
+  storage: StorageAdapter;                      // { get, set, remove } — see below
+  screenshot: ScreenshotProvider;               // () => Promise<Blob | null>
+  sink: ExportSink;                             // §5.4 — Clipboard | Binding | Http
+  getVersion?: () => string;                    // replaces getManifest().version
+  resolveTarget?: ResolveTarget;                // existing seam, unchanged
+}
+interface StmHandle { open(): void; close(): void; destroy(): void; }
+function mount(adapters: HostAdapters): StmHandle;
+```
+
+- **`StorageAdapter`** — a 3-method async interface (`get`/`set`/`remove`). The
+  extension implements it over WXT `storage`; the embed channels implement it over
+  `localStorage`/`sessionStorage` or an in-memory `Map`. `src/storage/*` keeps its
+  WXT-backed implementation as *one* adapter, not the only one.
+- **`ScreenshotProvider`** — the only genuinely hard seam, because
+  `captureVisibleTab` is extension-only. The contract returns `Blob | null`;
+  `null` means "no raster" and the export degrades to Markdown-only (the §12
+  rationale — the live DOM *is* the screenshot — applies). Providers: extension →
+  the existing SW round-trip; Playwright → `page.screenshot()` bridged in; dev
+  embed → optional `html2canvas`-class provider or `null`.
+- **`mount()` is pure-ish and unit-testable**; it must not import `wxt/*` or
+  `browser`. The extension's `content.ts` becomes a thin file that builds the WXT
+  adapters and calls `mount()`. `src/core/**` stays at its §8.4 100% bar.
+
+### 13.3 `BindingSink` — the headless/automation export path
+
+Add a third `ExportSink` (§5.4) alongside `ClipboardSink`/`DaemonSink`.
+`BindingSink.write(payload)` hands `{ markdown, image }` to an injected
+`(payload) => Promise<void>` callback instead of touching `navigator.clipboard`.
+This is load-bearing: writing a `ClipboardItem` with `image/png` **fails in
+headless Chromium** (Playwright #24039) and `clipboard-write` is denied headless
+even when granted (#29472). The Binding callback is wired to Playwright
+`exposeBinding` (page → Node) in channel A, and can post to the daemon in channel
+C. Keeps the `dataset.stmLastExport` publish as a pull-based fallback for
+assertions.
+
+### 13.4 Channel A — Playwright (automation, CSP-immune)
+
+Playwright controls the browser process, so page CSP does not apply to the
+injected world — the only no-extension path that works on **arbitrary hardened
+pages**.
+
+- **Inject + persist:** `context.addInitScript()` mounts the embed bundle into a
+  shadow root and **re-runs on every navigation/reload/child-frame**, so the UI
+  survives reloads for free. Register before `goto`.
+- **CSP:** drive via `page.evaluate()` (isolated world, immune). **Avoid**
+  `addScriptTag` (subject to page CSP; needs `bypassCSP: true`).
+- **Data out:** `BindingSink` → `exposeBinding` (push), with `dataset` read as the
+  pull fallback. Do **not** assert the real clipboard in headless CI.
+- Ships as `src/embed/playwright.ts` (a Node-side `attach(page, opts)` helper) +
+  the browser bundle. This generalizes what the M1 e2e harness already does.
+
+### 13.5 Channel B — dev/staging script-tag embed
+
+For teams who own the page source. A single bundle exposing a global with the
+proven feedback-widget shape (marker.io / Sentry / Userback):
+
+```js
+const stm = ShareTheMark.init({ /* HostAdapters subset + onSubmit */ });
+stm.open(); stm.destroy();      // explicit teardown; render into a shadow root
+```
+
+- Style isolation via **Shadow DOM** (as today). No CSP fight: the developer adds
+  the bundle's origin to their own `script-src`/`connect-src` allowlist; document
+  the exact directives in `store/`/README. Gate behind an env flag so it never
+  ships to prod.
+- Distribution: `@share-the-mark/embed` on npm + a CDN `<script src>`; the build
+  emits a self-contained IIFE (no WXT). Tracked against a separate size budget.
+
+### 13.6 Channel C — local-serve artifact loop (the headline case)
+
+Here we control the **server**, so we get channel-B robustness without asking
+anyone to touch a CSP — and it reuses the existing `127.0.0.1:8787` daemon.
+
+- **Serve + inject:** a new CLI verb (`share-the-mark serve --artifact <path|dir>`, or a
+  framework plugin using Vite's `transformIndexHtml`) serves the artifact and
+  **injects the embed `<script>` into every HTML response**. Re-injected per
+  response ⇒ survives reloads for free, like an HMR client. We emit the HTML, so
+  we emit a permissive CSP alongside it.
+- **Back-channel:** the panel POSTs the brief to the daemon `/brief` (the M2 path)
+  to wake the agent; add SSE/WebSocket only if the agent must push progress *back*
+  to the panel. The agent reads it via the existing `share-the-mark pending`/`show` + skill.
+- **Chrome 142 Local Network Access (design around this now):** LNA (shipped
+  ~Oct 2025) prompts on **public → loopback** requests and **silently fails** if
+  dismissed; **loopback → loopback is currently exempt**. Therefore **serve the
+  artifact from a `127.0.0.1`/`localhost` origin** so the panel→daemon call stays
+  on the unrestricted path. Chrome has flagged it will eventually restrict this —
+  do not treat the exemption as permanent.
+- **Daemon hardening:** validate `Origin` on every request and on any WebSocket
+  upgrade; scope CORS to the loopback page origin (never `*`). The 2025 Vite dev-
+  server advisory (GHSA-vg6x-rcgg-rjx6) is the cautionary tale.
+
+### 13.7 What this is *not*, and the CSP floor
+
+There is **no** general way to inject into a truly arbitrary, CSP-hardened,
+*authenticated* page without controlling the browser or the server. We
+deliberately do **not** ship: a **bookmarklet** (inline runs, but loading the real
+bundle via external `<script src>` is blocked by `script-src 'self'`; no
+persistence), a **userscript** (works but requires the user to install a manager —
+"an extension by another name" — and its CSP-rewrite power is degrading under
+MV3), or a **proxy/"Via"-style rewriter** (breaks on auth cookies, SPA routing,
+and SRI; Hypothesis itself is restricting Via to partners from Feb 2026). Each
+ships only if a concrete partner need overrides this. The supported matrix maps
+each scenario to the layer we actually control: **A** owns the browser, **B** owns
+the page source, **C** owns the server.
+
+### 13.8 Layout & quality
+
+- `src/embed/` — `mount.ts` (the browser-free orchestrator), `adapters.ts`
+  (`StorageAdapter`/`ScreenshotProvider` interfaces + `localStorage`/in-memory
+  impls), `playwright.ts` (Node-side attach helper), `widget.ts` (the
+  `ShareTheMark.init` global for channel B). `src/core/export` gains `BindingSink`.
+- `entrypoints/content.ts` shrinks to WXT-adapter construction + `mount()`.
+- Gates unchanged (§8): `mount`/adapters are unit-tested with fakes; `src/core/**`
+  stays 100%; a new Playwright spec drives channel A end-to-end (draw → assert
+  exported Markdown via the binding); a separate size budget covers the embed IIFE.
