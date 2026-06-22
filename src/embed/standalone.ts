@@ -1,6 +1,7 @@
 /* eslint-disable unicorn/prefer-global-this -- this script runs injected in the
    page; `window` is the page global the Playwright bindings + the handle live on. */
 import { mount, type StmHandle } from './mount';
+import { blobToBase64 } from './base64';
 import type { ExportPayload } from '@/src/core/export';
 
 // The standalone IIFE entry (SPEC §13.4), bundled by scripts/build-embed.mjs and
@@ -25,24 +26,6 @@ declare global {
     /** Node binding: receives the export (Markdown + base64 PNG). */
     __stmDeliver?: (markdown: string, imageBase64: string) => Promise<void>;
   }
-}
-
-// Base64 of the PNG via FileReader (the same idiom as src/capture/daemon-sink.ts;
-// duplicated here rather than imported, since that module pulls the message bus
-// which must stay out of the embed bundle).
-function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.addEventListener('load', () => {
-      // readAsDataURL yields `data:<type>;base64,<payload>` — keep the payload.
-      const result = typeof reader.result === 'string' ? reader.result : '';
-      resolve(result.slice(result.indexOf(',') + 1));
-    });
-    reader.addEventListener('error', () => {
-      reject(reader.error ?? new Error('failed to read image'));
-    });
-    reader.readAsDataURL(blob);
-  });
 }
 
 async function captureScreenshot(): Promise<string> {

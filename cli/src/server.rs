@@ -149,8 +149,10 @@ fn ingest(
     }
     // If an agent is waiting for this brief, route it there (and mark it read — it
     // went straight to the agent, not the pending queue). A local artifact carries
-    // an `…/artifact/<request-id>/…` URL, so route by that exact id (locals all
-    // share the loopback origin); otherwise match by origin (the remote flow).
+    // an `…/artifact/<request-id>/…` URL, so route by that exact id (locals all share
+    // the loopback origin). The `|| fulfill` keeps the remote flow working for a real
+    // page whose own path happens to contain `/artifact/` (no request has that id, so
+    // `fulfill_by_id` misses and we fall back to origin matching).
     let routed = match artifact_id_in(&meta.url) {
         Some(req_id) => requests.fulfill_by_id(&req_id, &id) || requests.fulfill(&meta.url, &id),
         None => requests.fulfill(&meta.url, &id),
@@ -271,8 +273,7 @@ fn safe_join(base: &Path, rel: &str) -> Option<PathBuf> {
 }
 
 fn inject_before_body(html: Vec<u8>, tag: &str) -> Vec<u8> {
-    let lower = html.to_ascii_lowercase();
-    let at = find_subslice(&lower, b"</body>").or_else(|| find_subslice(&lower, b"</html>"));
+    let at = find_subslice(&html, b"</body>").or_else(|| find_subslice(&html, b"</html>"));
     match at {
         Some(index) => {
             let mut out = Vec::with_capacity(html.len() + tag.len());
@@ -289,8 +290,12 @@ fn inject_before_body(html: Vec<u8>, tag: &str) -> Vec<u8> {
     }
 }
 
+// Case-insensitive byte search (HTML tags like `</body>` may be any case). Scans in
+// place — no lowercased copy of the whole document.
 fn find_subslice(haystack: &[u8], needle: &[u8]) -> Option<usize> {
-    haystack.windows(needle.len()).position(|w| w == needle)
+    haystack
+        .windows(needle.len())
+        .position(|w| w.eq_ignore_ascii_case(needle))
 }
 
 fn content_type(path: &Path) -> &'static str {
@@ -580,7 +585,10 @@ mod tests {
 
         let page = ureq::get(&open_url).call().unwrap();
         assert_eq!(page.status(), 200);
-        let csp = page.header("Content-Security-Policy").unwrap_or("").to_string();
+        let csp = page
+            .header("Content-Security-Policy")
+            .unwrap_or("")
+            .to_string();
         assert!(csp.contains("default-src 'self'"));
         let body = page.into_string().unwrap();
         // The embed script is injected just before </body>.
@@ -590,9 +598,11 @@ mod tests {
         assert!(body.contains("<h1>Hi</h1>"));
 
         // The bundle route serves that request's registered bundle.
-        let js = ureq::get(&format!("http://127.0.0.1:{port}/artifact/{id}/__stm/embed.js"))
-            .call()
-            .unwrap();
+        let js = ureq::get(&format!(
+            "http://127.0.0.1:{port}/artifact/{id}/__stm/embed.js"
+        ))
+        .call()
+        .unwrap();
         assert_eq!(js.header("Content-Type"), Some("text/javascript"));
         assert_eq!(js.into_string().unwrap(), "/* embed */");
 
@@ -638,9 +648,11 @@ mod tests {
         let (id, _) = register_local(port, dir.path(), &bundle);
 
         // A percent-encoded `..` must never escape the artifact dir.
-        let err = ureq::get(&format!("http://127.0.0.1:{port}/artifact/{id}/%2e%2e%2fsecret"))
-            .call()
-            .unwrap_err();
+        let err = ureq::get(&format!(
+            "http://127.0.0.1:{port}/artifact/{id}/%2e%2e%2fsecret"
+        ))
+        .call()
+        .unwrap_err();
         assert!(matches!(err, ureq::Error::Status(404, _)));
 
         stop(port, worker);

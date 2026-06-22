@@ -38,31 +38,27 @@ impl Requests {
         }
     }
 
-    pub fn create(&mut self, url: &str, now: i64) -> String {
+    fn push(&mut self, origin: String, artifact: Option<Artifact>, now: i64) -> String {
         let id = self.next_id(now);
         self.items.push(OpenRequest {
             id: id.clone(),
-            origin: origin_of(url),
+            origin,
             created_at: now,
             brief_id: None,
-            artifact: None,
+            artifact,
         });
         id
+    }
+
+    pub fn create(&mut self, url: &str, now: i64) -> String {
+        self.push(origin_of(url), None, now)
     }
 
     /// Register a request that serves a local artifact from `origin` (the daemon's
     /// own loopback origin). The brief will carry an `…/artifact/<id>/…` URL, so it's
     /// routed back by id (`fulfill_by_id`), not by the shared loopback origin.
     pub fn create_local(&mut self, origin: &str, artifact: Artifact, now: i64) -> String {
-        let id = self.next_id(now);
-        self.items.push(OpenRequest {
-            id: id.clone(),
-            origin: origin.to_string(),
-            created_at: now,
-            brief_id: None,
-            artifact: Some(artifact),
-        });
-        id
+        self.push(origin.to_string(), Some(artifact), now)
     }
 
     /// Fulfill the exact request `id` if it's still open. Returns true if it was.
@@ -177,7 +173,10 @@ mod tests {
 
         assert!(requests.fulfill_by_id(&b, "brief-b"));
         assert_eq!(requests.get(&a).unwrap().brief_id, None);
-        assert_eq!(requests.get(&b).unwrap().brief_id.as_deref(), Some("brief-b"));
+        assert_eq!(
+            requests.get(&b).unwrap().brief_id.as_deref(),
+            Some("brief-b")
+        );
 
         // An unknown id fulfills nothing; a fulfilled request isn't re-fulfilled.
         assert!(!requests.fulfill_by_id("nope", "x"));
