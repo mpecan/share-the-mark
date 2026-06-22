@@ -39,7 +39,7 @@
     "e2e": "wxt build -m e2e && pnpm build:embed && playwright test --grep-invert @screenshots",
     "screenshots": "wxt build -m e2e && pnpm build:embed && playwright test --grep @screenshots",
     "check:perms": "node scripts/check-permissions.mjs",
-    "size": "size-limit --config size-limit.config.ts",
+    "size": "pnpm build:embed && size-limit --config size-limit.config.ts",
     "prepare": "wxt prepare"
   },
   "dependencies": {
