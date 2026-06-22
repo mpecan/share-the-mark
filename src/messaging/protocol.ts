@@ -45,6 +45,11 @@ export interface ProtocolMap {
   daemonHealth: () => DaemonHealth;
   /** POST a brief to the daemon; returns its assigned id. */
   sendBrief: (brief: BriefMessage) => { id: string };
+  /**
+   * Open the extension's Options page. Content scripts can't call
+   * `runtime.openOptionsPage`, so the panel routes setup CTAs through here.
+   */
+  openOptions: () => void;
 }
 
 export const { sendMessage, onMessage } = defineExtensionMessaging<ProtocolMap>();

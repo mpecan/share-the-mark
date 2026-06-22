@@ -21,6 +21,10 @@ pub fn run(port: u16, dir: &Path, url: &str, timeout_secs: u64, json: bool) -> R
     let id = create(port, url)?;
     open::that(url).map_err(|e| anyhow!("failed to open the browser: {e}"))?;
     eprintln!("Opened {url} — annotate it and click \"Send to agent\". Waiting…");
+    eprintln!(
+        "Nothing showing up? Install the share-the-mark extension: {}",
+        crate::links::HUB_URL
+    );
 
     let deadline = Instant::now() + Duration::from_secs(timeout_secs);
     loop {

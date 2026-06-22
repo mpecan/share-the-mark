@@ -119,9 +119,15 @@ You can also download a binary for your platform from the
 [Releases](https://github.com/mpecan/share-the-mark/releases) page. Then:
 
 ```bash
+share-the-mark setup          # install the skill, open the extension page, report daemon status
 share-the-mark serve          # run the ingest daemon (or `share-the-mark start` to background it)
 share-the-mark skill install  # install the Claude Code skill into ~/.claude/skills
 ```
+
+The extension and the CLI are two halves of one tool — neither does anything alone.
+`share-the-mark setup` is the fastest way to wire up the agent side: it installs the
+Claude Code skill and points you at the [extension](https://github.com/mpecan/share-the-mark).
+The extension's Options page returns the favor with copy-paste CLI install commands.
 
 Then, in the extension panel, click **Send to agent**. The daemon stores the brief
 (`brief.md` + annotated `screenshot.png`) and the panel shows a handoff token:
@@ -139,7 +145,7 @@ teaches it to run `share-the-mark pending` / `share-the-mark show <id>`). The ag
 it and click **Send to agent**, then returns the brief — which wakes a
 backgrounded agent (e.g. Claude Code) so it can act on your comments.
 
-CLI: `share-the-mark request <url> | pending | list | show <id> | serve | start | stop | status | skill install`.
+CLI: `share-the-mark setup | request <url> | pending | list | show <id> | serve | start | stop | status | skill install`.
 Config via flags or `SHARE_THE_MARK_PORT` / `SHARE_THE_MARK_DIR`.
 
 **Daemon lifecycle.** `share-the-mark serve` / `share-the-mark start` run until you `share-the-mark stop` them.

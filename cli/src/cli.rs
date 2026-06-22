@@ -72,6 +72,12 @@ pub enum Command {
         #[command(subcommand)]
         command: SkillCommand,
     },
+    /// Install the skill, open the extension page, and report daemon status.
+    Setup {
+        /// Don't open the extension page in a browser (just print the link).
+        #[arg(long)]
+        no_browser: bool,
+    },
 }
 
 #[derive(Args)]

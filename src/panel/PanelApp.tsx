@@ -9,8 +9,16 @@ import type { PlacementSummary } from '@/src/share';
 // root.render() from inside event handlers (which intermittently crashed the
 // panel). An error boundary keeps a render fault from tearing down the UI.
 
+/** An optional call-to-action on an error handoff (SPEC §11.2): either opens the
+ * extension Options page (where the CLI install lives) or links out to the hub. */
+export type HandoffAction =
+  | { label: string; kind: 'open-options' }
+  | { label: string; href: string };
+
 /** Result of a "Send to agent" attempt, surfaced as a handoff line in the panel. */
-export type Handoff = { kind: 'sent'; command: string } | { kind: 'error'; message: string };
+export type Handoff =
+  | { kind: 'sent'; command: string }
+  | { kind: 'error'; message: string; action?: HandoffAction };
 
 /** Result of a "Copy share link" attempt (SPEC §12). */
 export type ShareNotice = { kind: 'copied' } | { kind: 'error'; message: string };
@@ -38,6 +46,8 @@ export interface PanelHandlers {
   onExport: () => void;
   onSendToAgent: () => void;
   onCopyShareLink?: () => void;
+  /** Open the extension Options page (for an `open-options` handoff action). */
+  onOpenOptions?: () => void;
 }
 
 export interface PanelAppProps extends PanelHandlers {
@@ -79,6 +89,7 @@ export function PanelApp({
   onExport,
   onSendToAgent,
   onCopyShareLink,
+  onOpenOptions,
 }: PanelAppProps): JSX.Element {
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot);
   return (
@@ -96,6 +107,7 @@ export function PanelApp({
         onExport={onExport}
         onSendToAgent={onSendToAgent}
         onCopyShareLink={onCopyShareLink}
+        onOpenOptions={onOpenOptions}
       />
     </PanelErrorBoundary>
   );

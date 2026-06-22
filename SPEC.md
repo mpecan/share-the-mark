@@ -567,17 +567,22 @@ CLI one-liners, the Firefox `.xpi` link, and a short "how the halves fit." Every
 surface links to it — store listing, CLI banner, skill, options page — so the two
 halves never drift in their install story.
 
-### 11.2 Entry points
+### 11.2 Entry points (shipped)
 
-- **Extension-first → wants the agent.** The Options "Agent integration" toggle
-  reveals CLI install one-liners + the hub link at the moment of intent; the
-  panel's daemon-unreachable state becomes an actionable "install the CLI" CTA
-  instead of a dead-end string.
-- **CLI-first → wants to annotate.** `serve` / `start` print a banner with the
-  extension store links; a `share-the-mark setup` / `doctor` command installs the
-  skill, prints daemon status, and `open`s the right store for the default
-  browser (the `open` crate is already a dependency); `SKILL.md` links the
-  extension.
+The cross-linking is implemented; the canonical hub is the GitHub repo
+(`HUB_URL` in `src/core/links.ts` / `cli/src/links.rs`) until the store URLs are
+approved, after which they swap into those two constants.
+
+- **Extension-first → wants the agent.** The Options page carries an "Install the
+  CLI" block (copy-paste brew / binstall / curl commands + the hub link); the
+  panel's daemon-unreachable and not-permitted states are actionable — an "Open
+  setup" button that messages the background to `runtime.openOptionsPage()` (a
+  content script can't), and a version-mismatch handoff links the hub.
+- **CLI-first → wants to annotate.** `serve` / `start` print a banner pointing at
+  the extension; `share-the-mark setup` installs the skill, `open`s the extension
+  hub (the `open` crate is already a dependency; `--no-browser` to skip), and
+  reports daemon status; `request` prints an install hint while it blocks;
+  `SKILL.md` links the extension. (A separate `doctor` diagnostic is deferred.)
 - **Store-averse.** Firefox: a self-distributed **signed `.xpi`** (AMO signing
   API / `web-ext sign`) on GitHub Releases installs in one click and auto-updates
   without a public listing. Chrome: no clean no-store path on stable — document
