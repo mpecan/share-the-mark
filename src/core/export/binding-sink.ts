@@ -13,7 +13,6 @@ export class BindingSink implements ExportSink {
   private readonly deliver: (payload: ExportPayload) => Promise<void>;
 
   constructor(deliver: (payload: ExportPayload) => Promise<void>) {
-    // A field copy, not a captured scope — cheap, and nothing else is retained.
     this.deliver = deliver;
   }
 

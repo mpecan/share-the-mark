@@ -178,7 +178,7 @@ describe('createAnnotationSession', () => {
     expect(within(container).getByText(/Placed/)).toBeInTheDocument();
   });
 
-  it('exports the composited payload to the clipboard sink', async () => {
+  it('exports the composited payload to the export sink', async () => {
     const { sink, write } = fakeSink();
     const { container } = await mount(makeAdapters({ exportSink: sink }));
     fireEvent.click(within(container).getByRole('button', { name: 'Copy to clipboard' }));
@@ -200,7 +200,7 @@ describe('createAnnotationSession', () => {
     expect(payload?.image).toBeInstanceOf(Blob);
   });
 
-  it('skips the write when the clipboard sink is unavailable', async () => {
+  it('skips the write when the export sink is unavailable', async () => {
     const { sink, write } = fakeSink({ isAvailable: false });
     const { container } = await mount(makeAdapters({ exportSink: sink }));
     fireEvent.click(within(container).getByRole('button', { name: 'Copy to clipboard' }));

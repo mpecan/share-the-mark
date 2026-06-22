@@ -66,6 +66,7 @@ export interface AnnotationSession {
   mountView(container: HTMLElement): void;
   /** Tear the view down (keyboard isolation, overlay, React root). */
   unmountView(): void;
-  /** Export the current changelog to the clipboard (the `exportAnnotations` msg). */
+  /** Run the export action (the `exportAnnotations` msg): build the payload and
+   * write it to the injected `exportSink`. */
   exportAnnotations(): Promise<void>;
 }
