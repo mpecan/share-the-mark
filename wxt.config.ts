@@ -1,4 +1,5 @@
 import { defineConfig } from 'wxt';
+import { HUB_URL } from './src/core/links';
 
 // See https://wxt.dev/api/config.html and SPEC §6/§9.
 // One MV3 source for all Chromium targets and Firefox. The content script is
@@ -26,7 +27,7 @@ export default defineConfig({
     name: 'share-the-mark',
     description:
       'Annotate live web pages and export a Markdown changelog plus an annotated screenshot.',
-    homepage_url: 'https://github.com/mpecan/share-the-mark',
+    homepage_url: HUB_URL,
     permissions: ['activeTab', 'scripting', 'storage'],
     // Opt-in hosts, requested at runtime (no install warning). MV3 carries hosts in
     // `optional_host_permissions`; MV2 (Firefox) carries them in `optional_permissions`.

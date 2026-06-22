@@ -1,7 +1,7 @@
 import { useState, type JSX } from 'react';
 import type { Annotation, ToolKind } from '@/src/core/model';
 import type { PlacementSummary } from '@/src/share';
-import type { Handoff, ShareNotice } from './PanelApp';
+import type { Handoff, HandoffAction, ShareNotice } from './PanelApp';
 
 // In-page changelog panel (SPEC §5.8). Rendered with React into the closed
 // shadow root alongside the overlay. Static-ish UI only — the hot drawing path
@@ -56,6 +56,29 @@ const TOOLS: ToolKind[] = ['select', 'callout', 'text', 'arrow', 'highlight', 'e
 
 function badge(annotation: Annotation): string {
   return annotation.kind === 'callout' ? String(annotation.index) : '•';
+}
+
+// An error handoff's call-to-action: an external link (the hub) or a button that
+// opens the extension Options page (content scripts can't, so it calls back out).
+function HandoffActionControl({
+  action,
+  onOpenOptions,
+}: {
+  action: HandoffAction;
+  onOpenOptions?: (() => void) | undefined;
+}): JSX.Element {
+  if ('href' in action) {
+    return (
+      <a className="stm-panel__handoff-action" href={action.href} target="_blank" rel="noreferrer">
+        {action.label}
+      </a>
+    );
+  }
+  return (
+    <button type="button" className="stm-panel__handoff-action" onClick={onOpenOptions}>
+      {action.label}
+    </button>
+  );
 }
 
 export function ChangelogPanel({
@@ -259,25 +282,9 @@ export function ChangelogPanel({
           ) : (
             <p className="stm-panel__handoff stm-panel__handoff--error">
               {handoff.message}
-              {handoff.action != null &&
-                ('href' in handoff.action ? (
-                  <a
-                    className="stm-panel__handoff-action"
-                    href={handoff.action.href}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {handoff.action.label}
-                  </a>
-                ) : (
-                  <button
-                    type="button"
-                    className="stm-panel__handoff-action"
-                    onClick={onOpenOptions}
-                  >
-                    {handoff.action.label}
-                  </button>
-                ))}
+              {handoff.action != null && (
+                <HandoffActionControl action={handoff.action} onOpenOptions={onOpenOptions} />
+              )}
             </p>
           ))}
         {share != null &&

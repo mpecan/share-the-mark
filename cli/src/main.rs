@@ -35,7 +35,7 @@ fn main() -> Result<()> {
                 resolve_idle(args.idle_timeout),
             )?;
             println!("share-the-mark daemon running on http://127.0.0.1:{port}");
-            println!("Annotate pages with the extension: {}", links::HUB_URL);
+            println!("{}", links::extension_hint());
             Ok(())
         }
         Command::Stop { port } => {
@@ -90,7 +90,7 @@ fn serve(port: u16, dir: PathBuf, idle_timeout: Duration) -> Result<()> {
         "share-the-mark daemon listening on http://127.0.0.1:{port}  (store: {})",
         dir.display()
     );
-    eprintln!("Annotate pages with the extension: {}", links::HUB_URL);
+    eprintln!("{}", links::extension_hint());
     server::run(server, Store::new(dir), running, idle_timeout)
 }
 

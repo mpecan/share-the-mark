@@ -5,3 +5,8 @@
 
 /// Where to get the browser extension (and the project's home).
 pub const HUB_URL: &str = "https://github.com/mpecan/share-the-mark";
+
+/// One-line pointer to the extension, printed by the daemon banners.
+pub fn extension_hint() -> String {
+    format!("Annotate pages with the extension: {HUB_URL}")
+}
