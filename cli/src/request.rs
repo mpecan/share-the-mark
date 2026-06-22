@@ -86,8 +86,9 @@ pub fn run(
         // closes) or the user cancelled. Re-poll once to settle the race, then stop.
         if let Some(child) = runner.as_mut() {
             if child.try_wait()?.is_some() {
-                if poll(port, &id)?["status"].as_str() == Some("fulfilled") {
-                    return print_brief(&poll(port, &id)?["brief"], json);
+                let settled = poll(port, &id)?;
+                if settled["status"].as_str() == Some("fulfilled") {
+                    return print_brief(&settled["brief"], json);
                 }
                 bail!("the Playwright browser closed before a brief was sent");
             }

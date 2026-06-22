@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { BrowserType } from '@playwright/test';
+import type { ExportMeta } from '@/src/core/export';
 
 // Node runner for `share-the-mark request --playwright <url>` (SPEC §13.4): launch a
 // HEADED, interactive Chromium with NO extension installed, inject the Channel A
@@ -28,7 +29,7 @@ interface Args {
 
 interface BriefBody {
   markdown: string;
-  meta: { url: string; title: string; capturedAt: number };
+  meta: ExportMeta;
   imageBase64: string;
 }
 

@@ -1,6 +1,6 @@
 /* eslint-disable unicorn/prefer-global-this -- this script runs injected in the
    page; `window` is the page global the idempotency guard lives on. */
-import { mount, type StmHandle } from './mount';
+import { mount, AGENT_PANEL_ACTIONS, type StmHandle } from './mount';
 import { capturePage } from './screenshot';
 import { submitBrief } from './local-submit';
 
@@ -29,10 +29,9 @@ function boot(): void {
       styles: __STM_PANEL_CSS__,
       screenshot: capturePage,
       onExport: submitBrief,
-      // The export sink *is* the agent submit here (POST /brief). Show one button
-      // labelled for what it does; "Send to agent"/"Copy share link" are
-      // extension-only and would be inert in the daemon-less embed.
-      panelActions: { exportLabel: 'Send to agent', showSendToAgent: false, showShareLink: false },
+      // The export sink *is* the agent submit here (POST /brief), so show one button
+      // labelled for what it does (the daemon-less embed would render the others inert).
+      panelActions: AGENT_PANEL_ACTIONS,
     });
     // eslint-disable-next-line unicorn/no-global-object-property-assignment -- idempotency guard
     window.__stm = handle;

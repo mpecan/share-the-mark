@@ -20,6 +20,18 @@ import type { HostAdapters, AnnotationSession } from './ports';
 // the embed disables the daemon (`permitted: false` short-circuits send-to-agent).
 const EMBED_VERSION = '0.0.0-embed';
 
+/**
+ * Footer preset for single-delivery, agent-bound channels (Playwright A, local-serve
+ * C): one button labelled for what it does, since the export sink *is* the agent
+ * submit. The extension and the dev widget omit `panelActions` and get the full set.
+ * (The deeper capability-driven model is tracked in #14.)
+ */
+export const AGENT_PANEL_ACTIONS: PanelActions = {
+  exportLabel: 'Send to agent',
+  showSendToAgent: false,
+  showShareLink: false,
+};
+
 export interface MountOptions {
   /** Capture the page as a PNG data URL; the session composites the marks onto it. */
   screenshot: () => Promise<string>;
