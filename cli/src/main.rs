@@ -54,12 +54,20 @@ fn main() -> Result<()> {
             Ok(())
         }
         Command::Request {
-            url,
+            target,
+            bundle,
             json,
             timeout,
             port,
             dir,
-        } => request::run(resolve_port(port), &resolve_dir(dir)?, &url, timeout, json),
+        } => request::run(
+            resolve_port(port),
+            &resolve_dir(dir)?,
+            &target,
+            bundle,
+            timeout,
+            json,
+        ),
         Command::Pending { dir } => list_briefs(resolve_dir(dir)?, false, true),
         Command::List { all, dir } => list_briefs(resolve_dir(dir)?, all, false),
         Command::Show {

@@ -145,7 +145,21 @@ teaches it to run `share-the-mark pending` / `share-the-mark show <id>`). The ag
 it and click **Send to agent**, then returns the brief — which wakes a
 backgrounded agent (e.g. Claude Code) so it can act on your comments.
 
-CLI: `share-the-mark setup | request <url> | pending | list | show <id> | serve | start | stop | status | skill install`.
+**Annotate a local artifact (no extension).** Point `request` at a local HTML file or
+directory and the daemon serves it on its loopback origin with the annotation panel
+already injected — no extension needed (SPEC §13.6):
+
+```bash
+pnpm build:embed                          # once — builds the injected bundle
+share-the-mark request ./preview.html     # serves + opens it, blocks for your feedback
+```
+
+Draw on the page and click **Copy to clipboard** / send; the brief posts straight back to
+the daemon and the command returns it. Ideal for an agent that just generated an HTML
+artifact and wants your design feedback on it. (The bundle defaults to
+`.output/embed/local.global.js`; override with `--bundle` or `SHARE_THE_MARK_EMBED_BUNDLE`.)
+
+CLI: `share-the-mark setup | request <url-or-path> | pending | list | show <id> | serve | start | stop | status | skill install`.
 Config via flags or `SHARE_THE_MARK_PORT` / `SHARE_THE_MARK_DIR`.
 
 **Daemon lifecycle.** `share-the-mark serve` / `share-the-mark start` run until you `share-the-mark stop` them.

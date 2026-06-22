@@ -53,10 +53,14 @@ pub enum Command {
         #[arg(long)]
         dir: Option<PathBuf>,
     },
-    /// Open a page for annotation and wait for the user's feedback (for agents).
+    /// Open a page (URL) or serve a local artifact for annotation, and wait for feedback.
     Request {
-        /// URL to open in the browser for annotation.
-        url: String,
+        /// A URL to open, or a path to a local HTML file/dir to serve and annotate.
+        target: String,
+        /// Embed bundle to inject when serving a local artifact
+        /// (default: .output/embed/local.global.js; or SHARE_THE_MARK_EMBED_BUNDLE).
+        #[arg(long)]
+        bundle: Option<PathBuf>,
         #[arg(long)]
         json: bool,
         /// How long to wait for feedback before giving up.

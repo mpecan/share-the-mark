@@ -40,5 +40,12 @@ await build({
   outfile: '.output/embed/share-the-mark.global.js',
   globalName: 'ShareTheMark',
 });
+// Channel C — self-mounting (no globalName); captures the page and POSTs the brief
+// to the local daemon that served it. The daemon injects this as a <script>.
+await build({
+  ...shared,
+  entryPoints: ['src/embed/local.ts'],
+  outfile: '.output/embed/local.global.js',
+});
 
-console.log('built .output/embed/embed.global.js + share-the-mark.global.js');
+console.log('built embed.global.js + share-the-mark.global.js + local.global.js');

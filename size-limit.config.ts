@@ -27,4 +27,13 @@ export default [
     gzip: true,
     running: false,
   },
+  {
+    // The local-serve IIFE (channel C, §13.6) — self-mounting; the daemon injects it
+    // into the artifact it serves, and it POSTs the brief back same-origin.
+    name: 'Local bundle (daemon-served)',
+    path: '.output/embed/local.global.js',
+    limit: '100 kB',
+    gzip: true,
+    running: false,
+  },
 ];
