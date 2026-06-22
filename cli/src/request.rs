@@ -70,7 +70,10 @@ fn is_url(target: &str) -> bool {
 struct LocalArtifact {
     dir: String,
     entry: String,
-    bundle: String,
+    /// Only set when `--bundle`/`SHARE_THE_MARK_EMBED_BUNDLE` overrides the binary's
+    /// embedded bundle; `None` (serialized as `null`) tells the daemon to serve the
+    /// embedded one.
+    bundle: Option<String>,
 }
 
 /// Canonicalize a local artifact + the embed bundle to absolute paths (the daemon
@@ -98,20 +101,22 @@ fn resolve_local(target: &str, bundle: Option<PathBuf>) -> Result<LocalArtifact>
     Ok(LocalArtifact {
         dir: path_string(&dir),
         entry,
-        bundle: path_string(&resolve_bundle(bundle)?),
+        bundle: resolve_bundle_override(bundle)?,
     })
 }
 
-fn resolve_bundle(bundle: Option<PathBuf>) -> Result<PathBuf> {
-    let candidate = bundle
-        .or_else(|| std::env::var_os("SHARE_THE_MARK_EMBED_BUNDLE").map(PathBuf::from))
-        .unwrap_or_else(|| PathBuf::from(".output/embed/local.global.js"));
-    std::fs::canonicalize(&candidate).map_err(|e| {
-        anyhow!(
-            "embed bundle not found at {} ({e}). Build it with `pnpm build:embed`, or pass --bundle.",
-            candidate.display()
-        )
-    })
+/// The bundle override path, if the user gave one (`--bundle` or
+/// `SHARE_THE_MARK_EMBED_BUNDLE`). `None` → the daemon serves its embedded bundle.
+/// An explicit override that doesn't exist is a clear error (not a silent fallback).
+fn resolve_bundle_override(bundle: Option<PathBuf>) -> Result<Option<String>> {
+    let Some(candidate) =
+        bundle.or_else(|| std::env::var_os("SHARE_THE_MARK_EMBED_BUNDLE").map(PathBuf::from))
+    else {
+        return Ok(None);
+    };
+    let resolved = std::fs::canonicalize(&candidate)
+        .map_err(|e| anyhow!("--bundle {} not found: {e}", candidate.display()))?;
+    Ok(Some(path_string(&resolved)))
 }
 
 fn path_string(path: &Path) -> String {

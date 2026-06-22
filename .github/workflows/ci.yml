@@ -76,11 +76,14 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        working-directory: cli
+    # No working-directory: the CLI gates run via mise (`cli:ci`), whose `build:embed`
+    # dependency builds the embed bundle (Node) from the repo root before cargo — so
+    # the binary embeds the real frontend artifact. mise is the single build orchestrator.
     steps:
       - uses: actions/checkout@v7
+
+      # Installs Node 22 from .tool-versions and makes `mise` available.
+      - uses: jdx/mise-action@v2
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -96,14 +99,10 @@ jobs:
             cli/target
           key: cargo-${{ matrix.os }}-${{ hashFiles('cli/Cargo.lock') }}
 
-      - name: Format
-        run: cargo fmt --check
+      - name: Install JS deps (for the embed bundle build)
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
 
-      - name: Clippy
-        run: cargo clippy --all-targets -- -D warnings
-
-      - name: Test
-        run: cargo test
-
-      - name: Build (release)
-        run: cargo build --release
+      - name: CLI gates (fmt + clippy + test + release build, embed baked in)
+        run: mise run cli:ci

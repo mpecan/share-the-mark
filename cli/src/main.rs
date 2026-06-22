@@ -1,5 +1,6 @@
 mod cli;
 mod daemon;
+mod embed;
 mod links;
 mod request;
 mod requests;

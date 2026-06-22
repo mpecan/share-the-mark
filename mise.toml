@@ -62,20 +62,31 @@ run = "pnpm e2e"
 description = "Check the bundle size budget"
 run = "pnpm size"
 
+# ── Embed bundle: built (esbuild) and baked into the CLI binary (SPEC §13.6) ──
+# Every CLI task that *compiles* depends on this so build.rs finds the bundle at
+# ../.output/embed/local.global.js (relative to cli/) — the single source of truth
+# for the cross-toolchain build order.
+[tasks."build:embed"]
+description = "Build the embed bundles (esbuild → .output/embed/*.global.js)"
+run = "pnpm build:embed"
+
 # ── CLI (share-the-mark): build, test, run ──
 [tasks."cli:build"]
 description = "Build the share-the-mark CLI (debug)"
 dir = "cli"
+depends = ["build:embed"]
 run = "cargo build"
 
 [tasks."cli:test"]
 description = "Run the share-the-mark CLI tests"
 dir = "cli"
+depends = ["build:embed"]
 run = "cargo test"
 
 [tasks."cli:clippy"]
 description = "Lint the share-the-mark CLI (clippy, deny warnings)"
 dir = "cli"
+depends = ["build:embed"]
 run = "cargo clippy --all-targets -- -D warnings"
 
 [tasks."cli:fmt"]
@@ -87,9 +98,21 @@ run = "cargo fmt --check"
 description = "All share-the-mark CLI gates: fmt + clippy + test"
 depends = ["cli:fmt", "cli:clippy", "cli:test"]
 
+[tasks."cli:ci"]
+description = "CLI gates for CI: fmt + clippy + test + release build (embed baked in)"
+dir = "cli"
+depends = ["build:embed"]
+run = """
+cargo fmt --check
+cargo clippy --all-targets -- -D warnings
+cargo test
+cargo build --release
+"""
+
 [tasks."cli:install"]
 description = "Install the share-the-mark binary to ~/.cargo/bin"
 dir = "cli"
+depends = ["build:embed"]
 run = "cargo install --path ."
 
 [tasks.serve]

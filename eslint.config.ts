@@ -24,6 +24,10 @@ export default defineConfig(
     'test-results/**',
     'stats.html',
     'demo/**',
+    // Rust crate build dir (build.rs copies the embed bundle into target/) + the
+    // vendored bundle — both are built JS artifacts, never source to lint.
+    'cli/target/**',
+    'cli/embed/**',
   ]),
 
   js.configs.recommended,

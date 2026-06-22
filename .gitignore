@@ -35,3 +35,6 @@ test-results
 
 # Rust CLI build output
 cli/target
+# Embed bundle vendored into the crate at publish time (built, never committed;
+# Cargo.toml `include` still packages it into the published crate).
+cli/embed/

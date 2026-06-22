@@ -150,14 +150,15 @@ directory and the daemon serves it on its loopback origin with the annotation pa
 already injected — no extension needed (SPEC §13.6):
 
 ```bash
-pnpm build:embed                          # once — builds the injected bundle
 share-the-mark request ./preview.html     # serves + opens it, blocks for your feedback
 ```
 
 Draw on the page and click **Copy to clipboard** / send; the brief posts straight back to
 the daemon and the command returns it. Ideal for an agent that just generated an HTML
-artifact and wants your design feedback on it. (The bundle defaults to
-`.output/embed/local.global.js`; override with `--bundle` or `SHARE_THE_MARK_EMBED_BUNDLE`.)
+artifact and wants your design feedback on it. The injected bundle is **baked into the
+binary** — an installed `share-the-mark` is self-contained. Building from this repo,
+use `mise run cli:build` (it builds the bundle first); override the served bundle for
+dev with `--bundle <path>` or `SHARE_THE_MARK_EMBED_BUNDLE`.
 
 CLI: `share-the-mark setup | request <url-or-path> | pending | list | show <id> | serve | start | stop | status | skill install`.
 Config via flags or `SHARE_THE_MARK_PORT` / `SHARE_THE_MARK_DIR`.

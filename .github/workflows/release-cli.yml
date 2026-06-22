@@ -45,6 +45,20 @@ jobs:
         with:
           ref: ${{ env.RELEASE_TAG }}
 
+      - uses: jdx/mise-action@v2
+
+      # Build the embed bundle and vendor it into the crate so build.rs bakes it into
+      # the binary (build.rs runs host-side, so the embed survives cross-compilation).
+      - name: Build & vendor the embed bundle
+        shell: bash
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+          mise run build:embed
+          mkdir -p cli/embed
+          cp .output/embed/local.global.js cli/embed/local.global.js
+          test -s cli/embed/local.global.js
+
       # Builds cli/ for the target (cross-compiling via `cross` where needed),
       # archives `share-the-mark-<target>.{tar.gz,zip}` with a `.sha256`, and uploads
       # them to the release for this tag.
@@ -71,6 +85,20 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: cli
+      - uses: jdx/mise-action@v2
+
+      # Vendor the built bundle into the crate so the *published* crate carries it
+      # (Cargo.toml `include` packages it; it stays gitignored locally). `cargo
+      # install` from crates.io then bakes it in via build.rs.
+      - name: Build & vendor the embed bundle
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+          mise run build:embed
+          mkdir -p cli/embed
+          cp .output/embed/local.global.js cli/embed/local.global.js
+          test -s cli/embed/local.global.js
+
       - name: cargo publish (idempotent)
         working-directory: cli
         run: |
@@ -79,7 +107,8 @@ jobs:
           if [ "$LOCAL" = "$PUBLISHED" ]; then
             echo "::notice::share-the-mark@$LOCAL already published, skipping"
           else
-            cargo publish
+            # --allow-dirty: the vendored embed/local.global.js is gitignored/untracked.
+            cargo publish --allow-dirty
           fi
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}

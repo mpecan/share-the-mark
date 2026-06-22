@@ -187,14 +187,13 @@ fn create_request(
         Err(e) => return json_response(400, json!({ "error": format!("bad json: {e}") })),
     };
     // Local artifact (Channel C): the daemon serves it and the page POSTs back
-    // same-origin. Paths arrive already absolute (canonicalized by the CLI).
-    if let (Some(dir), Some(entry), Some(bundle)) =
-        (parsed.artifact_dir, parsed.entry, parsed.bundle_path)
-    {
+    // same-origin. Paths arrive already absolute (canonicalized by the CLI). An
+    // absent `bundlePath` means "serve the binary's embedded bundle".
+    if let (Some(dir), Some(entry)) = (parsed.artifact_dir, parsed.entry) {
         let origin = format!("http://127.0.0.1:{port}");
         let artifact = Artifact {
             dir: PathBuf::from(dir),
-            bundle: PathBuf::from(bundle),
+            bundle: parsed.bundle_path.map(PathBuf::from),
         };
         let id = requests.create_local(&origin, artifact, now_millis());
         let open_url = format!("{origin}/artifact/{id}/{entry}");
@@ -233,9 +232,14 @@ fn serve_artifact(path: &str, requests: &Requests) -> Response<Cursor<Vec<u8>>> 
         return not_found();
     };
     if sub == "__stm/embed.js" {
-        return match std::fs::read(&artifact.bundle) {
-            Ok(bytes) => asset_response(200, bytes, "text/javascript"),
-            Err(_) => json_response(404, json!({ "error": "embed bundle not found" })),
+        return match &artifact.bundle {
+            // `--bundle`/env override: serve the file (dev iteration without a rebuild).
+            Some(path) => match std::fs::read(path) {
+                Ok(bytes) => asset_response(200, bytes, "text/javascript"),
+                Err(_) => json_response(404, json!({ "error": "embed bundle not found" })),
+            },
+            // Default: the bundle baked into the binary at compile time.
+            None => asset_response(200, crate::embed::EMBED_BUNDLE.to_vec(), "text/javascript"),
         };
     }
     let Some(file) = safe_join(&artifact.dir, sub) else {
@@ -634,6 +638,36 @@ mod tests {
             .unwrap();
         assert_eq!(done["status"], "fulfilled");
         assert_eq!(done["brief"]["markdown"], "# Local fix\n");
+
+        stop(port, worker);
+    }
+
+    #[test]
+    fn serves_the_embedded_bundle_when_no_override() {
+        let dir = tempdir().unwrap();
+        std::fs::write(dir.path().join("index.html"), "<html><body></body></html>").unwrap();
+        let (port, worker) = spawn(dir.path());
+
+        // No `bundlePath` → the daemon serves the binary's compile-time embedded bundle.
+        let resp = ureq::post(&format!("http://127.0.0.1:{port}/request"))
+            .send_json(
+                json!({ "artifactDir": dir.path().to_string_lossy(), "entry": "index.html" }),
+            )
+            .unwrap()
+            .into_json::<Value>()
+            .unwrap();
+        let id = resp["id"].as_str().unwrap();
+
+        // Assert the route + content-type, not byte length: the embedded const is the
+        // real bundle under `mise run cli:test` and an empty placeholder under bare
+        // `cargo test` (build.rs fallback) — both must serve 200 text/javascript.
+        let js = ureq::get(&format!(
+            "http://127.0.0.1:{port}/artifact/{id}/__stm/embed.js"
+        ))
+        .call()
+        .unwrap();
+        assert_eq!(js.status(), 200);
+        assert_eq!(js.header("Content-Type"), Some("text/javascript"));
 
         stop(port, worker);
     }

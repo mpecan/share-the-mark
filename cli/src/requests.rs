@@ -12,7 +12,9 @@ use crate::store::new_id;
 /// resolves anything against its own (possibly unrelated) working directory.
 pub struct Artifact {
     pub dir: PathBuf,
-    pub bundle: PathBuf,
+    /// The embed bundle to serve; `None` serves the binary's compile-time embedded
+    /// bundle (`crate::embed::EMBED_BUNDLE`), `Some(path)` overrides it for dev.
+    pub bundle: Option<PathBuf>,
 }
 
 pub struct OpenRequest {
@@ -165,7 +167,7 @@ mod tests {
         let origin = "http://127.0.0.1:8787";
         let artifact = || Artifact {
             dir: PathBuf::from("/tmp/a"),
-            bundle: PathBuf::from("/tmp/embed.js"),
+            bundle: None,
         };
         // Two local artifacts share the loopback origin; only the id disambiguates.
         let a = requests.create_local(origin, artifact(), 10);
