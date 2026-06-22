@@ -50,8 +50,26 @@ export interface PanelHandlers {
   onOpenOptions?: () => void;
 }
 
+/**
+ * Per-channel footer button configuration. Defaults reproduce the extension's
+ * full set: a "Copy to clipboard" export plus "Send to agent" and "Copy share
+ * link". A channel with a single delivery path — e.g. local-serve, where the
+ * export sink *is* the agent submit — overrides these to surface one button
+ * labelled for what it actually does.
+ */
+export interface PanelActions {
+  /** Label for the primary export/submit button (default "Copy to clipboard"). */
+  exportLabel?: string;
+  /** Render the daemon-handoff "Send to agent" button (default true). */
+  showSendToAgent?: boolean;
+  /** Render the cross-machine "Copy share link" button (default true). */
+  showShareLink?: boolean;
+}
+
 export interface PanelAppProps extends PanelHandlers {
   store: PanelStore;
+  /** Footer button config; omit for the extension's full set. */
+  actions?: PanelActions | undefined;
 }
 
 export class PanelErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
@@ -82,6 +100,7 @@ export class PanelErrorBoundary extends Component<{ children: ReactNode }, { has
 
 export function PanelApp({
   store,
+  actions,
   onSelectTool,
   onEditNote,
   onDelete,
@@ -100,6 +119,7 @@ export function PanelApp({
         handoff={snapshot.handoff}
         share={snapshot.share ?? null}
         placement={snapshot.placement ?? null}
+        actions={actions}
         onSelectTool={onSelectTool}
         onEditNote={onEditNote}
         onDelete={onDelete}

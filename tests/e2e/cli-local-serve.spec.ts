@@ -80,6 +80,13 @@ test('@cli the daemon serves a local artifact, injects the panel, and round-trip
   const box = await page.locator('[data-testid="primary-action"]').boundingBox();
   expect(box).not.toBeNull();
   if (box) await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+
+  // Channel C wires one delivery path (POST /brief), so the panel shows a single
+  // button labelled for what it does — not the extension's "Copy to clipboard" /
+  // "Send to agent" / "Copy share link" trio.
+  await expect(page.locator('.stm-panel__export')).toHaveText('Send to agent');
+  await expect(page.locator('.stm-panel__send')).toHaveCount(0);
+  await expect(page.locator('.stm-panel__share')).toHaveCount(0);
   await page.locator('.stm-panel__export').click();
 
   // The daemon fulfills the request by the artifact id parsed from the brief URL.

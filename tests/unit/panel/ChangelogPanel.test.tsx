@@ -50,6 +50,18 @@ describe('ChangelogPanel', () => {
     expect(screen.getByRole('button', { name: /copy to clipboard/i })).toBeDisabled();
   });
 
+  it('applies a panelActions override: relabels export and hides the other buttons', () => {
+    renderPanel({
+      annotations: [callout('a', 1)],
+      actions: { exportLabel: 'Send to agent', showSendToAgent: false, showShareLink: false },
+    });
+    expect(screen.getByRole('button', { name: 'Send to agent' })).toHaveClass('stm-panel__export');
+    expect(screen.queryByRole('button', { name: /copy to clipboard/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /copy share link/i })).toBeNull();
+    // Exactly one footer action remains (the relabeled export).
+    expect(document.querySelector('.stm-panel__send')).toBeNull();
+  });
+
   it('renders a tool palette with the active tool pressed', () => {
     renderPanel({ activeTool: 'arrow' });
     expect(screen.getByRole('button', { name: 'arrow' })).toHaveAttribute('aria-pressed', 'true');

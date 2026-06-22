@@ -27,7 +27,8 @@ pub fn run(
     daemon::ensure(port, dir, AUTO_IDLE_SECS)?;
     // Resolve everything to absolute paths *before* talking to the daemon — it's a
     // separate process with its own (unrelated) working directory.
-    let (id, open_url) = if is_url(target) {
+    let opening_url = is_url(target);
+    let (id, open_url) = if opening_url {
         register(port, json!({ "url": target }), Some(target))?
     } else {
         let artifact = resolve_local(target, bundle)?;
@@ -43,10 +44,14 @@ pub fn run(
     };
     open::that(&open_url).map_err(|e| anyhow!("failed to open the browser: {e}"))?;
     eprintln!("Opened {open_url} — annotate it and click \"Send to agent\". Waiting…");
-    eprintln!(
-        "Nothing showing up? Install the share-the-mark extension: {}",
-        crate::links::HUB_URL
-    );
+    // A served local artifact injects the panel itself; only the URL flow relies on
+    // the extension being installed, so the install hint is scoped to it.
+    if opening_url {
+        eprintln!(
+            "Nothing showing up? Install the share-the-mark extension: {}",
+            crate::links::HUB_URL
+        );
+    }
 
     let deadline = Instant::now() + Duration::from_secs(timeout_secs);
     loop {

@@ -29,6 +29,10 @@ function boot(): void {
       styles: __STM_PANEL_CSS__,
       screenshot: capturePage,
       onExport: submitBrief,
+      // The export sink *is* the agent submit here (POST /brief). Show one button
+      // labelled for what it does; "Send to agent"/"Copy share link" are
+      // extension-only and would be inert in the daemon-less embed.
+      panelActions: { exportLabel: 'Send to agent', showSendToAgent: false, showShareLink: false },
     });
     // eslint-disable-next-line unicorn/no-global-object-property-assignment -- idempotency guard
     window.__stm = handle;

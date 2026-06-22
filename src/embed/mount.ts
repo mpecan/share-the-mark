@@ -1,4 +1,5 @@
 import { BindingSink, type ExportPayload } from '@/src/core/export';
+import type { PanelActions } from '@/src/panel';
 import { DEFAULT_SETTINGS, type Settings } from '@/src/storage/settings-defaults';
 import type { Changelog } from '@/src/core/model';
 import type { CompositeDeps } from '@/src/capture/composite';
@@ -30,6 +31,8 @@ export interface MountOptions {
   settings?: Settings;
   /** Where to attach the shadow host (default: `document.body`). */
   parent?: HTMLElement;
+  /** Footer button config; omit for the full set, override for a single-button channel. */
+  panelActions?: PanelActions;
   /** Test seam: canvas plumbing for compositing (default: the real OffscreenCanvas). */
   compositeDeps?: CompositeDeps;
 }
@@ -74,6 +77,7 @@ export function buildEmbedAdapters(opts: MountOptions): HostAdapters {
     openOptions: () => {
       // No options page off-extension; nothing to open.
     },
+    panelActions: opts.panelActions,
   };
 }
 

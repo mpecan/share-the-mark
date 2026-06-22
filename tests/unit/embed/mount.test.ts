@@ -84,6 +84,16 @@ describe('mount', () => {
     expect(host?.shadowRoot?.querySelector('.stm-panel')).not.toBeNull();
   });
 
+  it('threads panelActions through to the footer', async () => {
+    await mountEmbed({
+      panelActions: { exportLabel: 'Send to agent', showSendToAgent: false, showShareLink: false },
+    });
+    const shadow = document.querySelector<HTMLElement>('[data-stm-embed="true"]')?.shadowRoot;
+    expect(shadow?.querySelector('.stm-panel__export')?.textContent).toBe('Send to agent');
+    expect(shadow?.querySelector('.stm-panel__send')).toBeNull();
+    expect(shadow?.querySelector('.stm-panel__share')).toBeNull();
+  });
+
   it('injects the provided styles into the shadow root', async () => {
     await mountEmbed({ styles: '.stm-panel{color:red}' });
     const host = document.querySelector<HTMLElement>('[data-stm-embed="true"]');
