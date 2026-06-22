@@ -7,11 +7,18 @@ license = "MIT"
 repository = "https://github.com/mpecan/share-the-mark"
 build = "build.rs"
 # `include` makes packaging EXCLUSIVE — anything unlisted is dropped from the crate.
-# `skill/**/*` and `embed/local.global.js` are loaded via include_str!/include_bytes!,
-# so they MUST be listed. `embed/local.global.js` is gitignored (built, not committed)
-# but `include` packages it regardless of VCS, so `cargo install` from crates.io embeds
-# it (the publish job vendors it there; see release-cli.yml).
-include = ["src/**/*", "skill/**/*", "embed/local.global.js", "build.rs", "Cargo.toml"]
+# `skill/**/*` and the `embed/*` artifacts are loaded via include_str!/include_bytes!,
+# so they MUST be listed. The `embed/*` files are gitignored (built, not committed) but
+# `include` packages them regardless of VCS, so `cargo install` from crates.io embeds
+# them (the publish job vendors them there; see release-cli.yml).
+include = [
+  "src/**/*",
+  "skill/**/*",
+  "embed/local.global.js",
+  "embed/playwright-runner.mjs",
+  "build.rs",
+  "Cargo.toml",
+]
 
 [[bin]]
 name = "share-the-mark"

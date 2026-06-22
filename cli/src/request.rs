@@ -1,4 +1,5 @@
 use std::path::{Path, PathBuf};
+use std::process::{Child, Command};
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 
@@ -21,6 +22,7 @@ pub fn run(
     dir: &Path,
     target: &str,
     bundle: Option<PathBuf>,
+    playwright: bool,
     timeout_secs: u64,
     json: bool,
 ) -> Result<()> {
@@ -31,6 +33,12 @@ pub fn run(
     let (id, open_url) = if opening_url {
         register(port, json!({ "url": target }), Some(target))?
     } else {
+        if playwright {
+            bail!(
+                "--playwright is for remote URLs; a local artifact already serves the panel \
+                 itself — drop --playwright"
+            );
+        }
         let artifact = resolve_local(target, bundle)?;
         register(
             port,
@@ -42,15 +50,28 @@ pub fn run(
             None,
         )?
     };
-    open::that(&open_url).map_err(|e| anyhow!("failed to open the browser: {e}"))?;
-    eprintln!("Opened {open_url} — annotate it and click \"Send to agent\". Waiting…");
-    // A served local artifact injects the panel itself; only the URL flow relies on
-    // the extension being installed, so the install hint is scoped to it.
-    if opening_url {
+
+    // `--playwright`: drive a headed Playwright browser we control (no extension) and
+    // keep its handle so the poll loop can notice if the user closes it. Otherwise open
+    // the URL in the user's own browser (which needs the extension for a remote page).
+    let mut runner: Option<Child> = None;
+    if playwright {
+        runner = Some(spawn_playwright_runner(port, &open_url)?);
         eprintln!(
-            "Nothing showing up? Install the share-the-mark extension: {}",
-            crate::links::HUB_URL
+            "Launched a Playwright browser for {open_url} — annotate it and click \
+             \"Send to agent\". Close the window to cancel. Waiting…"
         );
+    } else {
+        open::that(&open_url).map_err(|e| anyhow!("failed to open the browser: {e}"))?;
+        eprintln!("Opened {open_url} — annotate it and click \"Send to agent\". Waiting…");
+        // A served local artifact injects the panel itself; only the URL flow relies on
+        // the extension being installed, so the install hint is scoped to it.
+        if opening_url {
+            eprintln!(
+                "Nothing showing up? Install the share-the-mark extension: {}",
+                crate::links::HUB_URL
+            );
+        }
     }
 
     let deadline = Instant::now() + Duration::from_secs(timeout_secs);
@@ -61,11 +82,54 @@ pub fn run(
             Some("pending") => {}
             _ => bail!("request {id} is no longer tracked (did the daemon restart?)"),
         }
+        // If the Playwright browser exited, the brief either just landed (it POSTs then
+        // closes) or the user cancelled. Re-poll once to settle the race, then stop.
+        if let Some(child) = runner.as_mut() {
+            if child.try_wait()?.is_some() {
+                if poll(port, &id)?["status"].as_str() == Some("fulfilled") {
+                    return print_brief(&poll(port, &id)?["brief"], json);
+                }
+                bail!("the Playwright browser closed before a brief was sent");
+            }
+        }
         if Instant::now() >= deadline {
             bail!("timed out after {timeout_secs}s waiting for feedback");
         }
         sleep(POLL_INTERVAL);
     }
+}
+
+/// Write the baked Playwright runner to a temp file and launch it with `node`,
+/// inheriting stdio so its prompts reach the user. Errors actionably when the build
+/// has no runner baked in or when `node` isn't on PATH.
+fn spawn_playwright_runner(port: u16, open_url: &str) -> Result<Child> {
+    if crate::embed::PLAYWRIGHT_RUNNER.is_empty() {
+        bail!("this build has no Playwright runner baked in — rebuild with `mise run cli:build`");
+    }
+    let path = std::env::temp_dir().join("share-the-mark-playwright-runner.mjs");
+    std::fs::write(&path, crate::embed::PLAYWRIGHT_RUNNER).map_err(|e| {
+        anyhow!(
+            "could not stage the Playwright runner at {}: {e}",
+            path.display()
+        )
+    })?;
+    Command::new("node")
+        .arg(&path)
+        .arg("--url")
+        .arg(open_url)
+        .arg("--brief")
+        .arg(format!("http://127.0.0.1:{port}/brief"))
+        .spawn()
+        .map_err(|e| {
+            if e.kind() == std::io::ErrorKind::NotFound {
+                anyhow!(
+                    "`node` was not found on PATH. The --playwright flow needs Node and Playwright \
+                     installed: `npm i -g playwright && playwright install chromium`."
+                )
+            } else {
+                anyhow!("could not launch the Playwright runner: {e}")
+            }
+        })
 }
 
 fn is_url(target: &str) -> bool {

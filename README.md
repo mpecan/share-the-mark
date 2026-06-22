@@ -150,6 +150,20 @@ teaches it to run `share-the-mark pending` / `share-the-mark show <id>`). The ag
 it and click **Send to agent**, then returns the brief — which wakes a
 backgrounded agent (e.g. Claude Code) so it can act on your comments.
 
+**Annotate a remote URL without the extension (`--playwright`).** Add `--playwright`
+to a URL request and the CLI drives a headed [Playwright](https://playwright.dev)
+browser it controls, injecting the panel directly (Channel A — CSP-immune, no extension):
+
+```bash
+share-the-mark request --playwright https://example.com   # opens a browser you annotate in
+```
+
+Annotate the page it opens and click **Send to agent**; the brief flows back exactly as
+above (close the window to cancel). This needs Node and Playwright available — it's
+resolved from your project's `node_modules`, the current directory, or a global install
+(`npm i -g playwright && playwright install chromium`), never bundled into the binary.
+For local files, use the plain `request <path>` (below) instead.
+
 **Annotate a local artifact (no extension).** Point `request` at a local HTML file or
 directory and the daemon serves it on its loopback origin with the annotation panel
 already injected — no extension needed (SPEC §13.6):
@@ -165,7 +179,7 @@ binary** — an installed `share-the-mark` is self-contained. Building from this
 use `mise run cli:build` (it builds the bundle first); override the served bundle for
 dev with `--bundle <path>` or `SHARE_THE_MARK_EMBED_BUNDLE`.
 
-CLI: `share-the-mark setup | request <url-or-path> | pending | list | show <id> | serve | start | stop | status | skill install`.
+CLI: `share-the-mark setup | request [--playwright] <url-or-path> | pending | list | show <id> | serve | start | stop | status | skill install`.
 Config via flags or `SHARE_THE_MARK_PORT` / `SHARE_THE_MARK_DIR`.
 
 **Daemon lifecycle.** `share-the-mark serve` / `share-the-mark start` run until you `share-the-mark stop` them.

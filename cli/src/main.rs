@@ -57,6 +57,7 @@ fn main() -> Result<()> {
         Command::Request {
             target,
             bundle,
+            playwright,
             json,
             timeout,
             port,
@@ -66,6 +67,7 @@ fn main() -> Result<()> {
             &resolve_dir(dir)?,
             &target,
             bundle,
+            playwright,
             timeout,
             json,
         ),

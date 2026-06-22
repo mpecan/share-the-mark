@@ -56,7 +56,6 @@ jobs:
       - name: Build & vendor the embed bundle
         shell: bash
         run: |
-          corepack enable
           pnpm install --frozen-lockfile
           mise run cli:vendor-embed
 
@@ -96,7 +95,6 @@ jobs:
       # install` from crates.io then bakes it in via build.rs.
       - name: Build & vendor the embed bundle
         run: |
-          corepack enable
           pnpm install --frozen-lockfile
           mise run cli:vendor-embed
 

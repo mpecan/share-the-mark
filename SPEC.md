@@ -834,6 +834,18 @@ pages**.
 - Ships as `src/embed/playwright.ts` (a Node-side `attach(page, opts)` helper) +
   the browser bundle. This generalizes what the M1 e2e harness already does.
 
+> **Revision (as-built):** beyond the automation `attach()` helper, channel A also
+> ships an **interactive** driver: `share-the-mark request --playwright <url>` launches
+> a **headed** Chromium the user annotates by hand, with no extension. It's a Node
+> runner (`src/embed/playwright-runner.ts` → `playwright-runner.mjs`) that inlines the
+> channel-A bundle and POSTs the brief to the daemon `/brief` — so the Rust CLI's
+> existing register→poll loop fulfils the open request unchanged. `playwright` is
+> **resolved from the user's environment** at runtime (project `node_modules`, cwd /
+> `NODE_PATH`, or the npm global root), never baked into the binary, so `--playwright`
+> is opt-in and errors with install guidance when absent. The runner `.mjs` *is* baked
+> into the binary (`include_bytes!`, alongside the channel-C bundle) and staged to a
+> temp file to run.
+
 ### 13.5 Channel B — dev/staging script-tag embed
 
 For teams who own the page source. A single bundle exposing a global with the

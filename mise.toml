@@ -123,7 +123,9 @@ depends = ["build:embed"]
 run = """
 mkdir -p embed
 cp ../.output/embed/local.global.js embed/local.global.js
+cp ../.output/embed/playwright-runner.mjs embed/playwright-runner.mjs
 test -s embed/local.global.js
+test -s embed/playwright-runner.mjs
 """
 
 [tasks."cli:install"]

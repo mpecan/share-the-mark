@@ -61,6 +61,10 @@ pub enum Command {
         /// (default: .output/embed/local.global.js; or SHARE_THE_MARK_EMBED_BUNDLE).
         #[arg(long)]
         bundle: Option<PathBuf>,
+        /// Annotate a remote URL in a headed Playwright browser instead of your own
+        /// (no extension needed). Requires Node + Playwright on PATH.
+        #[arg(long)]
+        playwright: bool,
         #[arg(long)]
         json: bool,
         /// How long to wait for feedback before giving up.

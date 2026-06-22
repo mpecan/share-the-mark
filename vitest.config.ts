@@ -30,6 +30,7 @@ export default defineConfig({
         // logic they wrap) stays covered.
         'src/embed/standalone.ts',
         'src/embed/playwright.ts',
+        'src/embed/playwright-runner.ts',
         'src/embed/local.ts',
         // Default DOM-capture provider (html-to-image / real foreignObject canvas);
         // same rationale as composite-surface.ts. Exercised by the channel-B e2e.
