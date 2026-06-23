@@ -241,7 +241,7 @@ describe('createAnnotationSession', () => {
     expect(
       await within(container).findByText(/waiting for the cli to connect/i),
     ).toBeInTheDocument();
-    expect(within(container).getByText('share-the-mark serve')).toBeInTheDocument();
+    expect(within(container).getByText('share-the-mark start')).toBeInTheDocument();
   });
 
   it('warns when the daemon is too old', async () => {

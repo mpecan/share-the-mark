@@ -16,7 +16,8 @@ fn report(skill_path: &Path, daemon_up: bool, port: u16) -> String {
     let daemon = if daemon_up {
         format!("✓ daemon already running on http://127.0.0.1:{port}")
     } else {
-        "Start the daemon when you're ready:\n  share-the-mark serve".to_string()
+        "Start the daemon when you're ready (runs in the background):\n  share-the-mark start"
+            .to_string()
     };
     [
         format!(
@@ -49,11 +50,11 @@ mod tests {
     use std::path::PathBuf;
 
     #[test]
-    fn report_names_the_skill_hub_and_serve_hint_when_down() {
+    fn report_names_the_skill_hub_and_start_hint_when_down() {
         let out = report(&PathBuf::from("/tmp/skill"), false, 8787);
         assert!(out.contains(links::HUB_URL));
         assert!(out.contains("/tmp/skill"));
-        assert!(out.contains("share-the-mark serve"));
+        assert!(out.contains("share-the-mark start"));
     }
 
     #[test]

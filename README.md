@@ -125,7 +125,7 @@ You can also download a binary for your platform from the
 
 ```bash
 share-the-mark setup          # install the skill, open the extension page, report daemon status
-share-the-mark serve          # run the ingest daemon (or `share-the-mark start` to background it)
+share-the-mark start          # launch the ingest daemon in the background (use `serve` to run it in the foreground)
 share-the-mark skill install  # install the Claude Code skill into ~/.claude/skills
 ```
 
@@ -182,7 +182,8 @@ dev with `--bundle <path>` or `SHARE_THE_MARK_EMBED_BUNDLE`.
 CLI: `share-the-mark setup | request [--playwright] <url-or-path> | pending | list | show <id> | serve | start | stop | status | skill install`.
 Config via flags or `SHARE_THE_MARK_PORT` / `SHARE_THE_MARK_DIR`.
 
-**Daemon lifecycle.** `share-the-mark serve` / `share-the-mark start` run until you `share-the-mark stop` them.
+**Daemon lifecycle.** `share-the-mark start` (background) and `share-the-mark serve` (foreground, the
+process `start` spawns) run until you `share-the-mark stop` them.
 A daemon that `share-the-mark request` auto-starts gets an idle timeout (default 30 min,
 `--idle-timeout` / `SHARE_THE_MARK_IDLE`) and shuts itself down once unused — so it never
 lingers as a stray. `share-the-mark status` checks if one is running.
