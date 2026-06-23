@@ -167,6 +167,24 @@ describe('ChangelogPanel', () => {
     expect(screen.getByRole('button', { name: /send 1 mark/i })).toBeDisabled();
   });
 
+  it('routes the disconnected "set it up" CTA to onOpenOptions', async () => {
+    const onOpenOptions = vi.fn();
+    renderPanel({
+      annotations: [callout('a', 1)],
+      connection: { status: 'disconnected' },
+      onOpenOptions,
+    });
+    await userEvent.click(screen.getByRole('button', { name: /send to agent/i }));
+    await userEvent.click(screen.getByRole('button', { name: 'Set it up' }));
+    expect(onOpenOptions).toHaveBeenCalledTimes(1);
+  });
+
+  it('omits the "set it up" CTA when no onOpenOptions is wired', async () => {
+    renderPanel({ annotations: [callout('a', 1)], connection: { status: 'disconnected' } });
+    await userEvent.click(screen.getByRole('button', { name: /send to agent/i }));
+    expect(screen.queryByRole('button', { name: 'Set it up' })).toBeNull();
+  });
+
   it('copies the connect command to the clipboard', async () => {
     const writeText = vi.fn(() => Promise.resolve());
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
