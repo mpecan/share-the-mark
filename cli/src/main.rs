@@ -17,7 +17,9 @@ use std::time::Duration;
 use anyhow::{bail, Result};
 use clap::Parser;
 
-use cli::{resolve_dir, resolve_idle, resolve_port, Cli, Command, SkillCommand};
+use cli::{
+    resolve_background_idle, resolve_dir, resolve_idle, resolve_port, Cli, Command, SkillCommand,
+};
 use store::Store;
 
 fn main() -> Result<()> {
@@ -33,7 +35,7 @@ fn main() -> Result<()> {
             daemon::start(
                 port,
                 &resolve_dir(args.dir)?,
-                resolve_idle(args.idle_timeout),
+                resolve_background_idle(args.idle_timeout),
             )?;
             println!("share-the-mark daemon running on http://127.0.0.1:{port}");
             println!("{}", links::extension_hint());

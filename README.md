@@ -182,11 +182,14 @@ dev with `--bundle <path>` or `SHARE_THE_MARK_EMBED_BUNDLE`.
 CLI: `share-the-mark setup | request [--playwright] <url-or-path> | pending | list | show <id> | serve | start | stop | status | skill install`.
 Config via flags or `SHARE_THE_MARK_PORT` / `SHARE_THE_MARK_DIR`.
 
-**Daemon lifecycle.** `share-the-mark start` (background) and `share-the-mark serve` (foreground, the
-process `start` spawns) run until you `share-the-mark stop` them.
-A daemon that `share-the-mark request` auto-starts gets an idle timeout (default 30 min,
-`--idle-timeout` / `SHARE_THE_MARK_IDLE`) and shuts itself down once unused — so it never
-lingers as a stray. `share-the-mark status` checks if one is running.
+**Daemon lifecycle.** `share-the-mark start` (and `share-the-mark setup`, which starts it for you)
+runs the daemon in the background with a generous idle timeout (default 3 h) and shuts itself down
+once unused — so a forgotten daemon never lingers as a stray. While you're actively annotating, the
+extension's connect view pings the daemon every couple of seconds, which keeps it warm. Pass
+`--idle-timeout 0` (or `SHARE_THE_MARK_IDLE=0`) to run forever, or `share-the-mark stop` to end it.
+`share-the-mark serve` is the foreground process `start` spawns — it runs until Ctrl-C, for debugging
+or under a process manager. A daemon that `share-the-mark request` auto-starts uses a shorter 30 min
+idle. `share-the-mark status` checks if one is running.
 
 ## Embed it without the extension (dev/staging widget)
 
