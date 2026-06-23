@@ -162,7 +162,7 @@ describe('ChangelogPanel', () => {
   it('shows the connect command and disables send while disconnected', async () => {
     renderPanel({ annotations: [callout('a', 1)], connection: { status: 'disconnected' } });
     await userEvent.click(screen.getByRole('button', { name: /send to agent/i }));
-    expect(screen.getByText('share-the-mark serve')).toBeInTheDocument();
+    expect(screen.getByText('share-the-mark start')).toBeInTheDocument();
     expect(screen.getByText(/waiting for the cli to connect/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /send 1 mark/i })).toBeDisabled();
   });
@@ -173,7 +173,7 @@ describe('ChangelogPanel', () => {
     renderPanel({ annotations: [callout('a', 1)], connection: { status: 'disconnected' } });
     await userEvent.click(screen.getByRole('button', { name: /send to agent/i }));
     await userEvent.click(screen.getByRole('button', { name: 'Copy' }));
-    expect(writeText).toHaveBeenCalledWith('share-the-mark serve');
+    expect(writeText).toHaveBeenCalledWith('share-the-mark start');
     expect(await screen.findByRole('button', { name: 'Copied' })).toBeInTheDocument();
   });
 
@@ -265,7 +265,7 @@ describe('ChangelogPanel', () => {
   it('shows a handoff error when the daemon is unreachable', () => {
     renderPanel({
       annotations: [callout('a', 1)],
-      handoff: { kind: 'error', message: 'daemon not reachable — run `share-the-mark serve`' },
+      handoff: { kind: 'error', message: 'daemon not reachable — run `share-the-mark start`' },
     });
     expect(screen.getByText(/daemon not reachable/i)).toBeInTheDocument();
   });

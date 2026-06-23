@@ -176,7 +176,8 @@ export default function App() {
         <strong>Install the CLI</strong>
         <small>
           “Send to agent” talks to a tiny local daemon — the <code>share-the-mark</code> CLI.
-          Install it, then run <code>share-the-mark serve</code>.
+          Install it, then run <code>share-the-mark start</code> to launch the daemon in the
+          background.
         </small>
         <ul className="options__cli-list">
           {CLI_INSTALL.map(({ label, command }) => (

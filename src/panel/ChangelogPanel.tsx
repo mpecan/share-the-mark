@@ -2,7 +2,7 @@ import { useState, type JSX } from 'react';
 import type { Annotation, ToolKind } from '@/src/core/model';
 import type { AgentConnection } from '@/src/core/agent';
 import type { ThemeMode } from '@/src/storage/settings-defaults';
-import { DAEMON_SERVE_COMMAND, HUB_URL } from '@/src/core/links';
+import { DAEMON_START_COMMAND, HUB_URL } from '@/src/core/links';
 import type { PlacementSummary } from '@/src/share';
 import type { Handoff, HandoffAction, PanelActions, ShareNotice } from './PanelApp';
 
@@ -151,7 +151,7 @@ function AgentSetupView({
   function copyCommand(): void {
     void (async () => {
       try {
-        await navigator.clipboard.writeText(DAEMON_SERVE_COMMAND);
+        await navigator.clipboard.writeText(DAEMON_START_COMMAND);
         setIsCopied(true);
       } catch {
         // Clipboard may be unavailable on this page; the command stays visible.
@@ -191,13 +191,14 @@ function AgentSetupView({
         {(status === 'disconnected' || status === 'checking') && (
           <>
             <p className="stm-agent__lead">
-              Connect Share the Mark to your local agent. Install the CLI, then run this once:
+              Connect Share the Mark to your local agent. Install the CLI, then run this once — it
+              starts the daemon in the background:
             </p>
             <div className="stm-agent__cmd">
               <span className="stm-agent__cmd-prompt" aria-hidden="true">
                 $
               </span>
-              <code>{DAEMON_SERVE_COMMAND}</code>
+              <code>{DAEMON_START_COMMAND}</code>
               <button type="button" className="stm-agent__copy" onClick={copyCommand}>
                 {isCopied ? 'Copied' : 'Copy'}
               </button>

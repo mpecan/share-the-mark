@@ -60,6 +60,7 @@ In both cases:
    and make the requested change.
 4. If `share-the-mark` is missing, the daemon may not be installed/running — tell the user to
    run `share-the-mark setup` (installs this skill, opens the extension page, and reports
-   daemon status), then `share-the-mark serve` (or `share-the-mark start`). They also need the
+   daemon status), then `share-the-mark start` (background; `share-the-mark serve` runs it in the
+   foreground instead). They also need the
    [browser extension](https://github.com/mpecan/share-the-mark) — it's the other half.
    `share-the-mark request` auto-starts the daemon for you.

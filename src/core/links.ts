@@ -15,8 +15,11 @@ export const HUB_URL = 'https://github.com/mpecan/share-the-mark';
 export const DAEMON_ADDRESS = '127.0.0.1:8787';
 
 /** The one-liner the agent-setup view tells the user to run once the CLI is
- * installed (mirrors the Options page copy). */
-export const DAEMON_SERVE_COMMAND = 'share-the-mark serve';
+ * installed (mirrors the Options page copy). `start` launches the daemon in the
+ * background and returns immediately — the right fit for "run this, then it
+ * connects". (`serve` is the blocking foreground variant `start` spawns; it's for
+ * debugging / process managers, not this flow.) */
+export const DAEMON_START_COMMAND = 'share-the-mark start';
 
 /** Copy-paste ways to install the `share-the-mark` CLI/daemon, shown on the
  * Options page. Mirrors the README's install block. */
