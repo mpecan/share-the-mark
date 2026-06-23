@@ -209,6 +209,15 @@ function AgentSetupView({
                 ? 'Checking for the local agent…'
                 : 'Waiting for the CLI to connect…'}
             </div>
+            {onOpenOptions && (
+              <p className="stm-agent__alt">
+                Don’t have the CLI yet?
+                <HandoffActionControl
+                  action={{ label: 'Set it up', kind: 'open-options' }}
+                  onOpenOptions={onOpenOptions}
+                />
+              </p>
+            )}
           </>
         )}
 
