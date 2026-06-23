@@ -17,8 +17,7 @@ import {
   type ToolKind,
 } from '@/src/core/model';
 import { buildExportPayload, changelogToMarkdown, type ExportPayload } from '@/src/core/export';
-import { checkDaemonCompat, type DaemonCompat } from '@/src/core/version';
-import { HUB_URL } from '@/src/core/links';
+import { deriveAgentConnection, type AgentConnection } from '@/src/core/agent';
 import { buildBrief } from '@/src/core/share';
 import {
   claimPendingImport,
@@ -43,13 +42,9 @@ import type { AnnotationSession, HostAdapters } from './ports';
 // floor — the two halves release independently.
 const MIN_DAEMON_VERSION = '0.1.0';
 
-function compatHandoff(compat: Extract<DaemonCompat, { ok: false }>): Handoff {
-  const message =
-    compat.reason === 'daemon-too-old'
-      ? `your share-the-mark CLI is out of date (need ≥ ${compat.need}) — update it and retry`
-      : `update the share-the-mark extension (the CLI needs ≥ ${compat.need}) and retry`;
-  return { kind: 'error', message, action: { label: 'How to update', href: HUB_URL } };
-}
+// How often the agent-setup view re-checks the local daemon while it's open. Cheap
+// loopback round-trips; cleared the moment the view closes (or the session unmounts).
+const CONNECTION_POLL_MS = 2000;
 
 // `deps` carries internal, non-host injection points (canvas plumbing for tests);
 // the extension passes nothing and `compositeAnnotations` uses its default surface.
@@ -88,6 +83,8 @@ export async function createAnnotationSession(
   let handoff: Handoff | null = null;
   let share: ShareNotice | null = null;
   let placement: PlacementSummary | null = null;
+  // Live daemon status while the agent-setup view is open; null when it's closed.
+  let connection: AgentConnection | null = null;
 
   // Cross-machine import (SPEC §12): if the host stashed a brief for this URL and
   // the tab just landed here, hydrate the marks and summarize placement so they
@@ -108,6 +105,7 @@ export async function createAnnotationSession(
     handoff,
     share,
     placement,
+    connection,
   });
   let snapshot: PanelSnapshot = buildSnapshot();
   const listeners = new Set<() => void>();
@@ -185,45 +183,51 @@ export async function createAnnotationSession(
     if (await adapters.exportSink.isAvailable()) await adapters.exportSink.write(payload);
   }
 
-  // Send the brief to the local `share-the-mark` daemon and surface the handoff token.
-  // TODO(channel A/C): the error-handoff copy and the `open-options` action are
-  // extension-specific UI; a non-extension channel has no Options page. Extract a
-  // handoff *presenter* (core emits structured reason codes, the host phrases them)
-  // once a channel gives a second consumer to design against. Kept inline here for
-  // a zero-behavior-change lift.
-  async function sendToAgent(): Promise<void> {
-    // The loopback host permission is opt-in; without it the background fetch can't
-    // reach the daemon, so guide the user to enable it rather than build a payload
-    // (a screenshot capture) we can't deliver.
-    if (!(await adapters.daemon.permitted())) {
-      setHandoff({
-        kind: 'error',
-        message: 'enable “Agent integration” in the extension Options to send to an agent',
-        action: { label: 'Open setup', kind: 'open-options' },
-      });
-      return;
-    }
-    const health = await adapters.daemon.health();
-    if (!health.reachable) {
-      setHandoff({
-        kind: 'error',
-        message: 'no daemon yet — install the share-the-mark CLI, then run `share-the-mark serve`',
-        action: { label: 'Open setup', kind: 'open-options' },
-      });
-      return;
-    }
-    // Version handshake (SPEC §11.4): warn on a floor mismatch instead of sending to
-    // a daemon that can't read the brief — before paying for a screenshot.
-    const compat = checkDaemonCompat({
+  // The agent-setup view's live "is the daemon up?" check (SPEC §5.4 redesign).
+  // Permission first (a denied fetch never reaches the daemon), then a `/health`
+  // read; `deriveAgentConnection` folds in the version handshake (SPEC §11.4). The
+  // result gates the send button, so the user sees *why* a send can't happen.
+  let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+  async function refreshConnection(): Promise<void> {
+    const isPermitted = await adapters.daemon.permitted();
+    const health = isPermitted ? await adapters.daemon.health() : null;
+    connection = deriveAgentConnection({
+      permitted: isPermitted,
+      health,
       extensionVersion: adapters.getVersion(),
       minDaemonVersion: MIN_DAEMON_VERSION,
-      daemonVersion: health.version,
-      daemonMinExtension: health.minExtension,
     });
-    if (!compat.ok) {
-      setHandoff(compatHandoff(compat));
-      return;
-    }
+    publish();
+  }
+
+  function stopPolling(): void {
+    if (pollTimer === null) return;
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+
+  // Open the connect view: clear any stale handoff, show a neutral "checking" state,
+  // then poll until the view closes.
+  function openAgentView(): void {
+    handoff = null;
+    connection = { status: 'checking' };
+    publish();
+    void refreshConnection();
+    pollTimer ??= setInterval(() => void refreshConnection(), CONNECTION_POLL_MS);
+  }
+
+  function closeAgentView(): void {
+    stopPolling();
+    connection = null;
+    publish();
+  }
+
+  // Send the brief to the (already-connected) daemon and surface the handoff token.
+  // Reachability/permission/version are gated by the connect view, so this just
+  // builds the payload and writes; a daemon that dropped since the last poll surfaces
+  // as the generic write failure.
+  async function submitToAgent(): Promise<void> {
     const payload = await buildPayload();
     if (!payload) return;
     try {
@@ -263,6 +267,7 @@ export async function createAnnotationSession(
       createElement(PanelApp, {
         store,
         actions: adapters.panelActions,
+        theme: settings.theme,
         onSelectTool: (tool) => {
           activeTool = tool;
           overlay?.setTool(tool);
@@ -280,8 +285,10 @@ export async function createAnnotationSession(
         onExport: () => {
           void runExport();
         },
-        onSendToAgent: () => {
-          void sendToAgent();
+        onShowAgentSetup: openAgentView,
+        onCloseAgentSetup: closeAgentView,
+        onSubmitToAgent: () => {
+          void submitToAgent();
         },
         onCopyShareLink: () => {
           void copyShareLink();
@@ -297,6 +304,8 @@ export async function createAnnotationSession(
   }
 
   function unmountView(): void {
+    stopPolling();
+    connection = null;
     releaseKeyboard?.();
     overlay?.destroy();
     panelRoot?.unmount();

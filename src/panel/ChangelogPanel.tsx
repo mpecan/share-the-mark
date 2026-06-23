@@ -1,5 +1,8 @@
 import { useState, type JSX } from 'react';
 import type { Annotation, ToolKind } from '@/src/core/model';
+import type { AgentConnection } from '@/src/core/agent';
+import type { ThemeMode } from '@/src/storage/settings-defaults';
+import { DAEMON_SERVE_COMMAND, HUB_URL } from '@/src/core/links';
 import type { PlacementSummary } from '@/src/share';
 import type { Handoff, HandoffAction, PanelActions, ShareNotice } from './PanelApp';
 
@@ -14,15 +17,24 @@ export interface ChangelogPanelProps {
   handoff: Handoff | null;
   share?: ShareNotice | null;
   placement?: PlacementSummary | null;
+  /** Live daemon-connection status while the agent-setup view is open. */
+  connection?: AgentConnection | null;
   onSelectTool: (tool: ToolKind) => void;
   onEditNote: (id: string, note: string) => void;
   onDelete: (id: string) => void;
   onClearAll: () => void;
   onExport: () => void;
-  onSendToAgent: () => void;
+  /** Footer "Send to agent" — opens the connect view and starts polling. */
+  onShowAgentSetup: () => void;
+  /** Back out of the connect view — stops polling. */
+  onCloseAgentSetup: () => void;
+  /** Send the brief once the daemon is connected. */
+  onSubmitToAgent: () => void;
   onCopyShareLink?: (() => void) | undefined;
   onOpenOptions?: (() => void) | undefined;
   actions?: PanelActions | undefined;
+  /** UI appearance; `auto`/undefined defers to the OS via prefers-color-scheme. */
+  theme?: ThemeMode | undefined;
 }
 
 const ICONS: Record<ToolKind, JSX.Element> = {
@@ -82,27 +94,226 @@ function HandoffActionControl({
   );
 }
 
+// The handoff line shared by the list footer and the agent-setup view: the
+// success command to paste, or an error with its optional call-to-action.
+function HandoffLine({
+  handoff,
+  onOpenOptions,
+}: {
+  handoff: Handoff;
+  onOpenOptions?: (() => void) | undefined;
+}): JSX.Element {
+  if (handoff.kind === 'sent') {
+    return (
+      <p className="stm-panel__handoff">
+        ✓ sent — paste to your agent: <code>{handoff.command}</code>
+      </p>
+    );
+  }
+  return (
+    <p className="stm-panel__handoff stm-panel__handoff--error">
+      {handoff.message}
+      {handoff.action != null && (
+        <HandoffActionControl action={handoff.action} onOpenOptions={onOpenOptions} />
+      )}
+    </p>
+  );
+}
+
+function incompatibleMessage(c: Extract<AgentConnection, { status: 'incompatible' }>): string {
+  return c.reason === 'daemon-too-old'
+    ? `Your share-the-mark CLI is out of date (need ≥ ${c.need}). Update it and retry.`
+    : `Update the share-the-mark extension (the CLI needs ≥ ${c.need}) and retry.`;
+}
+
+// "Send to agent" connect view (SPEC §5.4 redesign). Polls the local daemon and
+// only unlocks the send once it's reachable and version-compatible — so the user
+// sees *why* a send can't happen (no permission, no daemon, wrong version) instead
+// of a one-line failure after the fact.
+function AgentSetupView({
+  connection,
+  count,
+  handoff,
+  onBack,
+  onSubmit,
+  onOpenOptions,
+}: {
+  connection: AgentConnection | null;
+  count: number;
+  handoff: Handoff | null;
+  onBack: () => void;
+  onSubmit: () => void;
+  onOpenOptions?: (() => void) | undefined;
+}): JSX.Element {
+  const [isCopied, setIsCopied] = useState(false);
+  const status = connection?.status ?? 'checking';
+
+  function copyCommand(): void {
+    void (async () => {
+      try {
+        await navigator.clipboard.writeText(DAEMON_SERVE_COMMAND);
+        setIsCopied(true);
+      } catch {
+        // Clipboard may be unavailable on this page; the command stays visible.
+      }
+    })();
+  }
+
+  return (
+    <div className="stm-agent">
+      <header className="stm-agent__head">
+        <button type="button" className="stm-agent__back" aria-label="Back" onClick={onBack}>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            aria-hidden="true"
+          >
+            <path d="M14 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        <span className="stm-agent__title">Send to agent</span>
+      </header>
+
+      <div className="stm-agent__body">
+        {status === 'not-permitted' && (
+          <p className="stm-agent__lead">
+            Enable <strong>Agent integration</strong> in the extension Options to reach your local
+            agent.
+            <HandoffActionControl
+              action={{ label: 'Open setup', kind: 'open-options' }}
+              onOpenOptions={onOpenOptions}
+            />
+          </p>
+        )}
+
+        {(status === 'disconnected' || status === 'checking') && (
+          <>
+            <p className="stm-agent__lead">
+              Connect Share the Mark to your local agent. Install the CLI, then run this once:
+            </p>
+            <div className="stm-agent__cmd">
+              <span className="stm-agent__cmd-prompt" aria-hidden="true">
+                $
+              </span>
+              <code>{DAEMON_SERVE_COMMAND}</code>
+              <button type="button" className="stm-agent__copy" onClick={copyCommand}>
+                {isCopied ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+            <div className="stm-agent__status" role="status">
+              <span className="stm-agent__dot" aria-hidden="true" />
+              {status === 'checking'
+                ? 'Checking for the local agent…'
+                : 'Waiting for the CLI to connect…'}
+            </div>
+          </>
+        )}
+
+        {connection?.status === 'incompatible' && (
+          <p className="stm-agent__lead">
+            {incompatibleMessage(connection)}
+            <a
+              className="stm-panel__handoff-action"
+              href={HUB_URL}
+              target="_blank"
+              rel="noreferrer"
+            >
+              How to update
+            </a>
+          </p>
+        )}
+
+        {connection?.status === 'connected' && (
+          <>
+            <div className="stm-agent__ok" role="status">
+              <span className="stm-agent__ok-mark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
+                  <path d="M5 12l4 4 10-10" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </span>
+              <div>
+                <div className="stm-agent__ok-title">Connected to the local daemon</div>
+                <div className="stm-agent__ok-meta">
+                  {connection.version != null && <>share-the-mark v{connection.version} · </>}
+                  {connection.address} · ready
+                </div>
+              </div>
+            </div>
+            <p className="stm-agent__lead">
+              Your {count} mark{count === 1 ? '' : 's'} go with the page URL, anchors, and a
+              screenshot.
+            </p>
+          </>
+        )}
+
+        <button
+          type="button"
+          className="stm-agent__send"
+          onClick={onSubmit}
+          disabled={status !== 'connected' || count === 0}
+        >
+          Send {count} mark{count === 1 ? '' : 's'}
+        </button>
+
+        {handoff !== null && <HandoffLine handoff={handoff} onOpenOptions={onOpenOptions} />}
+      </div>
+    </div>
+  );
+}
+
 export function ChangelogPanel({
   annotations,
   activeTool,
   handoff,
   share,
   placement,
+  connection,
   onSelectTool,
   onEditNote,
   onDelete,
   onClearAll,
   onExport,
-  onSendToAgent,
+  onShowAgentSetup,
+  onCloseAgentSetup,
+  onSubmitToAgent,
   onCopyShareLink,
   onOpenOptions,
   actions,
+  theme,
 }: ChangelogPanelProps): JSX.Element {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
+  const [view, setView] = useState<'list' | 'agent'>('list');
   const exportLabel = actions?.exportLabel ?? 'Copy to clipboard';
+  const themeAttr = theme === undefined || theme === 'auto' ? undefined : theme;
+
+  if (view === 'agent') {
+    return (
+      <section className="stm-panel" data-theme={themeAttr} aria-label="Send to agent">
+        <AgentSetupView
+          connection={connection ?? null}
+          count={annotations.length}
+          handoff={handoff}
+          onBack={() => {
+            setView('list');
+            onCloseAgentSetup();
+          }}
+          onSubmit={onSubmitToAgent}
+          onOpenOptions={onOpenOptions}
+        />
+      </section>
+    );
+  }
+
   return (
-    <section className="stm-panel" data-collapsed={isCollapsed} aria-label="Changelog">
+    <section
+      className="stm-panel"
+      data-collapsed={isCollapsed}
+      data-theme={themeAttr}
+      aria-label="Changelog"
+    >
       <header className="stm-panel__head">
         <span className="stm-panel__brand">share&nbsp;the&nbsp;mark</span>
         <span className="stm-panel__count">{annotations.length}</span>
@@ -178,7 +389,18 @@ export function ChangelogPanel({
 
       <div className="stm-panel__body">
         {annotations.length === 0 ? (
-          <p className="stm-panel__empty">No annotations yet. Pick a tool and draw on the page.</p>
+          <div className="stm-panel__empty">
+            <span className="stm-empty__pulse" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" width="30" height="30">
+                <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
+                <circle cx="12" cy="12" r="3.4" fill="currentColor" />
+              </svg>
+            </span>
+            <span className="stm-empty__title">No marks yet</span>
+            <span className="stm-empty__hint">
+              Pick a tool above, then draw on the page to drop your first anchored mark.
+            </span>
+          </div>
         ) : (
           <>
             <div className="stm-panel__listhead">
@@ -264,7 +486,10 @@ export function ChangelogPanel({
             <button
               type="button"
               className="stm-panel__send"
-              onClick={onSendToAgent}
+              onClick={() => {
+                setView('agent');
+                onShowAgentSetup();
+              }}
               disabled={annotations.length === 0}
             >
               Send to agent
@@ -281,19 +506,7 @@ export function ChangelogPanel({
             </button>
           )}
         </div>
-        {handoff !== null &&
-          (handoff.kind === 'sent' ? (
-            <p className="stm-panel__handoff">
-              ✓ sent — paste to your agent: <code>{handoff.command}</code>
-            </p>
-          ) : (
-            <p className="stm-panel__handoff stm-panel__handoff--error">
-              {handoff.message}
-              {handoff.action != null && (
-                <HandoffActionControl action={handoff.action} onOpenOptions={onOpenOptions} />
-              )}
-            </p>
-          ))}
+        {handoff !== null && <HandoffLine handoff={handoff} onOpenOptions={onOpenOptions} />}
         {share != null &&
           (share.kind === 'copied' ? (
             <p className="stm-panel__handoff">✓ share link copied — paste it to a teammate.</p>

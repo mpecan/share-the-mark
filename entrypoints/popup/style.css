@@ -34,8 +34,13 @@ body {
   flex: 1;
 }
 
+.popup__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .popup__link {
-  align-self: flex-start;
   padding: 0;
   background: none;
   border: 0;
@@ -47,6 +52,12 @@ body {
 .popup__link:hover {
   color: var(--text);
   border-color: transparent;
+}
+
+.popup__shortcut {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--dim, var(--muted));
 }
 
 .popup__import {

@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react';
 import { browser } from 'wxt/browser';
 import { DEFAULT_SETTINGS, getSettings, saveSettings, type Settings } from '@/src/storage';
+import type { ThemeMode } from '@/src/storage/settings-defaults';
 import { DAEMON_ORIGIN } from '@/src/capture';
 import { CLI_INSTALL, HUB_URL } from '@/src/core/links';
+import { applyDocumentTheme } from '@/src/theme/apply-theme';
 import type { ToolKind } from '@/src/core/model';
 
 // Options page (SPEC §5.8): default tool, stroke defaults, and Markdown
 // extraction preferences, persisted to storage.local.
 const TOOLS: ToolKind[] = ['select', 'callout', 'text', 'arrow', 'highlight', 'element'];
+const THEMES: ThemeMode[] = ['auto', 'light', 'dark'];
 
 export default function App() {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
@@ -22,6 +25,11 @@ export default function App() {
       setIsAgentEnabled(await browser.permissions.contains({ origins: [DAEMON_ORIGIN] }));
     })();
   }, []);
+
+  // Reflect the chosen theme on this page as it changes (initial load + edits).
+  useEffect(() => {
+    applyDocumentTheme(settings.theme);
+  }, [settings.theme]);
 
   // Grant/revoke must run from this user gesture — permissions.request can't be
   // called from the in-page panel (content scripts can't prompt for permissions).
@@ -61,6 +69,22 @@ export default function App() {
       </header>
 
       <div className="options__grid">
+        <label className="options__field">
+          <span>Theme</span>
+          <select
+            value={settings.theme}
+            onChange={(e) => {
+              update('theme', e.target.value as ThemeMode);
+            }}
+          >
+            {THEMES.map((theme) => (
+              <option key={theme} value={theme}>
+                {theme === 'auto' ? 'Auto (match system)' : theme}
+              </option>
+            ))}
+          </select>
+        </label>
+
         <label className="options__field">
           <span>Default tool</span>
           <select

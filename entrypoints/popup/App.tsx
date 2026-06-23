@@ -1,8 +1,9 @@
-import { useState, type JSX } from 'react';
+import { useEffect, useState, type JSX } from 'react';
 import { browser } from 'wxt/browser';
 import { sendMessage } from '@/src/messaging';
 import { decodeToken } from '@/src/share';
-import { savePendingImport } from '@/src/storage';
+import { getSettings, savePendingImport } from '@/src/storage';
+import { applyDocumentTheme } from '@/src/theme/apply-theme';
 import type { ShareBrief, ShareError } from '@/src/core/share';
 
 // Popup UI (SPEC §5.8): activate annotation mode on the active tab, open the options
@@ -118,6 +119,14 @@ function ImportSection(): JSX.Element {
 }
 
 export default function App(): JSX.Element {
+  // Apply the saved theme to the popup as soon as it opens.
+  useEffect(() => {
+    void (async () => {
+      const settings = await getSettings();
+      applyDocumentTheme(settings.theme);
+    })();
+  }, []);
+
   return (
     <main className="popup">
       <header className="popup__head">
@@ -132,13 +141,16 @@ export default function App(): JSX.Element {
         </button>
       </div>
       <ImportSection />
-      <button
-        type="button"
-        className="popup__link"
-        onClick={() => void browser.runtime.openOptionsPage()}
-      >
-        Options
-      </button>
+      <div className="popup__foot">
+        <button
+          type="button"
+          className="popup__link"
+          onClick={() => void browser.runtime.openOptionsPage()}
+        >
+          Options
+        </button>
+        <span className="popup__shortcut">⌥⇧M</span>
+      </div>
     </main>
   );
 }

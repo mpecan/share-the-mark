@@ -25,7 +25,9 @@ const handlers = {
   onDelete: vi.fn(),
   onClearAll: vi.fn(),
   onExport: vi.fn(),
-  onSendToAgent: vi.fn(),
+  onShowAgentSetup: vi.fn(),
+  onCloseAgentSetup: vi.fn(),
+  onSubmitToAgent: vi.fn(),
 };
 
 function Boom(): never {
@@ -36,7 +38,7 @@ describe('PanelApp', () => {
   it('renders from the store and re-renders when it changes', () => {
     const store = makeStore({ annotations: [], activeTool: 'callout', handoff: null });
     render(<PanelApp store={store} {...handlers} />);
-    expect(screen.getByText(/no annotations yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/no marks yet/i)).toBeInTheDocument();
 
     const callout: Annotation = {
       id: 'a',
@@ -56,7 +58,7 @@ describe('PanelApp', () => {
       store.set({ annotations: [callout], activeTool: 'arrow', handoff: null });
     });
 
-    expect(screen.queryByText(/no annotations yet/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/no marks yet/i)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'arrow' })).toHaveAttribute('aria-pressed', 'true');
   });
 });

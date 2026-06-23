@@ -52,14 +52,25 @@
 }
 
 .stm-panel {
-  --accent: #e11d48;
+  /* Dark is the base palette; light is layered on below via an explicit
+   * [data-theme='light'] override and a prefers-color-scheme query (auto). The
+   * accent (#F1503F) is shared across themes. Keep these tokens in sync with the
+   * popup/options copy in entrypoints/theme.css. */
+  --accent: #f1503f;
   --accent-ink: #ffffff;
-  --bg: #14161b;
-  --surface: #1b1e25;
-  --surface-2: #232732;
-  --line: #2c313d;
-  --text: #eceef3;
-  --muted: #8b91a1;
+  --bg: #0f1217;
+  --surface: #1a2027;
+  --surface-2: #161b22;
+  --hover: #232b34;
+  --line: rgba(255, 255, 255, 0.09);
+  --line-strong: rgba(255, 255, 255, 0.16);
+  --text: #eaecef;
+  --muted: #8b939e;
+  --dim: #59606b;
+  --success: #3dd68c;
+  --success-bg: rgba(61, 214, 140, 0.1);
+  --success-line: rgba(61, 214, 140, 0.28);
+  color-scheme: dark;
 
   display: flex;
   flex-direction: column;
@@ -71,7 +82,7 @@
   border-radius: 14px;
   box-shadow:
     0 18px 50px -12px rgba(0, 0, 0, 0.6),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   font-size: 13px;
   line-height: 1.4;
@@ -79,6 +90,43 @@
   /* Grow from the top-right, toward the toolbar icon the panel "comes from". */
   transform-origin: top right;
   animation: stm-in 220ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* Light palette — forced (data-theme='light') or, for 'auto', when the OS asks
+ * for light. The dark base above wins for 'auto' under a dark OS, and an explicit
+ * [data-theme='dark'] always keeps dark (the media query excludes it). */
+.stm-panel[data-theme='light'] {
+  --bg: #ffffff;
+  --surface: #f1f0ec;
+  --surface-2: #f1f0ec;
+  --hover: #e7e6e0;
+  --line: rgba(20, 22, 26, 0.1);
+  --line-strong: rgba(20, 22, 26, 0.2);
+  --text: #14171b;
+  --muted: #6a7077;
+  --dim: #9ca1a8;
+  --success: #1fae6b;
+  --success-bg: rgba(31, 174, 107, 0.1);
+  --success-line: rgba(31, 174, 107, 0.3);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: light) {
+  .stm-panel:not([data-theme='dark']) {
+    --bg: #ffffff;
+    --surface: #f1f0ec;
+    --surface-2: #f1f0ec;
+    --hover: #e7e6e0;
+    --line: rgba(20, 22, 26, 0.1);
+    --line-strong: rgba(20, 22, 26, 0.2);
+    --text: #14171b;
+    --muted: #6a7077;
+    --dim: #9ca1a8;
+    --success: #1fae6b;
+    --success-bg: rgba(31, 174, 107, 0.1);
+    --success-line: rgba(31, 174, 107, 0.3);
+    color-scheme: light;
+  }
 }
 
 .stm-panel *,
@@ -169,8 +217,8 @@
 
 .stm-tool:hover {
   color: var(--text);
-  background: var(--surface-2);
-  border-color: #39414f;
+  background: var(--hover);
+  border-color: var(--line-strong);
 }
 
 .stm-tool[aria-pressed='true'] {
@@ -178,8 +226,8 @@
   background: var(--accent);
   border-color: var(--accent);
   box-shadow:
-    0 0 0 3px rgba(225, 29, 72, 0.18),
-    0 4px 12px -4px rgba(225, 29, 72, 0.6);
+    0 0 0 3px rgba(241, 80, 63, 0.18),
+    0 4px 12px -4px rgba(241, 80, 63, 0.55);
 }
 
 .stm-tool:focus-visible {
@@ -217,7 +265,7 @@
 }
 
 .stm-panel__body::-webkit-scrollbar-thumb:hover {
-  background: #3a4150;
+  background: var(--line-strong);
 }
 
 .stm-panel__empty {
@@ -313,7 +361,7 @@
 
 .stm-item__del:hover {
   color: var(--accent);
-  background: rgba(225, 29, 72, 0.15);
+  background: rgba(241, 80, 63, 0.14);
 }
 
 .stm-panel__foot {
@@ -338,7 +386,7 @@
 
 .stm-panel__export:hover:not(:disabled) {
   filter: brightness(1.08);
-  box-shadow: 0 6px 18px -6px rgba(225, 29, 72, 0.7);
+  box-shadow: 0 6px 18px -6px rgba(241, 80, 63, 0.6);
 }
 
 .stm-panel__export:disabled {
@@ -367,7 +415,7 @@
   color: var(--text);
   font: inherit;
   font-weight: 600;
-  background: var(--surface-2);
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 9px;
   cursor: pointer;
@@ -468,7 +516,7 @@
 
 .stm-panel__toggle:hover {
   color: var(--text);
-  border-color: #39414f;
+  border-color: var(--line-strong);
 }
 
 .stm-panel__toggle svg {
@@ -481,13 +529,13 @@
   transform: rotate(180deg);
 }
 
-/* Collapsed: a compact tool strip — hide the title, count, list, and footer,
- * shrink the tools to a single row, and let the panel size to its content. */
+/* Collapsed: a compact tool strip — keep a smaller wordmark for consistency, hide
+ * the count, list, and footer, shrink the tools to a single row, and let the panel
+ * size to its content. */
 .stm-panel[data-collapsed='true'] {
   width: auto;
 }
 
-.stm-panel[data-collapsed='true'] .stm-panel__brand,
 .stm-panel[data-collapsed='true'] .stm-panel__count,
 .stm-panel[data-collapsed='true'] .stm-panel__active,
 .stm-panel[data-collapsed='true'] .stm-panel__body,
@@ -496,10 +544,20 @@
 }
 
 .stm-panel[data-collapsed='true'] .stm-panel__head {
-  justify-content: flex-end;
-  padding: 6px;
+  gap: 10px;
+  padding: 6px 8px;
   border-bottom: none;
   background: none;
+}
+
+.stm-panel[data-collapsed='true'] .stm-panel__brand {
+  font-size: 9px;
+}
+
+.stm-panel[data-collapsed='true'] .stm-panel__brand::before {
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
 }
 
 .stm-panel[data-collapsed='true'] .stm-panel__tools {
@@ -554,4 +612,274 @@
 
 .stm-panel__confirm-no {
   color: var(--text);
+}
+
+/* ── Empty state (no marks yet) ─────────────────────────────────────────── */
+.stm-panel__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  margin: 0;
+  padding: 28px 22px 26px;
+  color: var(--muted);
+}
+
+.stm-empty__pulse {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 8px;
+  color: var(--accent);
+}
+
+.stm-empty__pulse::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  border: 2px solid var(--accent);
+  animation: stm-ring 2.4s ease-out infinite;
+}
+
+.stm-empty__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.stm-empty__hint {
+  font-size: 12px;
+  line-height: 1.5;
+  max-width: 220px;
+}
+
+/* ── Agent setup / connect view (SPEC §5.4 redesign) ────────────────────── */
+.stm-agent {
+  display: flex;
+  flex-direction: column;
+}
+
+.stm-agent__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--surface), var(--bg));
+}
+
+.stm-agent__back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  cursor: pointer;
+  transition:
+    color 120ms ease,
+    border-color 120ms ease;
+}
+
+.stm-agent__back:hover {
+  color: var(--text);
+  border-color: var(--line-strong);
+}
+
+.stm-agent__back svg {
+  width: 14px;
+  height: 14px;
+}
+
+.stm-agent__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.stm-agent__body {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stm-agent__lead {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.stm-agent__cmd {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px 10px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+
+.stm-agent__cmd-prompt {
+  color: var(--dim);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+
+.stm-agent__cmd code {
+  flex: 1;
+  overflow: hidden;
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.stm-agent__copy {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 26px;
+  padding: 0 7px;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  cursor: pointer;
+  transition:
+    color 120ms ease,
+    border-color 120ms ease;
+}
+
+.stm-agent__copy:hover {
+  color: var(--text);
+  border-color: var(--line-strong);
+}
+
+.stm-agent__status {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.stm-agent__dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--accent);
+  animation: stm-pulse 1.3s ease-in-out infinite;
+}
+
+/* Connected: a calm "ready" card in the success hue. */
+.stm-agent__ok {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px 13px;
+  background: var(--success-bg);
+  border: 1px solid var(--success-line);
+  border-radius: 11px;
+}
+
+.stm-agent__ok-mark {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.stm-agent__ok-mark svg {
+  width: 15px;
+  height: 15px;
+}
+
+.stm-agent__ok-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.stm-agent__ok-title code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 600;
+}
+
+.stm-agent__ok-meta {
+  margin-top: 2px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--dim);
+}
+
+.stm-agent__send {
+  width: 100%;
+  padding: 11px;
+  color: var(--accent-ink);
+  font: inherit;
+  font-weight: 600;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  cursor: pointer;
+  transition:
+    filter 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.stm-agent__send:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow: 0 6px 18px -6px rgba(241, 80, 63, 0.6);
+}
+
+.stm-agent__send:disabled {
+  color: var(--muted);
+  background: var(--surface-2);
+  border-color: var(--line);
+  cursor: not-allowed;
+}
+
+@keyframes stm-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.7);
+  }
+}
+
+@keyframes stm-ring {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(2.1);
+    opacity: 0;
+  }
 }
