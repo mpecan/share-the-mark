@@ -47,6 +47,12 @@ function seedChangelog(): Changelog {
 
 const noop = (): void => undefined;
 
+// The redesigned "Send to agent" footer button opens a connect view that polls the
+// daemon; the actual send is a second click on the connected card's button.
+function openAgent(container: HTMLElement): void {
+  fireEvent.click(within(container).getByRole('button', { name: 'Send to agent' }));
+}
+
 // A fake ExportSink plus its `write` spy returned alongside, so a caller can assert
 // on the spy directly (a member reference like `s.write` would trip unbound-method).
 function fakeSink(
@@ -127,7 +133,7 @@ describe('createAnnotationSession', () => {
         changelog: { load: () => Promise.resolve(null), save: () => Promise.resolve() },
       }),
     );
-    expect(within(container).getByText(/No annotations yet/)).toBeInTheDocument();
+    expect(within(container).getByText(/No marks yet/)).toBeInTheDocument();
   });
 
   it('hydrates a claimed import and summarizes placement', async () => {
@@ -219,20 +225,23 @@ describe('createAnnotationSession', () => {
         daemon: makeDaemon({ permitted: () => Promise.resolve(false), sink }),
       }),
     );
-    fireEvent.click(within(container).getByRole('button', { name: 'Send to agent' }));
+    openAgent(container);
     const setup = await within(container).findByRole('button', { name: 'Open setup' });
-    expect(within(container).getByText(/enable/)).toBeInTheDocument();
+    expect(within(container).getByText(/Enable/)).toBeInTheDocument();
     expect(write).not.toHaveBeenCalled();
     fireEvent.click(setup);
     expect(openOptions).toHaveBeenCalledTimes(1);
   });
 
-  it('reports when the daemon is unreachable', async () => {
+  it('shows the connect command while the daemon is unreachable', async () => {
     const { container } = await mount(
       makeAdapters({ daemon: makeDaemon({ health: () => Promise.resolve({ reachable: false }) }) }),
     );
-    fireEvent.click(within(container).getByRole('button', { name: 'Send to agent' }));
-    expect(await within(container).findByText(/no daemon yet/)).toBeInTheDocument();
+    openAgent(container);
+    expect(
+      await within(container).findByText(/waiting for the cli to connect/i),
+    ).toBeInTheDocument();
+    expect(within(container).getByText('share-the-mark serve')).toBeInTheDocument();
   });
 
   it('warns when the daemon is too old', async () => {
@@ -243,7 +252,7 @@ describe('createAnnotationSession', () => {
         }),
       }),
     );
-    fireEvent.click(within(container).getByRole('button', { name: 'Send to agent' }));
+    openAgent(container);
     expect(await within(container).findByText(/out of date/)).toBeInTheDocument();
   });
 
@@ -257,10 +266,51 @@ describe('createAnnotationSession', () => {
         }),
       }),
     );
-    fireEvent.click(within(container).getByRole('button', { name: 'Send to agent' }));
+    openAgent(container);
     expect(
-      await within(container).findByText(/update the share-the-mark extension/),
+      await within(container).findByText(/update the share-the-mark extension/i),
     ).toBeInTheDocument();
+  });
+
+  it('re-polls and flips disconnected → connected, then sends', async () => {
+    vi.useFakeTimers();
+    try {
+      let isReachable = false;
+      const { sink, write } = fakeSink({ result: { ref: 'xyz' } });
+      const { container } = await mount(
+        makeAdapters({
+          daemon: makeDaemon({
+            sink,
+            health: () =>
+              Promise.resolve(
+                isReachable ? { reachable: true, version: '9.9.9' } : { reachable: false },
+              ),
+          }),
+        }),
+      );
+      const q = within(container);
+      await act(async () => {
+        openAgent(container);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(q.getByText(/waiting for the cli to connect/i)).toBeInTheDocument();
+
+      isReachable = true;
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2100);
+      });
+      expect(q.getByText(/connected to the local daemon/i)).toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(q.getByRole('button', { name: /send 1 mark/i }));
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(write).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('does not write to the daemon when the payload build fails', async () => {
@@ -271,7 +321,9 @@ describe('createAnnotationSession', () => {
         daemon: makeDaemon({ sink }),
       }),
     );
-    fireEvent.click(within(container).getByRole('button', { name: 'Send to agent' }));
+    openAgent(container);
+    const send = await within(container).findByRole('button', { name: /send 1 mark/i });
+    fireEvent.click(send);
     await waitFor(() => {
       expect(document.documentElement.dataset['stmLastExport']).toBeDefined();
     });
@@ -281,7 +333,9 @@ describe('createAnnotationSession', () => {
   it('surfaces the handoff command when the brief is sent', async () => {
     // The default daemon sink returns { ref: 'abc' }.
     const { container } = await mount(makeAdapters());
-    fireEvent.click(within(container).getByRole('button', { name: 'Send to agent' }));
+    openAgent(container);
+    const send = await within(container).findByRole('button', { name: /send 1 mark/i });
+    fireEvent.click(send);
     expect(await within(container).findByText('share-the-mark show abc')).toBeInTheDocument();
   });
 
@@ -289,9 +343,11 @@ describe('createAnnotationSession', () => {
     const { container } = await mount(
       makeAdapters({ daemon: makeDaemon({ sink: fakeSink().sink }) }),
     );
-    fireEvent.click(within(container).getByRole('button', { name: 'Send to agent' }));
+    openAgent(container);
+    const send = await within(container).findByRole('button', { name: /send 1 mark/i });
+    fireEvent.click(send);
     await waitFor(() => {
-      expect(within(container).getByRole('button', { name: 'Send to agent' })).toBeEnabled();
+      expect(within(container).getByRole('button', { name: /send 1 mark/i })).toBeEnabled();
     });
     expect(within(container).queryByText(/✓ sent/)).toBeNull();
   });
@@ -300,8 +356,21 @@ describe('createAnnotationSession', () => {
     const { container } = await mount(
       makeAdapters({ daemon: makeDaemon({ sink: fakeSink({ shouldReject: true }).sink }) }),
     );
-    fireEvent.click(within(container).getByRole('button', { name: 'Send to agent' }));
+    openAgent(container);
+    const send = await within(container).findByRole('button', { name: /send 1 mark/i });
+    fireEvent.click(send);
     expect(await within(container).findByText(/failed to send/)).toBeInTheDocument();
+  });
+
+  it('stops polling when the agent view is closed via Back', async () => {
+    const { container } = await mount(makeAdapters());
+    openAgent(container);
+    const back = await within(container).findByRole('button', { name: 'Back' });
+    fireEvent.click(back);
+    // Back to the list view: the tool palette is shown again.
+    expect(
+      within(container).getByRole('toolbar', { name: /annotation tools/i }),
+    ).toBeInTheDocument();
   });
 
   it('switches the active tool', async () => {
@@ -334,7 +403,7 @@ describe('createAnnotationSession', () => {
     fireEvent.click(q.getByRole('button', { name: 'Clear all' }));
     fireEvent.click(q.getByRole('button', { name: 'Clear' }));
     await waitFor(() => {
-      expect(q.getByText(/No annotations yet/)).toBeInTheDocument();
+      expect(q.getByText(/No marks yet/)).toBeInTheDocument();
     });
     expect(save).toHaveBeenCalled();
   });

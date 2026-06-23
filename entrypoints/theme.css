@@ -3,15 +3,52 @@
  * its shadow host (src/panel/panel.css) because a closed shadow root on an
  * arbitrary page can't inherit these — keep the two palettes in sync. */
 :root {
-  --accent: #e11d48;
+  /* Dark is the base; light is layered on below (forced via [data-theme='light']
+   * or, for 'auto', via a prefers-color-scheme query). Keep these in sync with the
+   * shadow-root copy in src/panel/panel.css. */
+  --accent: #f1503f;
   --accent-ink: #ffffff;
-  --bg: #14161b;
-  --surface: #1b1e25;
-  --surface-2: #232732;
-  --line: #2c313d;
-  --text: #eceef3;
-  --muted: #8b91a1;
+  --bg: #0f1217;
+  --surface: #1a2027;
+  --surface-2: #161b22;
+  --hover: #232b34;
+  --line: rgba(255, 255, 255, 0.09);
+  --line-strong: rgba(255, 255, 255, 0.16);
+  --text: #eaecef;
+  --muted: #8b939e;
+  --dim: #59606b;
+  --success: #3dd68c;
   color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  --bg: #eceae3;
+  --surface: #ffffff;
+  --surface-2: #f1f0ec;
+  --hover: #e7e6e0;
+  --line: rgba(20, 22, 26, 0.1);
+  --line-strong: rgba(20, 22, 26, 0.2);
+  --text: #14171b;
+  --muted: #6a7077;
+  --dim: #9ca1a8;
+  --success: #1fae6b;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    --bg: #eceae3;
+    --surface: #ffffff;
+    --surface-2: #f1f0ec;
+    --hover: #e7e6e0;
+    --line: rgba(20, 22, 26, 0.1);
+    --line-strong: rgba(20, 22, 26, 0.2);
+    --text: #14171b;
+    --muted: #6a7077;
+    --dim: #9ca1a8;
+    --success: #1fae6b;
+    color-scheme: light;
+  }
 }
 
 * {

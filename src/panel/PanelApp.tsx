@@ -1,6 +1,8 @@
 import { Component, useSyncExternalStore, type ErrorInfo, type JSX, type ReactNode } from 'react';
 import { ChangelogPanel } from './ChangelogPanel';
 import type { Annotation, ToolKind } from '@/src/core/model';
+import type { AgentConnection } from '@/src/core/agent';
+import type { ThemeMode } from '@/src/storage/settings-defaults';
 import type { PlacementSummary } from '@/src/share';
 
 // React wrapper for the changelog panel (SPEC §5.8). The content script owns the
@@ -31,6 +33,8 @@ export interface PanelSnapshot {
   share?: ShareNotice | null;
   /** Summary shown after importing a shared brief: placed vs orphaned marks. */
   placement?: PlacementSummary | null;
+  /** Live daemon-connection status, polled while the agent-setup view is open. */
+  connection?: AgentConnection | null;
 }
 
 export interface PanelStore {
@@ -44,7 +48,12 @@ export interface PanelHandlers {
   onDelete: (id: string) => void;
   onClearAll: () => void;
   onExport: () => void;
-  onSendToAgent: () => void;
+  /** Open the agent-setup view and start polling the local daemon. */
+  onShowAgentSetup: () => void;
+  /** Leave the agent-setup view and stop polling. */
+  onCloseAgentSetup: () => void;
+  /** Send the brief to the (connected) daemon — only reachable once connected. */
+  onSubmitToAgent: () => void;
   onCopyShareLink?: () => void;
   /** Open the extension Options page (for an `open-options` handoff action). */
   onOpenOptions?: () => void;
@@ -70,6 +79,8 @@ export interface PanelAppProps extends PanelHandlers {
   store: PanelStore;
   /** Footer button config; omit for the extension's full set. */
   actions?: PanelActions | undefined;
+  /** UI appearance; `auto` defers to the OS. Static (not part of the snapshot). */
+  theme?: ThemeMode | undefined;
 }
 
 export class PanelErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
@@ -101,12 +112,15 @@ export class PanelErrorBoundary extends Component<{ children: ReactNode }, { has
 export function PanelApp({
   store,
   actions,
+  theme,
   onSelectTool,
   onEditNote,
   onDelete,
   onClearAll,
   onExport,
-  onSendToAgent,
+  onShowAgentSetup,
+  onCloseAgentSetup,
+  onSubmitToAgent,
   onCopyShareLink,
   onOpenOptions,
 }: PanelAppProps): JSX.Element {
@@ -119,13 +133,17 @@ export function PanelApp({
         handoff={snapshot.handoff}
         share={snapshot.share ?? null}
         placement={snapshot.placement ?? null}
+        connection={snapshot.connection ?? null}
         actions={actions}
+        theme={theme}
         onSelectTool={onSelectTool}
         onEditNote={onEditNote}
         onDelete={onDelete}
         onClearAll={onClearAll}
         onExport={onExport}
-        onSendToAgent={onSendToAgent}
+        onShowAgentSetup={onShowAgentSetup}
+        onCloseAgentSetup={onCloseAgentSetup}
+        onSubmitToAgent={onSubmitToAgent}
         onCopyShareLink={onCopyShareLink}
         onOpenOptions={onOpenOptions}
       />

@@ -1,12 +1,14 @@
 import { browser } from 'wxt/browser';
 import { DAEMON_ORIGIN, registerCaptureHandler } from '@/src/capture';
 import { onMessage, sendMessage } from '@/src/messaging';
+import { DAEMON_ADDRESS } from '@/src/core/links';
 import { loadPendingImport } from '@/src/storage';
 
-// The local `share-the-mark` daemon's loopback address (its default port). Briefs are POSTed
-// here from the background service worker, which holds the host permission and
-// fetches free of any page CSP.
-const DAEMON_BASE = 'http://127.0.0.1:8787';
+// The local `share-the-mark` daemon's loopback base URL, derived from the single
+// canonical address (`DAEMON_ADDRESS`) so the fetch target and the human-facing
+// label can't drift. Briefs are POSTed here from the background service worker,
+// which holds the host permission and fetches free of any page CSP.
+const DAEMON_BASE = `http://${DAEMON_ADDRESS}`;
 
 // The built content-script file we inject on demand (it isn't in the manifest's
 // `content_scripts` — see wxt.config.ts).

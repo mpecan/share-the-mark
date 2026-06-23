@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { ChangelogPanel, type ChangelogPanelProps } from '@/src/panel';
 import type { Annotation } from '@/src/core/model';
 import type { TargetRef } from '@/src/core/selector';
+import { HUB_URL } from '@/src/core/links';
 
 const target: TargetRef = {
   selector: '#x',
@@ -37,7 +38,9 @@ function renderPanel(overrides: Partial<ChangelogPanelProps> = {}): void {
       onDelete={vi.fn()}
       onClearAll={vi.fn()}
       onExport={vi.fn()}
-      onSendToAgent={vi.fn()}
+      onShowAgentSetup={vi.fn()}
+      onCloseAgentSetup={vi.fn()}
+      onSubmitToAgent={vi.fn()}
       {...overrides}
     />,
   );
@@ -46,8 +49,31 @@ function renderPanel(overrides: Partial<ChangelogPanelProps> = {}): void {
 describe('ChangelogPanel', () => {
   it('shows an empty state and disables export with no annotations', () => {
     renderPanel();
-    expect(screen.getByText(/no annotations yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/no marks yet/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /copy to clipboard/i })).toBeDisabled();
+  });
+
+  it('applies an explicit theme as data-theme and omits it for auto', () => {
+    const { unmount } = render(
+      <ChangelogPanel
+        annotations={[]}
+        activeTool="callout"
+        handoff={null}
+        theme="light"
+        onSelectTool={vi.fn()}
+        onEditNote={vi.fn()}
+        onDelete={vi.fn()}
+        onClearAll={vi.fn()}
+        onExport={vi.fn()}
+        onShowAgentSetup={vi.fn()}
+        onCloseAgentSetup={vi.fn()}
+        onSubmitToAgent={vi.fn()}
+      />,
+    );
+    expect(document.querySelector('.stm-panel')).toHaveAttribute('data-theme', 'light');
+    unmount();
+    renderPanel({ theme: 'auto' });
+    expect(document.querySelector('.stm-panel')).not.toHaveAttribute('data-theme');
   });
 
   it('applies a panelActions override: relabels export and hides the other buttons', () => {
@@ -111,11 +137,82 @@ describe('ChangelogPanel', () => {
     expect(onExport).toHaveBeenCalledTimes(1);
   });
 
-  it('emits send-to-agent', async () => {
-    const onSendToAgent = vi.fn();
-    renderPanel({ annotations: [callout('a', 1)], onSendToAgent });
+  it('opens the agent-setup view and starts polling', async () => {
+    const onShowAgentSetup = vi.fn();
+    renderPanel({ annotations: [callout('a', 1)], onShowAgentSetup });
     await userEvent.click(screen.getByRole('button', { name: /send to agent/i }));
-    expect(onSendToAgent).toHaveBeenCalledTimes(1);
+    expect(onShowAgentSetup).toHaveBeenCalledTimes(1);
+    // The view switches: a Back control + a connection status appear.
+    expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument();
+  });
+
+  it('leaves the agent-setup view via Back and stops polling', async () => {
+    const onCloseAgentSetup = vi.fn();
+    renderPanel({
+      annotations: [callout('a', 1)],
+      connection: { status: 'disconnected' },
+      onCloseAgentSetup,
+    });
+    await userEvent.click(screen.getByRole('button', { name: /send to agent/i }));
+    await userEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(onCloseAgentSetup).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('toolbar', { name: /annotation tools/i })).toBeInTheDocument();
+  });
+
+  it('shows the connect command and disables send while disconnected', async () => {
+    renderPanel({ annotations: [callout('a', 1)], connection: { status: 'disconnected' } });
+    await userEvent.click(screen.getByRole('button', { name: /send to agent/i }));
+    expect(screen.getByText('share-the-mark serve')).toBeInTheDocument();
+    expect(screen.getByText(/waiting for the cli to connect/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /send 1 mark/i })).toBeDisabled();
+  });
+
+  it('copies the connect command to the clipboard', async () => {
+    const writeText = vi.fn(() => Promise.resolve());
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    renderPanel({ annotations: [callout('a', 1)], connection: { status: 'disconnected' } });
+    await userEvent.click(screen.getByRole('button', { name: /send to agent/i }));
+    await userEvent.click(screen.getByRole('button', { name: 'Copy' }));
+    expect(writeText).toHaveBeenCalledWith('share-the-mark serve');
+    expect(await screen.findByRole('button', { name: 'Copied' })).toBeInTheDocument();
+  });
+
+  it('routes the not-permitted CTA to onOpenOptions', async () => {
+    const onOpenOptions = vi.fn();
+    renderPanel({
+      annotations: [callout('a', 1)],
+      connection: { status: 'not-permitted' },
+      onOpenOptions,
+    });
+    await userEvent.click(screen.getByRole('button', { name: /send to agent/i }));
+    await userEvent.click(screen.getByRole('button', { name: 'Open setup' }));
+    expect(onOpenOptions).toHaveBeenCalledTimes(1);
+  });
+
+  it('links to the hub when the daemon is incompatible', async () => {
+    renderPanel({
+      annotations: [callout('a', 1)],
+      connection: { status: 'incompatible', reason: 'daemon-too-old', need: '0.2.0' },
+    });
+    await userEvent.click(screen.getByRole('button', { name: /send to agent/i }));
+    expect(screen.getByText(/out of date \(need ≥ 0\.2\.0\)/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'How to update' })).toHaveAttribute('href', HUB_URL);
+  });
+
+  it('enables send when connected and emits onSubmitToAgent', async () => {
+    const onSubmitToAgent = vi.fn();
+    renderPanel({
+      annotations: [callout('a', 1)],
+      connection: { status: 'connected', version: '1.2.3', address: '127.0.0.1:8787' },
+      onSubmitToAgent,
+    });
+    await userEvent.click(screen.getByRole('button', { name: /send to agent/i }));
+    expect(screen.getByText(/connected to the local daemon/i)).toBeInTheDocument();
+    expect(screen.getByText(/share-the-mark v1\.2\.3 ·/)).toBeInTheDocument();
+    const send = screen.getByRole('button', { name: /send 1 mark/i });
+    expect(send).toBeEnabled();
+    await userEvent.click(send);
+    expect(onSubmitToAgent).toHaveBeenCalledTimes(1);
   });
 
   it('disables copy share link with no annotations', () => {

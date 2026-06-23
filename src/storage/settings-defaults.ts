@@ -7,6 +7,10 @@ import type { ToolKind } from '@/src/core/model';
 // from here directly. Keeping one source of truth avoids drift — the core renders
 // `renderOptions` straight from `Settings`.
 
+/** UI appearance: `auto` follows the OS (`prefers-color-scheme`); `light`/`dark`
+ * force the panel, popup, and options pages to that theme regardless of the OS. */
+export type ThemeMode = 'auto' | 'light' | 'dark';
+
 export interface Settings {
   defaultTool: ToolKind;
   strokeColor: string;
@@ -14,6 +18,8 @@ export interface Settings {
   highlightColor: string;
   /** Extra selectors stripped during Markdown extraction. */
   markdownStrip: string[];
+  /** Light/dark/auto appearance of the extension's own UI. */
+  theme: ThemeMode;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -22,4 +28,5 @@ export const DEFAULT_SETTINGS: Settings = {
   strokeWidth: 3,
   highlightColor: '#fde047',
   markdownStrip: [],
+  theme: 'auto',
 };
