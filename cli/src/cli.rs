@@ -118,14 +118,33 @@ pub fn resolve_port(flag: Option<u16>) -> u16 {
     .unwrap_or(8787)
 }
 
-/// Idle-timeout precedence: flag → `SHARE_THE_MARK_IDLE` → 0 (never). Seconds.
-pub fn resolve_idle(flag: Option<u64>) -> u64 {
+/// Idle window for a backgrounded daemon (`start`, `setup`) when nothing is
+/// configured. Generous on purpose: the extension's connect view pings `/health`
+/// every couple of seconds while it's open, which resets the idle timer — so a
+/// daemon stays warm during active use and only self-cleans after a long gap,
+/// rather than lingering forever. 3 hours. `0` (flag/env) disables idle-exit.
+pub const BACKGROUND_IDLE_SECS: u64 = 3 * 60 * 60;
+
+fn idle_or(flag: Option<u64>, default: u64) -> u64 {
     flag.or_else(|| {
         std::env::var("SHARE_THE_MARK_IDLE")
             .ok()
             .and_then(|s| s.parse().ok())
     })
-    .unwrap_or(0)
+    .unwrap_or(default)
+}
+
+/// Idle-timeout precedence for foreground `serve`: flag → `SHARE_THE_MARK_IDLE` →
+/// 0 (never — runs until Ctrl-C). Seconds.
+pub fn resolve_idle(flag: Option<u64>) -> u64 {
+    idle_or(flag, 0)
+}
+
+/// Idle-timeout precedence for backgrounded daemons (`start`, `setup`): flag →
+/// `SHARE_THE_MARK_IDLE` → [`BACKGROUND_IDLE_SECS`]. Seconds. A self-cleaning
+/// default so a forgotten `start` doesn't leave a stray daemon running.
+pub fn resolve_background_idle(flag: Option<u64>) -> u64 {
+    idle_or(flag, BACKGROUND_IDLE_SECS)
 }
 
 /// Store dir precedence: flag → `SHARE_THE_MARK_DIR` → per-OS data directory.
@@ -139,4 +158,25 @@ pub fn resolve_dir(flag: Option<PathBuf>) -> Result<PathBuf> {
     let project = directories::ProjectDirs::from("", "", "share-the-mark")
         .ok_or_else(|| anyhow!("cannot determine a data directory"))?;
     Ok(project.data_dir().to_path_buf())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn explicit_idle_flag_overrides_both_defaults() {
+        // A flag wins regardless of which default the resolver carries.
+        assert_eq!(resolve_idle(Some(42)), 42);
+        assert_eq!(resolve_background_idle(Some(42)), 42);
+        // `0` (run forever) is honoured, not treated as "unset".
+        assert_eq!(resolve_background_idle(Some(0)), 0);
+    }
+
+    #[test]
+    fn background_idle_default_is_a_generous_three_hours() {
+        // A backgrounded daemon self-cleans after this window (foreground `serve`
+        // keeps its own 0 = never default).
+        assert_eq!(BACKGROUND_IDLE_SECS, 3 * 60 * 60);
+    }
 }
