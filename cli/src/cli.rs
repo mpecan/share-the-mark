@@ -174,10 +174,9 @@ mod tests {
     }
 
     #[test]
-    fn background_idle_is_generous_and_foreground_runs_forever() {
-        // Distinct defaults: foreground `serve` never idle-exits; a backgrounded
-        // daemon self-cleans after the generous window.
+    fn background_idle_default_is_a_generous_three_hours() {
+        // A backgrounded daemon self-cleans after this window (foreground `serve`
+        // keeps its own 0 = never default).
         assert_eq!(BACKGROUND_IDLE_SECS, 3 * 60 * 60);
-        assert!(BACKGROUND_IDLE_SECS > 0);
     }
 }
