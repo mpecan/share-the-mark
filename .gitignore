@@ -9,6 +9,9 @@ lerna-debug.log*
 
 node_modules
 .output
+# Local store-submission credentials (from `pnpm submit:init`) — never commit.
+.env.submit
+.env.submit.local
 # Built npm package artifacts (packages/embed) — produced by `pnpm --filter ... build`.
 packages/*/dist
 stats.html
