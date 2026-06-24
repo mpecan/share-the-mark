@@ -27,6 +27,23 @@ function fail(message) {
   process.exit(1);
 }
 
+// Accept the service-account key as either raw JSON (multiline is fine — it arrives
+// via the step `env`, never a shell) or base64 of that JSON. Try JSON first, then
+// fall back to base64-decode, so the secret can be stored whichever way is convenient.
+function parseServiceAccountKey(raw) {
+  const value = raw.trim();
+  try {
+    return JSON.parse(value);
+  } catch {
+    try {
+      // eslint-disable-next-line unicorn/prefer-uint8array-base64 -- Node Buffer base64 is idiomatic here.
+      return JSON.parse(Buffer.from(value, 'base64').toString('utf8'));
+    } catch {
+      return fail('CHROME_SERVICE_ACCOUNT_KEY is neither valid JSON nor base64-encoded JSON.');
+    }
+  }
+}
+
 async function main() {
   const dryRun = process.argv.includes('--dry-run');
   const itemId = process.env['CHROME_EXTENSION_ID'];
@@ -41,7 +58,9 @@ async function main() {
   // Service-account auth: mint an access token for the chromewebstore scope. With a
   // key string we pass it inline; otherwise GoogleAuth reads GOOGLE_APPLICATION_CREDENTIALS.
   const auth = new GoogleAuth(
-    keyJson ? { credentials: JSON.parse(keyJson), scopes: [SCOPE] } : { scopes: [SCOPE] },
+    keyJson
+      ? { credentials: parseServiceAccountKey(keyJson), scopes: [SCOPE] }
+      : { scopes: [SCOPE] },
   );
   const client = await auth.getClient();
   const accessToken = await client.getAccessToken();
