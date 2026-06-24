@@ -1,0 +1,5 @@
+# The root is the WXT extension app (private, never published). `packages/*` holds
+# the publishable npm artifacts built from the same source — currently the
+# `@share-the-mark/embed` widget (SPEC §13). The Rust `cli/` is not a node package.
+packages:
+  - 'packages/*'

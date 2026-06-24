@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    // The published surface only — tsup/esbuild own emit; this config is for
+    // resolution + the bundled .d.ts. Define `@/*` → repo root explicitly (rather
+    // than rely on the inherited WXT alias) so the .d.ts bundler resolves the
+    // transitive source imports too. skipLibCheck keeps untyped deps (dom-anchor-*) quiet.
+    "baseUrl": "../..",
+    "paths": {
+      "@/*": ["./*"],
+      "@@/*": ["./*"]
+    },
+    "skipLibCheck": true,
+    "noEmit": false,
+    "allowImportingTsExtensions": false
+  },
+  // Pull in the repo's ambient module declarations (untyped `dom-anchor-*` deps) so
+  // the bundled .d.ts type-checks the transitive source the same way the root build does.
+  "include": ["src", "../../src/anchor/dom-anchor.d.ts"]
+}

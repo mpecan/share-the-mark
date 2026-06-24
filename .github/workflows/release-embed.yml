@@ -1,0 +1,55 @@
+name: Release Embed (npm)
+
+# Publishes the embeddable widget to npm as `@share-the-mark/embed` (SPEC §13).
+# It's the same source as the extension, a different delivery form, so it rides the
+# extension's release: when release-please publishes an `extension-v<ver>` Release,
+# we publish the npm package at that same version.
+#
+# Auth is npm Trusted Publishing (OIDC) — no NPM_TOKEN secret, with provenance.
+# One-time setup on npmjs (org `share-the-mark` already exists):
+#   1. (bootstrap) publish `@share-the-mark/embed` once manually so the package exists:
+#        pnpm --filter @share-the-mark/embed build && (cd packages/embed && npm publish --access public)
+#   2. on npmjs → the package → Settings → Trusted Publishing, add a GitHub Actions
+#      publisher: repo `mpecan/share-the-mark`, workflow `release-embed.yml`.
+#   After that, every extension release publishes automatically with no token.
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write # OIDC for npm trusted publishing + provenance
+
+jobs:
+  publish:
+    if: startsWith(github.event.release.tag_name, 'extension-v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .tool-versions
+          registry-url: 'https://registry.npmjs.org'
+          cache: pnpm
+
+      # Trusted publishing needs npm >= 11.5.1; Node 22 ships an older npm.
+      - run: npm install -g npm@latest
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @share-the-mark/embed build
+
+      # Match the npm version to the extension release tag (extension-v1.2.3 → 1.2.3).
+      - name: Set version from the release tag
+        working-directory: packages/embed
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: npm version "${TAG#extension-v}" --no-git-tag-version --allow-same-version
+
+      - name: Publish to npm
+        working-directory: packages/embed
+        run: npm publish --provenance --access public
