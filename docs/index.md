@@ -18,6 +18,8 @@ hero:
       variant: minimal
 ---
 
+<img src="/demo-annotate.gif" alt="Drawing numbered callouts on a page and exporting the changelog with share-the-mark" style="width:100%;max-width:840px;border-radius:12px;border:1px solid var(--sl-color-gray-5);margin:1rem 0;" />
+
 ## Annotate the live DOM, export agent-ready
 
 - **Five focused tools** — callout, text, arrow, highlight, and element — drawn
