@@ -1,8 +1,26 @@
 name: Release Extension
 
 # When release-please publishes an `extension-v<ver>` Release, build the store
-# packages and attach them, so every extension release carries the uploadable
-# Chrome/Firefox zips (+ the Firefox sources zip). Store submission stays manual.
+# packages and attach them to the Release, then submit them to the stores.
+#
+# Submission is UPLOAD-ONLY (draft): the new version is uploaded but NOT published
+# to users — you click "Publish"/finish review in each dashboard. Each store's step
+# is gated on its secrets existing, so releases keep working (zips still attached)
+# until the secrets are configured; enable Chrome first and Firefox later if you like.
+#
+# Chrome Web Store — via a Google Cloud SERVICE ACCOUNT (JSON key), not a per-user
+# refresh token (scripts/submit-chrome.mjs; upload-only, never calls /publish):
+#   Secrets: CHROME_EXTENSION_ID, CHROME_SERVICE_ACCOUNT_KEY (the SA JSON key string)
+#   Setup: GCP → enable "Chrome Web Store API", create a service account + JSON key;
+#          CWS Developer Dashboard → Account → add the SA email (one SA per publisher).
+#   Flip to auto-publish later by setting the CHROME_PUBLISH=true env on the step.
+#
+# Firefox AMO — via `wxt submit` (publish-extension), JWT issuer/secret:
+#   Secrets: FIREFOX_EXTENSION_ID (= share-the-mark@mpecan.dev), FIREFOX_JWT_ISSUER,
+#            FIREFOX_JWT_SECRET  (addons.mozilla.org → Developer Hub → Manage API Keys)
+#   Get them with `pnpm submit:firefox:init`. Note: AMO has no draft — uploading a
+#   listed version enters review and auto-publishes on approval, so add these secrets
+#   only once you're ready for that.
 
 on:
   release:
@@ -15,6 +33,10 @@ jobs:
   zips:
     if: startsWith(github.event.release.tag_name, 'extension-v')
     runs-on: ubuntu-latest
+    # Surfaced as step gates below — `secrets` isn't allowed directly in a step `if`.
+    env:
+      HAS_CHROME: ${{ secrets.CHROME_SERVICE_ACCOUNT_KEY != '' }}
+      HAS_FIREFOX: ${{ secrets.FIREFOX_JWT_ISSUER != '' }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -36,3 +58,18 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release upload "${{ github.event.release.tag_name }}" .output/*.zip --clobber
+
+      - name: Submit to the Chrome Web Store (service account, upload-only)
+        if: env.HAS_CHROME == 'true'
+        env:
+          CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
+          CHROME_SERVICE_ACCOUNT_KEY: ${{ secrets.CHROME_SERVICE_ACCOUNT_KEY }}
+        run: pnpm submit:chrome
+
+      - name: Submit to Firefox AMO
+        if: env.HAS_FIREFOX == 'true'
+        env:
+          FIREFOX_EXTENSION_ID: ${{ secrets.FIREFOX_EXTENSION_ID }}
+          FIREFOX_JWT_ISSUER: ${{ secrets.FIREFOX_JWT_ISSUER }}
+          FIREFOX_JWT_SECRET: ${{ secrets.FIREFOX_JWT_SECRET }}
+        run: pnpm submit:firefox
