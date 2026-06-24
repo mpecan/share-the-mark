@@ -7,7 +7,8 @@
     ".": {
       "release-type": "node",
       "component": "extension",
-      "package-name": "share-the-mark"
+      "package-name": "share-the-mark",
+      "exclude-paths": ["docs", "website"]
     },
     "cli": {
       "release-type": "rust",

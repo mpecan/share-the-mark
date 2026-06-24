@@ -9,3 +9,11 @@ stats.html
 # Authored documents — keep their hand-tuned wrapping out of the formatter.
 SPEC.md
 CLAUDE.md
+
+# Generated from docs/ by scripts/generate-readme.mjs — never format it directly
+# (that would fight the generator and the `docs:readme:check` CI guard).
+README.md
+
+# Docs-site build output.
+website/dist
+website/.astro

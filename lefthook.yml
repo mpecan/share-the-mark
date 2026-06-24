@@ -5,7 +5,9 @@ pre-commit:
   commands:
     eslint:
       glob: '*.{ts,tsx,js,cjs,mjs}'
-      run: pnpm eslint {staged_files} --fix --max-warnings=0
+      # --no-warn-ignored: staged files under an eslint-ignored path (e.g. website/)
+      # would otherwise warn and trip --max-warnings=0 when passed explicitly.
+      run: pnpm eslint {staged_files} --fix --max-warnings=0 --no-warn-ignored
       stage_fixed: true
     prettier:
       glob: '*.{ts,tsx,js,cjs,mjs,json,jsonc,css,html,md,yml,yaml}'

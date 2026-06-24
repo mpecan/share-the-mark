@@ -30,6 +30,8 @@ export default defineConfig(
     'cli/embed/**',
     // Built npm package output (@share-the-mark/embed) — bundled JS, never source.
     'packages/*/dist/**',
+    // The docs site (website/) is a standalone Astro project with its own tooling.
+    'website/**',
   ]),
 
   js.configs.recommended,
