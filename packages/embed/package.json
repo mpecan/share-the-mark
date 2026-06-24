@@ -1,0 +1,51 @@
+{
+  "name": "@share-the-mark/embed",
+  "version": "1.0.0",
+  "description": "Embeddable, browser-free annotation widget for share-the-mark — annotate a live page and export a Markdown changelog plus an annotated screenshot, no extension required.",
+  "license": "MIT",
+  "author": "Matjaz Domen Pecan",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mpecan/share-the-mark.git",
+    "directory": "packages/embed"
+  },
+  "homepage": "https://github.com/mpecan/share-the-mark#readme",
+  "keywords": [
+    "annotation",
+    "screenshot",
+    "feedback",
+    "markdown",
+    "widget",
+    "playwright"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./embed.global.js": "./dist/embed.global.js",
+    "./share-the-mark.global.js": "./dist/share-the-mark.global.js",
+    "./local.global.js": "./dist/local.global.js",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

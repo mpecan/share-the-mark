@@ -756,9 +756,17 @@ already sit on.
 > but its JSON API still returns `Access-Control-Allow-Origin: *` and does **not**
 > validate `Origin`; the "scope CORS to the page origin / never `*` / validate
 > Origin" hardening is not yet done (low risk while loopback-only, but tracked). No
-> SSE/WebSocket back-channel (the agent polls via `pending`/`show`); no npm
-> `@share-the-mark/embed` publish yet (the IIFE ships built, not packaged); no
-> Firefox Channel A e2e.
+> SSE/WebSocket back-channel (the agent polls via `pending`/`show`); no Firefox
+> Channel A e2e.
+>
+> **As-built (npm publish):** the embeddable widget now ships to npm as
+> **`@share-the-mark/embed`** — a workspace package at `packages/embed/` building an
+> importable ESM library + bundled `.d.ts` (the browser widget: `mount`/`init`/
+> `capturePage` + types) **and** the prebuilt IIFE CDN bundles. It versions in
+> lockstep with the extension and publishes on the `extension-v*` release via
+> `.github/workflows/release-embed.yml` using npm **Trusted Publishing (OIDC)** with
+> provenance. The Node-side Playwright `attach()` driver is not part of the typed npm
+> surface (the `embed.global.js` bundle it injects is still shipped).
 
 ### 13.1 The enabling fact — the UI is already browser-free
 

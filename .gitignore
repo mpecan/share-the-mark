@@ -9,6 +9,8 @@ lerna-debug.log*
 
 node_modules
 .output
+# Built npm package artifacts (packages/embed) — produced by `pnpm --filter ... build`.
+packages/*/dist
 stats.html
 stats-*.json
 .wxt

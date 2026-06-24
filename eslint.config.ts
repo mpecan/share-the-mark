@@ -28,6 +28,8 @@ export default defineConfig(
     // vendored bundle — both are built JS artifacts, never source to lint.
     'cli/target/**',
     'cli/embed/**',
+    // Built npm package output (@share-the-mark/embed) — bundled JS, never source.
+    'packages/*/dist/**',
   ]),
 
   js.configs.recommended,
