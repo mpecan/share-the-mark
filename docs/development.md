@@ -1,0 +1,53 @@
+---
+title: Development
+description: Tasks are wired through mise; SPEC.md is the source of truth. The local extension-to-agent review flow.
+sidebar:
+  order: 7
+---
+
+[`SPEC.md`](https://github.com/mpecan/share-the-mark/blob/main/SPEC.md) is the full
+build brief and the source of truth; `CLAUDE.md` is the short operating layer on
+top of it.
+
+Tasks are wired through [`mise`](https://mise.jdx.dev) (`mise tasks` to list,
+`mise run <task>`); each maps to the underlying `pnpm`/`cargo` command, so you can
+use either:
+
+```bash
+mise run dev            # load the extension in Chrome (hot-reload)
+mise run dev:firefox    # load the extension in Firefox (hot-reload)
+mise run cli:install     # put the `share-the-mark` binary on PATH
+mise run serve           # run the share-the-mark ingest daemon
+mise run request <url>   # agent flow: open a page, wait for feedback
+
+mise run check           # all extension gates (typecheck, lint, test, builds, e2e, size)
+mise run cli:check       # all CLI gates (fmt, clippy, test)
+mise run check:all       # both
+```
+
+The equivalent raw commands (`pnpm typecheck | lint | test | e2e | size`, `cargo …`
+in `cli/`) still work directly.
+
+## Local review flow (extension ↔ agent)
+
+1. `mise run dev:firefox` (or `dev`) — loads the extension into the browser.
+2. `mise run cli:install` then `share-the-mark serve` (or `mise run serve`) — runs
+   the daemon.
+3. The agent runs `share-the-mark request <url>` (or you click **Send to agent** in
+   the panel); annotate the page, click **Send to agent**, and the brief flows to
+   the agent.
+
+## Docs
+
+The documentation site (this site) is an Astro Starlight project in
+[`website/`](https://github.com/mpecan/share-the-mark/tree/main/website); its
+content is the `docs/` folder, which is also the source for the generated
+`README.md`. After editing `docs/`, regenerate the README:
+
+```bash
+pnpm docs:readme        # rewrite README.md from docs/
+pnpm docs:readme:check   # CI guard: fail if README.md is stale
+```
+
+See [CONTRIBUTING.md](https://github.com/mpecan/share-the-mark/blob/main/CONTRIBUTING.md)
+for the full quality bar, architecture invariants, and the contribution workflow.

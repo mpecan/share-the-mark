@@ -1,0 +1,14 @@
+/* share-the-mark brand accent for Starlight (rose, matching the default stroke
+   colour #e11d48). Tweaks the accent ramp used for links, the active sidebar item,
+   and primary buttons in both themes. */
+:root {
+  --sl-color-accent-low: #4c0519;
+  --sl-color-accent: #e11d48;
+  --sl-color-accent-high: #fda4af;
+}
+
+:root[data-theme='light'] {
+  --sl-color-accent-low: #ffe4e6;
+  --sl-color-accent: #be123c;
+  --sl-color-accent-high: #881337;
+}

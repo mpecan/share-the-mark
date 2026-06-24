@@ -12,5 +12,9 @@
     "noPropertyAccessFromIndexSignature": true,
     "verbatimModuleSyntax": true,
     "isolatedModules": true
-  }
+  },
+  // `website/` is a standalone Astro project with its own tsconfig + `astro:content`
+  // virtual modules; keep the extension's `tsc --noEmit` out of it. (Replaces the
+  // inherited `.wxt` exclude, so re-list `.output` too.)
+  "exclude": [".output", "website"]
 }

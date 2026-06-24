@@ -43,6 +43,8 @@
     "e2e:cli": "mise run cli:build && playwright test --grep @cli",
     "screenshots": "wxt build -m e2e && pnpm build:embed && playwright test --grep @screenshots",
     "check:perms": "node scripts/check-permissions.mjs",
+    "docs:readme": "node scripts/generate-readme.mjs",
+    "docs:readme:check": "node scripts/generate-readme.mjs --check",
     "size": "pnpm build:embed && size-limit --config size-limit.config.ts",
     "prepare": "wxt prepare"
   },

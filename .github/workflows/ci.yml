@@ -33,6 +33,10 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      # README.md is generated from docs/ (pnpm docs:readme); fail if it's stale.
+      - name: README in sync with docs/
+        run: pnpm docs:readme:check
+
       - name: Test (coverage)
         run: pnpm test:coverage
 
