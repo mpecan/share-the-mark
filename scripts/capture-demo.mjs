@@ -1,26 +1,26 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { copyFileSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { chromium } from '@playwright/test';
 
-// Record a short, looping GIF of the annotation flow for the docs homepage: drive
+// Record a short, looping demo of the annotation flow for the docs homepage: drive
 // the Channel-B embed widget (the built share-the-mark.global.js) on a sample page,
-// drop a few callouts while a synthetic cursor moves, then export — capturing it all
-// to video and converting to an optimized GIF with ffmpeg.
+// drop a callout and an element comment (two tools), type notes into the changelog,
+// then export — capturing it to video. Encodes a webm + an MP4 (H.264, for Safari)
+// + a poster frame with ffmpeg; the homepage embeds them in a looping <video>.
 //
 // Prereqs: `pnpm build:embed` (produces the bundle) and ffmpeg on PATH.
-// Run:     node scripts/capture-demo.mjs   → writes website/public/demo-annotate.gif
+// Run:     node scripts/capture-demo.mjs   (or `pnpm docs:demo`)
 //
-// Output lives in website/public/ (served verbatim) rather than docs/assets/ so
-// Astro's image pipeline can't de-animate it; the homepage embeds it with a raw
-// <img src="/demo-annotate.gif">.
+// Output lives in website/public/ (served verbatim) and is embedded on the homepage
+// with <video autoplay loop muted playsinline>.
 
 const BUNDLE = '.output/embed/share-the-mark.global.js';
-const OUT = 'website/public/demo-annotate.gif';
+const OUT_WEBM = 'website/public/demo-annotate.webm';
+const OUT_MP4 = 'website/public/demo-annotate.mp4';
+const OUT_POSTER = 'website/public/demo-annotate.png';
 const VIEW = { width: 960, height: 680 };
-const GIF_WIDTH = 800;
-const FPS = 12;
 
 function fail(message) {
   console.error(`✖ capture-demo: ${message}`);
@@ -62,12 +62,12 @@ const FIXTURE = `<!doctype html><html lang="en"><head><meta charset="utf-8" />
     <nav><a href="#">Docs</a><a href="#">Pricing</a><a href="#">Sign in</a></nav></header>
   <main>
     <h1 data-t="title">Ship faster with Acme</h1>
-    <p class="lead" data-t="lead">A starter dashboard — annotate anything on it and hand the feedback to your agent.</p>
+    <p class="lead">A starter dashboard — annotate anything on it and hand the feedback to your agent.</p>
     <div class="cards">
-      <div class="card"><h3>Analytics</h3><p data-t="card">Track what matters in real time.</p></div>
+      <div class="card" data-t="card"><h3>Analytics</h3><p>Track what matters in real time.</p></div>
       <div class="card"><h3>Billing</h3><p>Usage-based, no surprises.</p></div>
     </div>
-    <button class="cta" data-t="cta">Get started</button>
+    <button class="cta">Get started</button>
   </main>
   <div id="cur"></div>
   <script>
@@ -82,14 +82,24 @@ const FIXTURE = `<!doctype html><html lang="en"><head><meta charset="utf-8" />
   </script>
 </body></html>`;
 
-async function annotate(page, selector) {
-  const box = await page.locator(`[data-t="${selector}"]`).boundingBox();
-  if (!box) return;
+// Move the synthetic cursor to an element's centre, then click it.
+async function clickTarget(page, selector) {
+  const box = await page.locator(selector).boundingBox();
+  if (!box) fail(`target not found: ${selector}`);
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 30 });
-  await page.waitForTimeout(450);
+  await page.waitForTimeout(500);
   await page.mouse.down();
   await page.mouse.up();
-  await page.waitForTimeout(750);
+  await page.waitForTimeout(700);
+}
+
+// Type a note into the most recently added changelog entry, char by char.
+async function typeNote(page, text) {
+  const input = page.locator('.stm-item__note').last();
+  await input.click();
+  await page.waitForTimeout(250);
+  await input.pressSequentially(text, { delay: 38 });
+  await page.waitForTimeout(700);
 }
 
 async function main() {
@@ -122,10 +132,17 @@ async function main() {
   await page.locator('[data-stm-embed="true"]').waitFor({ state: 'attached' });
   await page.waitForTimeout(900);
 
-  // Default tool is callout — click a few elements to drop numbered markers.
-  for (const target of ['title', 'card', 'cta']) await annotate(page, target);
+  // 1. Callout (the default tool) on the headline, with a note.
+  await clickTarget(page, '[data-t="title"]');
+  await typeNote(page, 'Punchier headline here?');
 
-  // Export (Copy to clipboard) to show the changelog handoff.
+  // 2. Switch to the element tool, comment on a whole card.
+  await page.locator('.stm-tool[aria-label="element"]').click();
+  await page.waitForTimeout(500);
+  await clickTarget(page, '[data-t="card"]');
+  await typeNote(page, 'Add a "Learn more" link');
+
+  // 3. Export (Copy to clipboard) to show the changelog handoff.
   const exportBtn = page.locator('.stm-panel__export');
   const box = await exportBtn.boundingBox();
   if (box) {
@@ -133,39 +150,28 @@ async function main() {
     await page.waitForTimeout(400);
     await exportBtn.click();
   }
-  await page.waitForTimeout(1200);
+  await page.waitForTimeout(1400);
 
   await context.close();
   await browser.close();
 
-  const webm = readdirSync(videoDir).find((file) => file.endsWith('.webm'));
-  if (!webm) fail('no video was recorded.');
-  const webmPath = path.join(videoDir, webm);
-  const palette = path.join(videoDir, 'palette.png');
-  const filters = `fps=${String(FPS)},scale=${String(GIF_WIDTH)}:-1:flags=lanczos`;
+  const recording = readdirSync(videoDir).find((file) => file.endsWith('.webm'));
+  if (!recording) fail('no video was recorded.');
+  const webmPath = path.join(videoDir, recording);
+
+  // webm: ship the raw recording. mp4: H.264 + yuv420p + faststart for Safari/broad
+  // support (even dimensions required). poster: the first frame.
+  copyFileSync(webmPath, OUT_WEBM);
   execFileSync(
     'ffmpeg',
-    ['-y', '-i', webmPath, '-vf', `${filters},palettegen=stats_mode=diff`, palette],
-    {
-      stdio: 'ignore',
-    },
-  );
-  execFileSync(
-    'ffmpeg',
-    [
-      '-y',
-      '-i',
-      webmPath,
-      '-i',
-      palette,
-      '-lavfi',
-      `${filters}[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=3`,
-      OUT,
-    ],
+    // prettier-ignore
+    ['-y', '-i', webmPath, '-movflags', '+faststart', '-pix_fmt', 'yuv420p',
+      '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2', '-c:v', 'libx264', '-crf', '24', OUT_MP4],
     { stdio: 'ignore' },
   );
+  execFileSync('ffmpeg', ['-y', '-i', webmPath, '-frames:v', '1', OUT_POSTER], { stdio: 'ignore' });
   rmSync(videoDir, { recursive: true, force: true });
-  console.log(`✓ wrote ${OUT}`);
+  console.log(`✓ wrote ${OUT_WEBM}, ${OUT_MP4}, ${OUT_POSTER}`);
 }
 
 await main();
