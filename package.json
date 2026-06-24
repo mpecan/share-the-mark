@@ -29,6 +29,8 @@
     "build:embed": "node scripts/build-embed.mjs",
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox",
+    "submit:init": "wxt submit init",
+    "submit": "wxt submit --chrome-zip .output/*-chrome.zip --chrome-skip-submit-review --firefox-zip .output/*-firefox.zip --firefox-sources-zip .output/*-sources.zip",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
     "lint:fix": "eslint . --fix",

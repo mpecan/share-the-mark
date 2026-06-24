@@ -1,8 +1,27 @@
 name: Release Extension
 
 # When release-please publishes an `extension-v<ver>` Release, build the store
-# packages and attach them, so every extension release carries the uploadable
-# Chrome/Firefox zips (+ the Firefox sources zip). Store submission stays manual.
+# packages and attach them to the Release, then submit them to the stores.
+#
+# Submission is UPLOAD-ONLY (draft): the new version is uploaded but NOT published
+# to users — Chrome via `--chrome-skip-submit-review`, Firefox uploads to a listed
+# version (AMO has no draft, see note below). You click "Publish"/finish review in
+# each dashboard. Flip to a full hands-off submit by dropping `--chrome-skip-submit-review`
+# from the `submit` script (package.json) once you trust the pipeline.
+#
+# The submit step is GATED on the store secrets existing, so releases keep working
+# (zips still attached) until the secrets are configured. It runs `wxt submit`
+# (publish-extension) — which only touches a store when that store's credentials are
+# present, so you can enable Chrome first and add Firefox later.
+#
+# Required repo secrets (Settings → Secrets and variables → Actions):
+#   Chrome Web Store:  CHROME_EXTENSION_ID, CHROME_CLIENT_ID, CHROME_CLIENT_SECRET,
+#                      CHROME_REFRESH_TOKEN
+#   Firefox AMO:       FIREFOX_EXTENSION_ID (= share-the-mark@mpecan.dev),
+#                      FIREFOX_JWT_ISSUER, FIREFOX_JWT_SECRET
+# Get them with `pnpm submit:init` locally (interactive walkthrough). Note: AMO has
+# no "draft" — uploading a listed version enters review and auto-publishes on
+# approval, so add the FIREFOX_* secrets only once you're ready for that.
 
 on:
   release:
@@ -15,6 +34,9 @@ jobs:
   zips:
     if: startsWith(github.event.release.tag_name, 'extension-v')
     runs-on: ubuntu-latest
+    # Surfaced as a step gate below — `secrets` isn't allowed directly in a step `if`.
+    env:
+      HAS_CHROME_SECRETS: ${{ secrets.CHROME_CLIENT_ID != '' }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -36,3 +58,15 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release upload "${{ github.event.release.tag_name }}" .output/*.zip --clobber
+
+      - name: Submit to the stores (upload-only)
+        if: env.HAS_CHROME_SECRETS == 'true'
+        env:
+          CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
+          CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
+          CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+          CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+          FIREFOX_EXTENSION_ID: ${{ secrets.FIREFOX_EXTENSION_ID }}
+          FIREFOX_JWT_ISSUER: ${{ secrets.FIREFOX_JWT_ISSUER }}
+          FIREFOX_JWT_SECRET: ${{ secrets.FIREFOX_JWT_SECRET }}
+        run: pnpm submit
