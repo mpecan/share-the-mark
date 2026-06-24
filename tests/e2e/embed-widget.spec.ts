@@ -50,3 +50,60 @@ test('a <script>-tag widget (no extension) draws and delivers feedback to onSubm
     .poll(() => page.evaluate(() => document.documentElement.dataset['stmSubmitted'] ?? ''))
     .toContain('Element: `[data-testid="primary-action"]`');
 });
+
+// A tall, scrollable page with a target far below the fold. Proves the default capture
+// is FULL-PAGE (not viewport): the composited PNG spans the whole document, and a mark
+// drawn below the fold still anchors to its element (the coordinate-offset seam).
+const TALL_FIXTURE = `<!doctype html><html lang="en"><head><meta charset="utf-8" /><title>Tall</title>
+<script src="https://stm.test/share-the-mark.global.js"></script>
+<script>
+  window.addEventListener('DOMContentLoaded', () => {
+    ShareTheMark.init({
+      onSubmit: async (payload) => {
+        const bmp = await createImageBitmap(payload.image);
+        document.documentElement.dataset.stmImgH = String(bmp.height);
+        document.documentElement.dataset.stmSubmitted = payload.markdown;
+      },
+    });
+  });
+</script></head>
+<body style="margin:0"><main>
+<div style="height:2400px">scroll down</div>
+<button data-testid="below-fold" style="position:absolute;top:2600px;left:40px;width:200px;height:44px">
+Below the fold</button>
+<div style="height:600px"></div>
+</main></body></html>`;
+
+test('captures the full scrollable page, not just the viewport', async ({ page, context }) => {
+  await context.route('https://stm.test/share-the-mark.global.js', (route) =>
+    route.fulfill({ contentType: 'application/javascript', body: BUNDLE }),
+  );
+  await context.route('https://stm.test/', (route) =>
+    route.fulfill({ contentType: 'text/html', body: TALL_FIXTURE }),
+  );
+  await page.goto('https://stm.test/');
+  await page.locator('[data-stm-embed="true"]').waitFor({ state: 'attached' });
+
+  // Scroll the below-fold target into view and annotate it (default callout tool).
+  await page.locator('[data-testid="below-fold"]').scrollIntoViewIfNeeded();
+  const box = await page.locator('[data-testid="below-fold"]').boundingBox();
+  expect(box).not.toBeNull();
+  if (box) await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+
+  await page.locator('.stm-panel__export').click();
+
+  // The mark anchored to the below-fold element (so the offset didn't lose it)...
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.dataset['stmSubmitted'] ?? ''))
+    .toContain('Element: `[data-testid="below-fold"]`');
+
+  // ...and the captured image spans the full document, well past one viewport.
+  const { imgH, scrollH, viewH, dpr } = await page.evaluate(() => ({
+    imgH: Number(document.documentElement.dataset['stmImgH']),
+    scrollH: document.documentElement.scrollHeight,
+    viewH: window.innerHeight,
+    dpr: window.devicePixelRatio || 1,
+  }));
+  expect(imgH).toBeGreaterThan(viewH * dpr * 1.5); // not a viewport-only capture
+  expect(imgH).toBeGreaterThanOrEqual(Math.floor(scrollH * dpr * 0.95)); // ≈ full document
+});

@@ -113,9 +113,10 @@ async function main(): Promise<void> {
     failure: null,
   };
 
-  // page → driver: a real screenshot of the visible page (Channel A's screenshot seam).
+  // page → driver: a real full-page screenshot (Channel A's screenshot seam). Paired
+  // with the page side reporting the scroll as the composite offset (standalone.ts).
   await page.exposeBinding('__stmScreenshot', async ({ page: target }) => {
-    const png = await target.screenshot();
+    const png = await target.screenshot({ fullPage: true });
     return png.toString('base64');
   });
   // panel "Send to agent" → BindingSink → here: build meta (origin must match the

@@ -34,16 +34,31 @@ export interface RenderOptions {
   highlightColor: string;
   /** Multiplier from CSS pixels to screenshot pixels (devicePixelRatio). */
   scale: number;
+  /**
+   * Document-space offset (CSS px) added to viewport-relative coordinates before
+   * scaling — the captured image's top-left in document space. `0`/unset for a
+   * viewport capture; `{scrollX, scrollY}` for a full-page capture.
+   */
+  offsetX?: number;
+  offsetY?: number;
 }
 
 const CALLOUT_RADIUS = 14;
 const ARROWHEAD = 12;
 
-function drawArrowhead(ctx: DrawContext, from: Point, to: Point, scale: number): void {
+// Viewport-relative coordinate → screenshot pixel: shift by the capture's document
+// origin (offsetX/offsetY, 0 for a viewport capture) then scale by devicePixelRatio.
+// Lengths (radii, font sizes, lineWidth) scale but are not shifted.
+const px = (v: number, offset: number | undefined, scale: number): number =>
+  (v + (offset ?? 0)) * scale;
+
+function drawArrowhead(ctx: DrawContext, from: Point, to: Point, options: RenderOptions): void {
+  const s = options.scale;
+  // Angle is from raw (untranslated) coords — translation-invariant.
   const angle = Math.atan2(to.y - from.y, to.x - from.x);
-  const tipX = to.x * scale;
-  const tipY = to.y * scale;
-  const size = ARROWHEAD * scale;
+  const tipX = px(to.x, options.offsetX, s);
+  const tipY = px(to.y, options.offsetY, s);
+  const size = ARROWHEAD * s;
   ctx.beginPath();
   ctx.moveTo(tipX, tipY);
   ctx.lineTo(
@@ -64,6 +79,8 @@ export function drawResolved(
   options: RenderOptions,
 ): void {
   const s = options.scale;
+  const tx = (x: number): number => px(x, options.offsetX, s);
+  const ty = (y: number): number => px(y, options.offsetY, s);
   ctx.save();
   ctx.strokeStyle = options.strokeColor;
   ctx.fillStyle = options.strokeColor;
@@ -72,41 +89,41 @@ export function drawResolved(
   switch (annotation.kind) {
     case 'callout': {
       ctx.beginPath();
-      ctx.arc(annotation.at.x * s, annotation.at.y * s, CALLOUT_RADIUS * s, 0, Math.PI * 2);
+      ctx.arc(tx(annotation.at.x), ty(annotation.at.y), CALLOUT_RADIUS * s, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = '#ffffff';
       ctx.font = `${String(Math.round(CALLOUT_RADIUS * 1.2 * s))}px sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(String(annotation.index), annotation.at.x * s, annotation.at.y * s);
+      ctx.fillText(String(annotation.index), tx(annotation.at.x), ty(annotation.at.y));
       break;
     }
     case 'text': {
       ctx.font = `${String(Math.round(16 * s))}px sans-serif`;
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
-      ctx.fillText(annotation.content, annotation.at.x * s, annotation.at.y * s);
+      ctx.fillText(annotation.content, tx(annotation.at.x), ty(annotation.at.y));
       break;
     }
     case 'arrow': {
       ctx.beginPath();
-      ctx.moveTo(annotation.from.x * s, annotation.from.y * s);
-      ctx.lineTo(annotation.to.x * s, annotation.to.y * s);
+      ctx.moveTo(tx(annotation.from.x), ty(annotation.from.y));
+      ctx.lineTo(tx(annotation.to.x), ty(annotation.to.y));
       ctx.stroke();
-      drawArrowhead(ctx, annotation.from, annotation.to, s);
+      drawArrowhead(ctx, annotation.from, annotation.to, options);
       break;
     }
     case 'highlight': {
       ctx.globalAlpha = 0.35;
       ctx.fillStyle = options.highlightColor;
       for (const rect of annotation.rects) {
-        ctx.fillRect(rect.x * s, rect.y * s, rect.width * s, rect.height * s);
+        ctx.fillRect(tx(rect.x), ty(rect.y), rect.width * s, rect.height * s);
       }
       break;
     }
     case 'element': {
       const { rect } = annotation;
-      ctx.strokeRect(rect.x * s, rect.y * s, rect.width * s, rect.height * s);
+      ctx.strokeRect(tx(rect.x), ty(rect.y), rect.width * s, rect.height * s);
       break;
     }
   }

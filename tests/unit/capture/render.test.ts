@@ -103,6 +103,60 @@ describe('drawResolved', () => {
   });
 });
 
+describe('drawResolved with a capture offset (full-page)', () => {
+  // Full-page capture: the image's top-left is the document origin, so coords are
+  // shifted by the scroll offset before scaling — (coord + offset) * scale. Lengths
+  // (radius, width, height) scale but are NOT shifted.
+  const offsetOptions: RenderOptions = { ...options, offsetX: 100, offsetY: 200 };
+
+  it('shifts a callout by the offset, then scales (radius unshifted)', () => {
+    const { ctx, ops } = recorder();
+    drawResolved(ctx, { id: '1', kind: 'callout', index: 3, at: { x: 10, y: 20 } }, offsetOptions);
+    // (10 + 100) * 2 = 220, (20 + 200) * 2 = 440; radius 14 * 2 = 28 (no shift).
+    expect(ops.find((o) => o.name === 'arc')?.args).toEqual([220, 440, 28, 0, Math.PI * 2]);
+    expect(ops.find((o) => o.name === 'fillText')?.args).toEqual(['3', 220, 440]);
+  });
+
+  it('shifts free text by the offset', () => {
+    const { ctx, ops } = recorder();
+    drawResolved(ctx, { id: '1', kind: 'text', content: 'hi', at: { x: 5, y: 6 } }, offsetOptions);
+    expect(ops.find((o) => o.name === 'fillText')?.args).toEqual(['hi', 210, 412]);
+  });
+
+  it('shifts arrow endpoints and the arrowhead tip', () => {
+    const { ctx, ops } = recorder();
+    drawResolved(
+      ctx,
+      { id: '1', kind: 'arrow', from: { x: 0, y: 0 }, to: { x: 10, y: 0 } },
+      offsetOptions,
+    );
+    const moveTos = ops.filter((o) => o.name === 'moveTo');
+    // Line start, then the two arrowhead strokes start at the (shifted) tip.
+    expect(moveTos[0]?.args).toEqual([200, 400]);
+    expect(moveTos[1]?.args).toEqual([220, 400]);
+    expect(ops.find((o) => o.name === 'lineTo')?.args).toEqual([220, 400]);
+  });
+
+  it('shifts element/highlight rect origins but not their size', () => {
+    const { ctx, ops } = recorder();
+    drawResolved(
+      ctx,
+      { id: '1', kind: 'element', rect: { x: 1, y: 2, width: 3, height: 4 } },
+      offsetOptions,
+    );
+    // (1 + 100) * 2 = 202, (2 + 200) * 2 = 404; size 3*2, 4*2 (no shift).
+    expect(ops.find((o) => o.name === 'strokeRect')?.args).toEqual([202, 404, 6, 8]);
+
+    const hl = recorder();
+    drawResolved(
+      hl.ctx,
+      { id: '2', kind: 'highlight', rects: [{ x: 5, y: 5, width: 4, height: 2 }] },
+      offsetOptions,
+    );
+    expect(hl.ops.find((o) => o.name === 'fillRect')?.args).toEqual([210, 410, 8, 4]);
+  });
+});
+
 describe('drawScene', () => {
   it('draws every annotation', () => {
     const { ctx, ops } = recorder();

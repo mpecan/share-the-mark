@@ -12,7 +12,8 @@ import {
   type ExportSink,
 } from '@/src/core/export';
 import { targetFor } from './overlay-harness';
-import { fakeCompositeDeps } from '../fixtures/composite';
+import { fakeCompositeDeps, noopContext } from '../fixtures/composite';
+import type { CompositeDeps, CompositeSurface, LoadedImage } from '@/src/capture';
 
 type WriteFn = (payload: ExportPayload) => Promise<ExportResult>;
 
@@ -81,7 +82,8 @@ function makeAdapters(over: Partial<HostAdapters> = {}): HostAdapters {
     getSettings: () => Promise.resolve(DEFAULT_SETTINGS),
     changelog: { load: () => Promise.resolve(seedChangelog()), save: () => Promise.resolve() },
     pendingImport: { load: () => Promise.resolve(null), clear: () => Promise.resolve() },
-    captureScreenshot: () => Promise.resolve('data:image/png;base64,AAAA'),
+    captureScreenshot: () =>
+      Promise.resolve({ dataUrl: 'data:image/png;base64,AAAA', offset: { x: 0, y: 0 } }),
     clipboard: { writeText: () => Promise.resolve() },
     exportSink: fakeSink().sink,
     daemon: makeDaemon(),
@@ -95,10 +97,11 @@ let active: AnnotationSession | null = null;
 
 async function mount(
   adapters: HostAdapters,
+  compositeDeps = fakeCompositeDeps(),
 ): Promise<{ container: HTMLElement; session: AnnotationSession }> {
   // Inject the canvas stub here (an internal, non-host seam) so export paths build a
   // payload without a real 2D canvas under happy-dom.
-  const session = await createAnnotationSession(adapters, { compositeDeps: fakeCompositeDeps() });
+  const session = await createAnnotationSession(adapters, { compositeDeps });
   active = session;
   const container = document.createElement('div');
   document.body.append(container);
@@ -159,6 +162,53 @@ describe('createAnnotationSession', () => {
       expect(write).toHaveBeenCalledTimes(1);
     });
     expect(document.documentElement.dataset['stmLastExport']).toContain('# Change brief');
+  });
+
+  it('threads the capture offset (full-page) into the composited draw', async () => {
+    // A real, resolvable element so `resolveGeometry` yields geometry to draw; its
+    // box is 0×0 under happy-dom, so a drawn rect's origin is purely the offset×scale.
+    // Driven via `exportAnnotations()` directly (no `mountView`) — a resolvable mark
+    // would otherwise feed the overlay's live MutationObserver into a render loop.
+    const el = document.createElement('div');
+    el.id = 'fp-target';
+    document.body.append(el);
+    const changelog: Changelog = {
+      ...seedChangelog(),
+      annotations: [{ ...seedAnnotation(), target: targetFor('#fp-target', 'div') }],
+    };
+
+    // Recording surface: capture the strokeRect coords the element mark draws.
+    const rects: number[][] = [];
+    const surface: CompositeSurface = {
+      context: {
+        ...noopContext(),
+        strokeRect: (...a: number[]) => {
+          rects.push(a);
+        },
+      },
+      drawImage: noop,
+      toBlob: () => Promise.resolve(new Blob(['png'], { type: 'image/png' })),
+    };
+    const image: LoadedImage = { width: 10, height: 10, source: {} as CanvasImageSource };
+    const deps: CompositeDeps = {
+      loadImage: () => Promise.resolve(image),
+      createSurface: () => surface,
+    };
+
+    const session = await createAnnotationSession(
+      makeAdapters({
+        changelog: { load: () => Promise.resolve(changelog), save: () => Promise.resolve() },
+        captureScreenshot: () =>
+          Promise.resolve({ dataUrl: 'data:image/png;base64,AAAA', offset: { x: 120, y: 340 } }),
+      }),
+      { compositeDeps: deps },
+    );
+    active = session;
+    await session.exportAnnotations();
+
+    const scale = window.devicePixelRatio || 1;
+    expect(rects).toHaveLength(1);
+    expect(rects[0]?.slice(0, 2)).toEqual([120 * scale, 340 * scale]);
   });
 
   it('drives a BindingSink (the non-clipboard export path) end to end', async () => {

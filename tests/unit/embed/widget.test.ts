@@ -13,7 +13,11 @@ import { fakeCompositeDeps } from '../../fixtures/composite';
 let active: StmHandle | null = null;
 
 function config(over: Partial<WidgetConfig> = {}): WidgetConfig {
-  return { screenshot: () => Promise.resolve('data:image/png;base64,AAAA'), ...over };
+  return {
+    screenshot: () =>
+      Promise.resolve({ dataUrl: 'data:image/png;base64,AAAA', offset: { x: 0, y: 0 } }),
+    ...over,
+  };
 }
 
 // Pass the fake canvas plumbing via init's internal `deps` seam so export builds

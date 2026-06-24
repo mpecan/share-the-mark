@@ -2,7 +2,7 @@
    async mount(); its handle methods fire-and-forget into the `ready` promise. */
 import type { ExportPayload } from '@/src/core/export';
 import type { Settings } from '@/src/storage/settings-defaults';
-import type { CompositeDeps } from '@/src/capture/composite';
+import type { CapturedScreenshot, CompositeDeps } from '@/src/capture/composite';
 import { mount, type MountOptions, type StmHandle } from './mount';
 import { capturePage } from './screenshot';
 
@@ -20,7 +20,7 @@ export interface WidgetConfig {
   /** Receive the export (Markdown + composited PNG). Default: copy Markdown to the clipboard. */
   onSubmit?: (payload: ExportPayload) => Promise<void> | void;
   /** Override the default page-capture provider. */
-  screenshot?: () => Promise<string>;
+  screenshot?: () => Promise<CapturedScreenshot>;
   /** Override the default annotation settings. */
   settings?: Settings;
   /** Where to attach the shadow host (default: `document.body`). */
