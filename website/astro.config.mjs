@@ -13,6 +13,8 @@ export default defineConfig({
       title: 'share-the-mark',
       description:
         'Annotate live web pages and export a Markdown changelog plus an annotated screenshot — ready for an AI assistant or a bug report.',
+      logo: { src: './src/assets/logo.svg', alt: 'share-the-mark' },
+      favicon: '/favicon.svg',
       social: [
         {
           icon: 'github',

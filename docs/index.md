@@ -18,6 +18,11 @@ hero:
       variant: minimal
 ---
 
+<video autoplay loop muted playsinline poster="/demo-annotate.png" aria-label="Drawing a callout and an element comment on a page, adding notes, and exporting the changelog with share-the-mark" style="width:100%;max-width:840px;border-radius:12px;border:1px solid var(--sl-color-gray-5);margin:1rem 0;">
+  <source src="/demo-annotate.webm" type="video/webm" />
+  <source src="/demo-annotate.mp4" type="video/mp4" />
+</video>
+
 ## Annotate the live DOM, export agent-ready
 
 - **Five focused tools** — callout, text, arrow, highlight, and element — drawn

@@ -45,6 +45,7 @@
     "check:perms": "node scripts/check-permissions.mjs",
     "docs:readme": "node scripts/generate-readme.mjs",
     "docs:readme:check": "node scripts/generate-readme.mjs --check",
+    "docs:demo": "pnpm build:embed && node scripts/capture-demo.mjs",
     "size": "pnpm build:embed && size-limit --config size-limit.config.ts",
     "prepare": "wxt prepare"
   },
