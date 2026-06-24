@@ -4,24 +4,23 @@ name: Release Extension
 # packages and attach them to the Release, then submit them to the stores.
 #
 # Submission is UPLOAD-ONLY (draft): the new version is uploaded but NOT published
-# to users — Chrome via `--chrome-skip-submit-review`, Firefox uploads to a listed
-# version (AMO has no draft, see note below). You click "Publish"/finish review in
-# each dashboard. Flip to a full hands-off submit by dropping `--chrome-skip-submit-review`
-# from the `submit` script (package.json) once you trust the pipeline.
+# to users — you click "Publish"/finish review in each dashboard. Each store's step
+# is gated on its secrets existing, so releases keep working (zips still attached)
+# until the secrets are configured; enable Chrome first and Firefox later if you like.
 #
-# The submit step is GATED on the store secrets existing, so releases keep working
-# (zips still attached) until the secrets are configured. It runs `wxt submit`
-# (publish-extension) — which only touches a store when that store's credentials are
-# present, so you can enable Chrome first and add Firefox later.
+# Chrome Web Store — via a Google Cloud SERVICE ACCOUNT (JSON key), not a per-user
+# refresh token (scripts/submit-chrome.mjs; upload-only, never calls /publish):
+#   Secrets: CHROME_EXTENSION_ID, CHROME_SERVICE_ACCOUNT_KEY (the SA JSON key string)
+#   Setup: GCP → enable "Chrome Web Store API", create a service account + JSON key;
+#          CWS Developer Dashboard → Account → add the SA email (one SA per publisher).
+#   Flip to auto-publish later by setting the CHROME_PUBLISH=true env on the step.
 #
-# Required repo secrets (Settings → Secrets and variables → Actions):
-#   Chrome Web Store:  CHROME_EXTENSION_ID, CHROME_CLIENT_ID, CHROME_CLIENT_SECRET,
-#                      CHROME_REFRESH_TOKEN
-#   Firefox AMO:       FIREFOX_EXTENSION_ID (= share-the-mark@mpecan.dev),
-#                      FIREFOX_JWT_ISSUER, FIREFOX_JWT_SECRET
-# Get them with `pnpm submit:init` locally (interactive walkthrough). Note: AMO has
-# no "draft" — uploading a listed version enters review and auto-publishes on
-# approval, so add the FIREFOX_* secrets only once you're ready for that.
+# Firefox AMO — via `wxt submit` (publish-extension), JWT issuer/secret:
+#   Secrets: FIREFOX_EXTENSION_ID (= share-the-mark@mpecan.dev), FIREFOX_JWT_ISSUER,
+#            FIREFOX_JWT_SECRET  (addons.mozilla.org → Developer Hub → Manage API Keys)
+#   Get them with `pnpm submit:firefox:init`. Note: AMO has no draft — uploading a
+#   listed version enters review and auto-publishes on approval, so add these secrets
+#   only once you're ready for that.
 
 on:
   release:
@@ -34,9 +33,10 @@ jobs:
   zips:
     if: startsWith(github.event.release.tag_name, 'extension-v')
     runs-on: ubuntu-latest
-    # Surfaced as a step gate below — `secrets` isn't allowed directly in a step `if`.
+    # Surfaced as step gates below — `secrets` isn't allowed directly in a step `if`.
     env:
-      HAS_CHROME_SECRETS: ${{ secrets.CHROME_CLIENT_ID != '' }}
+      HAS_CHROME: ${{ secrets.CHROME_SERVICE_ACCOUNT_KEY != '' }}
+      HAS_FIREFOX: ${{ secrets.FIREFOX_JWT_ISSUER != '' }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -59,14 +59,17 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release upload "${{ github.event.release.tag_name }}" .output/*.zip --clobber
 
-      - name: Submit to the stores (upload-only)
-        if: env.HAS_CHROME_SECRETS == 'true'
+      - name: Submit to the Chrome Web Store (service account, upload-only)
+        if: env.HAS_CHROME == 'true'
         env:
           CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
-          CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
-          CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
-          CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+          CHROME_SERVICE_ACCOUNT_KEY: ${{ secrets.CHROME_SERVICE_ACCOUNT_KEY }}
+        run: pnpm submit:chrome
+
+      - name: Submit to Firefox AMO
+        if: env.HAS_FIREFOX == 'true'
+        env:
           FIREFOX_EXTENSION_ID: ${{ secrets.FIREFOX_EXTENSION_ID }}
           FIREFOX_JWT_ISSUER: ${{ secrets.FIREFOX_JWT_ISSUER }}
           FIREFOX_JWT_SECRET: ${{ secrets.FIREFOX_JWT_SECRET }}
-        run: pnpm submit
+        run: pnpm submit:firefox
