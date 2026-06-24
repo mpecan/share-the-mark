@@ -24,15 +24,9 @@ export default defineConfig({
         baseUrl: 'https://github.com/mpecan/share-the-mark/edit/main/docs/',
       },
       customCss: ['./src/styles/custom.css'],
-      sidebar: [
-        { label: 'What it does', link: '/overview/' },
-        { label: 'Install the extension', link: '/installation/' },
-        { label: 'Usage', link: '/usage/' },
-        { label: 'Connect a coding agent', link: '/agent-integration/' },
-        { label: 'Embed without the extension', link: '/embedding/' },
-        { label: 'Permissions & privacy', link: '/permissions-privacy/' },
-        { label: 'Development', link: '/development/' },
-      ],
+      // Sidebar is auto-generated from the docs and ordered by each page's
+      // `sidebar.order` frontmatter (the same field the README generator reads) —
+      // one source of truth for ordering, no hand-kept list to drift.
     }),
   ],
 });

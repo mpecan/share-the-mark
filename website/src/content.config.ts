@@ -8,7 +8,7 @@ import { glob } from 'astro/loaders';
 // (on the splash landing) is an extra frontmatter flag the README generator reads.
 export const collections = {
   docs: defineCollection({
-    loader: glob({ pattern: ['**/*.{md,mdx}', '!**/_readme/**'], base: '../docs' }),
+    loader: glob({ pattern: ['**/*.md', '!**/_readme/**'], base: '../docs' }),
     schema: docsSchema({
       extend: z.object({
         readme: z.boolean().optional(),

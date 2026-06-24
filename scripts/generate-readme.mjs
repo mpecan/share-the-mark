@@ -38,15 +38,12 @@ function sections() {
     .filter((name) => name.endsWith('.md') && !name.startsWith('_'))
     .map((name) => {
       const { frontmatter, body } = splitFrontmatter(readFileSync(path.join(DOCS, name), 'utf8'));
-      return {
-        name,
-        frontmatter,
-        body,
-        title: field(frontmatter, 'title'),
-        order: order(frontmatter),
-      };
+      const title = field(frontmatter, 'title');
+      // Skip pages with no title or `readme: false` (the site-only splash landing).
+      if (!title || field(frontmatter, 'readme') === 'false') return;
+      return { name, body, title, order: order(frontmatter) };
     })
-    .filter((doc) => field(doc.frontmatter, 'readme') !== 'false' && doc.title)
+    .filter((doc) => doc !== undefined)
     .toSorted((a, b) => a.order - b.order || a.name.localeCompare(b.name));
 }
 
