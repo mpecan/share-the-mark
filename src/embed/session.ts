@@ -144,14 +144,17 @@ export async function createAnnotationSession(
     const captured: Changelog = { ...changelog, capturedAt: now() };
     document.documentElement.dataset['stmLastExport'] = changelogToMarkdown(captured);
     try {
-      const screenshot = await adapters.captureScreenshot();
+      const { dataUrl, offset } = await adapters.captureScreenshot();
       const resolved = captured.annotations
         .map((annotation) => resolveGeometry(annotation, document))
         .filter((value): value is ResolvedAnnotation => value !== null);
+      // Shift the marks by the capture's document origin (0 for a viewport capture,
+      // scroll for full-page). Per-call, not baked into `renderOptions` — that same
+      // object backs the live overlay, which must stay offset-free.
       const image = await compositeAnnotations(
-        screenshot,
+        dataUrl,
         resolved,
-        renderOptions,
+        { ...renderOptions, offsetX: offset.x, offsetY: offset.y },
         deps.compositeDeps,
       );
       return await buildExportPayload(captured, image);

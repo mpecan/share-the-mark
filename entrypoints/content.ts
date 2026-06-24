@@ -1,6 +1,6 @@
 import { browser } from 'wxt/browser';
 import { onMessage, sendMessage } from '@/src/messaging';
-import { createAnnotationSession, type HostAdapters } from '@/src/embed';
+import { capturePage, createAnnotationSession, type HostAdapters } from '@/src/embed';
 import {
   clearPendingImport,
   getSettings,
@@ -45,7 +45,16 @@ export default defineContentScript({
         save: (changelog) => saveChangelog(tabId, changelog),
       },
       pendingImport: { load: loadPendingImport, clear: clearPendingImport },
-      captureScreenshot: requestScreenshot,
+      // Capture mode is a user setting (read fresh each export so a toggle takes
+      // effect without re-injecting). `viewport` is the high-fidelity
+      // `captureVisibleTab` raster (image top-left = viewport → zero offset);
+      // `fullPage` re-renders the whole document via html-to-image (image top-left
+      // = document origin → scroll offset), trading fidelity for full context.
+      captureScreenshot: async () => {
+        const { captureMode } = await getSettings();
+        if (captureMode === 'fullPage') return capturePage();
+        return { dataUrl: await requestScreenshot(), offset: { x: 0, y: 0 } };
+      },
       clipboard: { writeText: (text) => navigator.clipboard.writeText(text) },
       exportSink: new ClipboardSink(),
       daemon: {
@@ -74,6 +83,12 @@ export default defineContentScript({
         session.unmountView();
       },
     });
+
+    // Mark our shadow-root host so the full-page `capturePage` (html-to-image)
+    // doesn't bake the overlay/panel into the screenshot — the same `[data-stm-embed]`
+    // exclusion the embed channels use. (The closed shadow root already hides the UI's
+    // contents from html-to-image; this also drops the host box itself.)
+    ui.shadowHost.dataset['stmEmbed'] = 'true';
 
     // Injecting the content script *is* the activation — mount immediately. (Re-
     // activation after Stop goes through the activateAnnotationMode message below.)

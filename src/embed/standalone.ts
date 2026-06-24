@@ -3,6 +3,7 @@
 import { mount, AGENT_PANEL_ACTIONS, type StmHandle } from './mount';
 import { blobToBase64 } from './base64';
 import type { ExportPayload } from '@/src/core/export';
+import type { CapturedScreenshot } from '@/src/capture/composite';
 
 // The standalone IIFE entry (SPEC §13.4), bundled by scripts/build-embed.mjs and
 // injected via Playwright `addInitScript` (channel A) — and later a `<script>` tag
@@ -28,9 +29,13 @@ declare global {
   }
 }
 
-async function captureScreenshot(): Promise<string> {
+async function captureScreenshot(): Promise<CapturedScreenshot> {
   if (!window.__stmScreenshot) throw new Error('share-the-mark: no screenshot binding');
-  return `data:image/png;base64,${await window.__stmScreenshot()}`;
+  const dataUrl = `data:image/png;base64,${await window.__stmScreenshot()}`;
+  // The Node binding takes a FULL-PAGE `page.screenshot({ fullPage: true })` (see
+  // playwright-runner.ts / playwright.ts), so the image's top-left is the document
+  // origin — the composite offset is the current scroll. These two move together.
+  return { dataUrl, offset: { x: window.scrollX, y: window.scrollY } };
 }
 
 async function onExport(payload: ExportPayload): Promise<void> {

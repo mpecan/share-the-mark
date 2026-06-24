@@ -35,6 +35,14 @@ describe('settings storage', () => {
     expect(await getSettings()).toEqual(next);
   });
 
+  it('defaults capture to viewport and round-trips full-page', async () => {
+    expect(DEFAULT_SETTINGS.captureMode).toBe('viewport');
+    const next: Settings = { ...DEFAULT_SETTINGS, captureMode: 'fullPage' };
+    await saveSettings(next);
+    const stored = await getSettings();
+    expect(stored.captureMode).toBe('fullPage');
+  });
+
   it('notifies watchers and can unwatch', async () => {
     const seen: Settings[] = [];
     const unwatch = watchSettings((s) => {

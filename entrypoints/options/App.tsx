@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { browser } from 'wxt/browser';
 import { DEFAULT_SETTINGS, getSettings, saveSettings, type Settings } from '@/src/storage';
-import type { ThemeMode } from '@/src/storage/settings-defaults';
+import type { CaptureMode, ThemeMode } from '@/src/storage/settings-defaults';
 import { DAEMON_ORIGIN } from '@/src/capture';
 import { CLI_INSTALL, HUB_URL } from '@/src/core/links';
 import { applyDocumentTheme } from '@/src/theme/apply-theme';
@@ -152,6 +152,41 @@ export default function App() {
           />
         </label>
       </div>
+
+      <section className="options__section">
+        <label className="options__field">
+          <span>Screenshot capture</span>
+          <select
+            value={settings.captureMode}
+            onChange={(e) => {
+              update('captureMode', e.target.value as CaptureMode);
+            }}
+          >
+            <option value="viewport">Visible area (high fidelity)</option>
+            <option value="fullPage">Full page (more context)</option>
+          </select>
+        </label>
+        <small>
+          {settings.captureMode === 'fullPage' ? (
+            <>
+              <strong>Full page</strong> captures the entire scrollable page so the agent sees all
+              the context. It re-renders the page rather than taking a true screenshot, so{' '}
+              <strong>
+                cross-origin images &amp; iframes, <code>&lt;canvas&gt;</code>/
+                <code>&lt;video&gt;</code>, and some styling may be missing or look off
+              </strong>
+              , and a strict site security policy can block it. Switch back to “Visible area” for a
+              pixel-perfect shot of what’s on screen.
+            </>
+          ) : (
+            <>
+              <strong>Visible area</strong> is a pixel-perfect screenshot of what’s currently on
+              screen. Choose <strong>Full page</strong> to capture the whole scrollable page (more
+              context for the agent, but lower fidelity — see the note when selected).
+            </>
+          )}
+        </small>
+      </section>
 
       <section className="options__section">
         <label className="options__toggle">

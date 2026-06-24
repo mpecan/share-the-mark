@@ -1,4 +1,5 @@
 import type { Changelog } from '@/src/core/model';
+import type { CapturedScreenshot } from '@/src/capture/composite';
 import type { ExportSink } from '@/src/core/export';
 import type { PendingImport } from '@/src/share';
 import type { Settings } from '@/src/storage/settings-defaults';
@@ -31,8 +32,12 @@ export interface HostAdapters {
     load(): Promise<PendingImport | null>;
     clear(): Promise<void>;
   };
-  /** Raw PNG data URL of the visible tab; the session composites the marks on. */
-  captureScreenshot(): Promise<string>;
+  /**
+   * Capture the page as a PNG plus the document-space origin of the image's
+   * top-left (`{0,0}` viewport / `{scrollX,scrollY}` full-page); the session
+   * composites the marks on, shifting them by the offset.
+   */
+  captureScreenshot(): Promise<CapturedScreenshot>;
   /** Plain text to the clipboard — the cross-machine share token (SPEC §12). */
   clipboard: { writeText(text: string): Promise<void> };
   /**

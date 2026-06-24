@@ -2,7 +2,7 @@ import { BindingSink, type ExportPayload } from '@/src/core/export';
 import type { PanelActions } from '@/src/panel';
 import { DEFAULT_SETTINGS, type Settings } from '@/src/storage/settings-defaults';
 import type { Changelog } from '@/src/core/model';
-import type { CompositeDeps } from '@/src/capture/composite';
+import type { CapturedScreenshot, CompositeDeps } from '@/src/capture/composite';
 import { createAnnotationSession } from './session';
 import type { HostAdapters, AnnotationSession } from './ports';
 
@@ -33,8 +33,8 @@ export const AGENT_PANEL_ACTIONS: PanelActions = {
 };
 
 export interface MountOptions {
-  /** Capture the page as a PNG data URL; the session composites the marks onto it. */
-  screenshot: () => Promise<string>;
+  /** Capture the page (PNG data URL + image origin); the session composites the marks onto it. */
+  screenshot: () => Promise<CapturedScreenshot>;
   /** Receive the composited export payload (Markdown + annotated PNG). */
   onExport: (payload: ExportPayload) => Promise<void>;
   /** Panel CSS injected into the shadow root — the embed has no WXT cssInjectionMode. */

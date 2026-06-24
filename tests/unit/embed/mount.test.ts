@@ -14,7 +14,8 @@ let active: StmHandle | null = null;
 
 function opts(over: Partial<MountOptions> = {}): MountOptions {
   return {
-    screenshot: () => Promise.resolve('data:image/png;base64,AAAA'),
+    screenshot: () =>
+      Promise.resolve({ dataUrl: 'data:image/png;base64,AAAA', offset: { x: 0, y: 0 } }),
     onExport: () => Promise.resolve(),
     compositeDeps: fakeCompositeDeps(),
     ...over,

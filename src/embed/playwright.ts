@@ -41,7 +41,9 @@ export async function attach(page: Page, opts: AttachOptions = {}): Promise<Embe
   });
 
   await page.exposeBinding('__stmScreenshot', async ({ page: target }) => {
-    const buffer = await target.screenshot();
+    // Full-page capture: paired with the page side reporting scroll as the composite
+    // offset (standalone.ts), so marks below the fold land on their elements.
+    const buffer = await target.screenshot({ fullPage: true });
     return buffer.toString('base64');
   });
   await page.exposeBinding('__stmDeliver', (_source, markdown: string, imageBase64: string) => {
