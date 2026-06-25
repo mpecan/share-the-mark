@@ -25,10 +25,10 @@
     <script src="../.output/embed/share-the-mark.global.js"></script>
     <script>
       window.addEventListener('DOMContentLoaded', () => {
-        // No onSubmit → the export copies the Markdown changelog to the clipboard.
-        // Supply onSubmit to route feedback into your own system instead.
+        // No onExport → the export copies the Markdown changelog to the clipboard.
+        // Supply onExport (or a full `sink`) to route feedback into your own system.
         ShareTheMark.init({
-          onSubmit: (payload) => {
+          onExport: (payload) => {
             console.log('[share-the-mark] feedback:\n' + payload.markdown);
           },
         });

@@ -76,6 +76,37 @@ describe('buildEmbedAdapters', () => {
     await buildEmbedAdapters(opts()).clipboard.writeText('stm1:abc');
     expect(writeText).toHaveBeenCalledWith('stm1:abc');
   });
+
+  it('uses an injected ExportSink over the onExport callback', () => {
+    const sink = { id: 'custom', isAvailable: () => Promise.resolve(true), write: vi.fn() };
+    const adapters = buildEmbedAdapters(opts({ sink }));
+    expect(adapters.exportSink).toBe(sink);
+    expect(adapters.daemon.sink).toBe(sink);
+  });
+
+  it('throws when neither sink nor onExport is given', () => {
+    expect(() => buildEmbedAdapters({ screenshot: opts().screenshot })).toThrow(
+      /`sink` or `onExport`/,
+    );
+  });
+
+  it('routes the changelog through an injected StorageAdapter', async () => {
+    const save = vi.fn(() => Promise.resolve());
+    const storage = {
+      changelog: { load: () => Promise.resolve(null), save },
+      pendingImport: { load: () => Promise.resolve(null), clear: () => Promise.resolve() },
+    };
+    const adapters = buildEmbedAdapters(opts({ storage }));
+    expect(adapters.changelog).toBe(storage.changelog);
+    await adapters.changelog.save({
+      id: 'c',
+      url: 'u',
+      title: 't',
+      capturedAt: 0,
+      annotations: [],
+    });
+    expect(save).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('mount', () => {
@@ -90,9 +121,9 @@ describe('mount', () => {
       panelActions: { exportLabel: 'Send to agent', showSendToAgent: false, showShareLink: false },
     });
     const shadow = document.querySelector<HTMLElement>('[data-stm-embed="true"]')?.shadowRoot;
-    expect(shadow?.querySelector('.stm-panel__export')?.textContent).toBe('Send to agent');
-    expect(shadow?.querySelector('.stm-panel__send')).toBeNull();
-    expect(shadow?.querySelector('.stm-panel__share')).toBeNull();
+    const actions = shadow?.querySelector('.stm-panel__actions')?.querySelectorAll('.stm-btn');
+    expect(actions).toHaveLength(1);
+    expect(actions?.[0]?.textContent).toBe('Send to agent');
   });
 
   it('injects the provided styles into the shadow root', async () => {

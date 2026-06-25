@@ -81,11 +81,11 @@ describe('ChangelogPanel', () => {
       annotations: [callout('a', 1)],
       actions: { exportLabel: 'Send to agent', showSendToAgent: false, showShareLink: false },
     });
-    expect(screen.getByRole('button', { name: 'Send to agent' })).toHaveClass('stm-panel__export');
+    expect(screen.getByRole('button', { name: 'Send to agent' })).toHaveClass('stm-btn--primary');
     expect(screen.queryByRole('button', { name: /copy to clipboard/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /copy share link/i })).toBeNull();
     // Exactly one footer action remains (the relabeled export).
-    expect(document.querySelector('.stm-panel__send')).toBeNull();
+    expect(document.querySelectorAll('.stm-panel__actions .stm-btn')).toHaveLength(1);
   });
 
   it('renders a tool palette with the active tool pressed', () => {

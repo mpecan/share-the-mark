@@ -767,6 +767,23 @@ already sit on.
 > `.github/workflows/release-embed.yml` using npm **Trusted Publishing (OIDC)** with
 > provenance. The Node-side Playwright `attach()` driver is not part of the typed npm
 > surface (the `embed.global.js` bundle it injects is still shipped).
+>
+> **As-built (API ergonomics pass):** the embed surface is `mount(opts: MountOptions)`
+> — not `mount(adapters)`. `MountOptions` takes a `screenshot: ScreenshotProvider`
+> (`() => Promise<CapturedScreenshot>`, **not** the §13.2 `() => Promise<Blob|null>`
+> sketch) and delivers the export via a **first-class `sink?: ExportSink`** (plug your
+> own delivery) **or** an `onExport?` callback (wrapped in `BindingSink`); `mount()`
+> requires one of the two, `sink` wins. Changelog persistence is an injectable
+> `storage?: StorageAdapter` — here a `{ changelog, pendingImport }` port (**not** the
+> §13.2 `get`/`set`/`remove` sketch) — defaulting to `createInMemoryStorage()`, with
+> `createLocalStorageStorage()` to persist across reloads. The public surface
+> (`mount`, `init`, the `ExportSink`/`StorageAdapter`/`ScreenshotProvider` types, the
+> storage factories, `BindingSink`) is re-exported from `src/embed`. Channel B is
+> `ShareTheMark.init({ onExport })` (renamed from `onSubmit`); the Channel-A driver
+> handle's trigger is `exportNow()` (renamed from `triggerExport`), matching the
+> in-page `StmHandle.exportNow`. The reported version comes from a build-time
+> `__STM_VERSION__` define (read lazily in `getVersion` so the extension, which
+> imports the barrel without that define, doesn't trip a load-time reference).
 
 ### 13.1 The enabling fact — the UI is already browser-free
 

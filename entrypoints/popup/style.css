@@ -40,18 +40,10 @@ body {
   justify-content: space-between;
 }
 
+/* Size-only override of the shared ghost <Button>; appearance + hover from
+ * `.stm-btn--ghost` in controls.css. */
 .popup__link {
-  padding: 0;
-  background: none;
-  border: 0;
-  color: var(--muted);
   font-size: 12px;
-  font-weight: 500;
-}
-
-.popup__link:hover {
-  color: var(--text);
-  border-color: transparent;
 }
 
 .popup__shortcut {

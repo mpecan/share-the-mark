@@ -1,5 +1,7 @@
 import { useState, type JSX } from 'react';
-import type { Annotation, ToolKind } from '@/src/core/model';
+import { useCopy } from '@/src/ui/use-copy';
+import { Button } from '@/src/ui/Button';
+import { TOOL_KINDS, type Annotation, type ToolKind } from '@/src/core/model';
 import type { AgentConnection } from '@/src/core/agent';
 import type { ThemeMode } from '@/src/storage/settings-defaults';
 import { DAEMON_START_COMMAND, HUB_URL } from '@/src/core/links';
@@ -64,8 +66,6 @@ const ICONS: Record<ToolKind, JSX.Element> = {
   ),
   element: <rect x="2.5" y="2.5" width="11" height="11" rx="1.5" strokeDasharray="3 2" />,
 };
-
-const TOOLS: ToolKind[] = ['select', 'callout', 'text', 'arrow', 'highlight', 'element'];
 
 function badge(annotation: Annotation): string {
   return annotation.kind === 'callout' ? String(annotation.index) : '•';
@@ -145,19 +145,8 @@ function AgentSetupView({
   onSubmit: () => void;
   onOpenOptions?: (() => void) | undefined;
 }): JSX.Element {
-  const [isCopied, setIsCopied] = useState(false);
+  const { copied, copy } = useCopy();
   const status = connection?.status ?? 'checking';
-
-  function copyCommand(): void {
-    void (async () => {
-      try {
-        await navigator.clipboard.writeText(DAEMON_START_COMMAND);
-        setIsCopied(true);
-      } catch {
-        // Clipboard may be unavailable on this page; the command stays visible.
-      }
-    })();
-  }
 
   return (
     <div className="stm-agent">
@@ -199,9 +188,15 @@ function AgentSetupView({
                 $
               </span>
               <code>{DAEMON_START_COMMAND}</code>
-              <button type="button" className="stm-agent__copy" onClick={copyCommand}>
-                {isCopied ? 'Copied' : 'Copy'}
-              </button>
+              <Button
+                variant="secondary"
+                className="stm-agent__copy"
+                onClick={() => {
+                  copy(DAEMON_START_COMMAND);
+                }}
+              >
+                {copied === DAEMON_START_COMMAND ? 'Copied' : 'Copy'}
+              </Button>
             </div>
             <div className="stm-agent__status" role="status">
               <span className="stm-agent__dot" aria-hidden="true" />
@@ -258,14 +253,14 @@ function AgentSetupView({
           </>
         )}
 
-        <button
-          type="button"
+        <Button
+          variant="primary"
           className="stm-agent__send"
           onClick={onSubmit}
           disabled={status !== 'connected' || count === 0}
         >
           Send {count} mark{count === 1 ? '' : 's'}
-        </button>
+        </Button>
 
         {handoff !== null && <HandoffLine handoff={handoff} onOpenOptions={onOpenOptions} />}
       </div>
@@ -349,7 +344,7 @@ export function ChangelogPanel({
       </header>
 
       <div className="stm-panel__tools" role="toolbar" aria-label="Annotation tools">
-        {TOOLS.map((kind) => (
+        {TOOL_KINDS.map((kind) => (
           <button
             key={kind}
             type="button"
@@ -484,18 +479,12 @@ export function ChangelogPanel({
 
       <footer className="stm-panel__foot">
         <div className="stm-panel__actions">
-          <button
-            type="button"
-            className="stm-panel__export"
-            onClick={onExport}
-            disabled={annotations.length === 0}
-          >
+          <Button variant="primary" onClick={onExport} disabled={annotations.length === 0}>
             {exportLabel}
-          </button>
+          </Button>
           {(actions?.showSendToAgent ?? true) && (
-            <button
-              type="button"
-              className="stm-panel__send"
+            <Button
+              variant="secondary"
               onClick={() => {
                 setView('agent');
                 onShowAgentSetup();
@@ -503,17 +492,16 @@ export function ChangelogPanel({
               disabled={annotations.length === 0}
             >
               Send to agent
-            </button>
+            </Button>
           )}
           {(actions?.showShareLink ?? true) && (
-            <button
-              type="button"
-              className="stm-panel__share"
+            <Button
+              variant="secondary"
               onClick={onCopyShareLink}
               disabled={annotations.length === 0}
             >
               Copy share link
-            </button>
+            </Button>
           )}
         </div>
         {handoff !== null && <HandoffLine handoff={handoff} onOpenOptions={onOpenOptions} />}

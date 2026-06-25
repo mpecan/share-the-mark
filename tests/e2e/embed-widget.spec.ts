@@ -14,7 +14,7 @@ const FIXTURE = `<!doctype html><html lang="en"><head><meta charset="utf-8" /><t
 <script>
   window.addEventListener('DOMContentLoaded', () => {
     ShareTheMark.init({
-      onSubmit: (payload) => { document.documentElement.dataset.stmSubmitted = payload.markdown; },
+      onExport: (payload) => { document.documentElement.dataset.stmSubmitted = payload.markdown; },
     });
   });
 </script></head>
@@ -22,7 +22,7 @@ const FIXTURE = `<!doctype html><html lang="en"><head><meta charset="utf-8" /><t
 <button data-testid="primary-action" style="position:absolute;top:220px;left:160px;width:160px;height:44px">
 Primary action</button></main></body></html>`;
 
-test('a <script>-tag widget (no extension) draws and delivers feedback to onSubmit', async ({
+test('a <script>-tag widget (no extension) draws and delivers feedback to onExport', async ({
   page,
   context,
 }) => {
@@ -43,9 +43,9 @@ test('a <script>-tag widget (no extension) draws and delivers feedback to onSubm
   expect(box).not.toBeNull();
   if (box) await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
 
-  await page.locator('.stm-panel__export').click();
+  await page.locator('.stm-panel__actions .stm-btn--primary').click();
 
-  // onSubmit ran the full path (default html-to-image capture → composite → deliver).
+  // onExport ran the full path (default html-to-image capture → composite → deliver).
   await expect
     .poll(() => page.evaluate(() => document.documentElement.dataset['stmSubmitted'] ?? ''))
     .toContain('Element: `[data-testid="primary-action"]`');
@@ -59,7 +59,7 @@ const TALL_FIXTURE = `<!doctype html><html lang="en"><head><meta charset="utf-8"
 <script>
   window.addEventListener('DOMContentLoaded', () => {
     ShareTheMark.init({
-      onSubmit: async (payload) => {
+      onExport: async (payload) => {
         const bmp = await createImageBitmap(payload.image);
         document.documentElement.dataset.stmImgH = String(bmp.height);
         document.documentElement.dataset.stmSubmitted = payload.markdown;
@@ -90,7 +90,7 @@ test('captures the full scrollable page, not just the viewport', async ({ page, 
   expect(box).not.toBeNull();
   if (box) await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
 
-  await page.locator('.stm-panel__export').click();
+  await page.locator('.stm-panel__actions .stm-btn--primary').click();
 
   // The mark anchored to the below-fold element (so the offset didn't lose it)...
   await expect

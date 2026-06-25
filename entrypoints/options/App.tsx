@@ -5,19 +5,22 @@ import type { CaptureMode, ThemeMode } from '@/src/storage/settings-defaults';
 import { DAEMON_ORIGIN } from '@/src/capture';
 import { CLI_INSTALL, HUB_URL } from '@/src/core/links';
 import { applyDocumentTheme } from '@/src/theme/apply-theme';
+import { useCopy } from '@/src/ui/use-copy';
+import { Button } from '@/src/ui/Button';
+import { DRAWING_TOOLS } from '@/src/core/model';
 import type { ToolKind } from '@/src/core/model';
 
 // Options page (SPEC §5.8): default tool, stroke defaults, and Markdown
-// extraction preferences, persisted to storage.local.
-const TOOLS: ToolKind[] = ['select', 'callout', 'text', 'arrow', 'highlight', 'element'];
+// extraction preferences, persisted to storage.local. The default-tool picker
+// offers only drawing tools — `select` is the edit mode, not a default.
 const THEMES: ThemeMode[] = ['auto', 'light', 'dark'];
 
 export default function App() {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   // Whether the optional loopback host permission (the agent daemon) is granted.
   const [isAgentEnabled, setIsAgentEnabled] = useState(false);
-  // The CLI install command most recently copied, for inline feedback.
-  const [copiedCommand, setCopiedCommand] = useState<string | null>(null);
+  // "Copy" → "Copied" feedback for the CLI install rows.
+  const { copied: copiedCommand, copy: copyCommand } = useCopy();
 
   useEffect(() => {
     void (async () => {
@@ -39,17 +42,6 @@ export default function App() {
         ? await browser.permissions.request({ origins: [DAEMON_ORIGIN] })
         : !(await browser.permissions.remove({ origins: [DAEMON_ORIGIN] }));
       setIsAgentEnabled(isGranted);
-    })();
-  }
-
-  function copyCommand(command: string): void {
-    void (async () => {
-      try {
-        await navigator.clipboard.writeText(command);
-        setCopiedCommand(command);
-      } catch {
-        // Clipboard may be unavailable; the command stays visible to copy by hand.
-      }
     })();
   }
 
@@ -93,7 +85,7 @@ export default function App() {
               update('defaultTool', e.target.value as ToolKind);
             }}
           >
-            {TOOLS.map((tool) => (
+            {DRAWING_TOOLS.map((tool) => (
               <option key={tool} value={tool}>
                 {tool}
               </option>
@@ -219,15 +211,15 @@ export default function App() {
             <li key={label} className="options__cli-row">
               <span className="options__cli-tag">{label}</span>
               <code>{command}</code>
-              <button
-                type="button"
+              <Button
+                variant="secondary"
                 className="options__cli-copy"
                 onClick={() => {
                   copyCommand(command);
                 }}
               >
                 {copiedCommand === command ? 'Copied' : 'Copy'}
-              </button>
+              </Button>
             </li>
           ))}
         </ul>

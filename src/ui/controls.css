@@ -1,0 +1,73 @@
+/* Shared button primitive — the one source for the `<Button>` component
+ * (src/ui/Button.tsx), used across the extension's own pages (popup, options)
+ * and the in-page changelog panel's shadow root. Self-contained: it relies on no
+ * bare `button` reset, only on the palette tokens (--accent/--surface/…), so it
+ * renders correctly in any scope that defines them. Imported by both
+ * entrypoints/theme.css and src/panel/panel.css; surface-specific layout (flex,
+ * full-width) stays with the consuming stylesheet and overrides by source order. */
+
+.stm-btn {
+  font: inherit;
+  font-weight: 600;
+  padding: 9px 12px;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  cursor: pointer;
+  transition:
+    filter 120ms ease,
+    border-color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.stm-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.stm-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.stm-btn:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+/* Primary: filled with the accent; a soft rose lift on hover. */
+.stm-btn--primary {
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.stm-btn--primary:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow: 0 6px 18px -6px rgba(241, 80, 63, 0.6);
+  border-color: var(--accent);
+}
+
+.stm-btn--primary:disabled {
+  background: var(--surface-2);
+  border-color: var(--line);
+}
+
+/* Secondary: lighter surface; inherits the base accent-border hover. */
+.stm-btn--secondary {
+  background: var(--surface);
+}
+
+/* Ghost: borderless text button (e.g. the popup Options link). */
+.stm-btn--ghost {
+  padding: 0;
+  font-weight: 500;
+  color: var(--muted);
+  background: none;
+  border: 0;
+}
+
+.stm-btn--ghost:hover:not(:disabled) {
+  color: var(--text);
+  border-color: transparent;
+}

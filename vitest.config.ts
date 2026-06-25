@@ -5,9 +5,10 @@ import { WxtVitest } from 'wxt/testing';
 // CI-enforced coverage thresholds (stricter for the pure core).
 export default defineConfig({
   plugins: [WxtVitest()],
-  // The widget bundle inlines the panel CSS via this esbuild `define`; mirror it
-  // here as empty so `src/embed/widget.ts` is importable under vitest.
-  define: { __STM_PANEL_CSS__: '""' },
+  // The embed bundles inline the panel CSS and package version via esbuild
+  // `define`s; mirror them here so `src/embed/*` is importable under vitest. The
+  // version keeps the `-embed` marker so the mount adapter test can assert it.
+  define: { __STM_PANEL_CSS__: '""', __STM_VERSION__: '"0.0.0-embed"' },
   test: {
     globals: true,
     environment: 'happy-dom',

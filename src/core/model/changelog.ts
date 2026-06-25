@@ -13,6 +13,22 @@ import type { TargetRef } from '@/src/core/selector';
 // 'select' is the edit mode (move/resize existing marks), not a drawing tool.
 export type ToolKind = 'select' | 'callout' | 'text' | 'arrow' | 'highlight' | 'element';
 
+/**
+ * The five drawing tools, in palette order. `select` is the edit mode, not a
+ * drawing tool — it leads `TOOL_KINDS` but is excluded from `DRAWING_TOOLS`.
+ */
+export const DRAWING_TOOLS: readonly ToolKind[] = [
+  'callout',
+  'text',
+  'arrow',
+  'highlight',
+  'element',
+];
+
+/** Every tool the palette shows, `select` first. The single source for both the
+ * panel toolbar and the Options default-tool picker (which uses DRAWING_TOOLS). */
+export const TOOL_KINDS: readonly ToolKind[] = ['select', ...DRAWING_TOOLS];
+
 export interface Point {
   x: number;
   y: number;

@@ -4,6 +4,7 @@ import { sendMessage } from '@/src/messaging';
 import { decodeToken } from '@/src/share';
 import { getSettings, savePendingImport } from '@/src/storage';
 import { applyDocumentTheme } from '@/src/theme/apply-theme';
+import { Button } from '@/src/ui/Button';
 import type { ShareBrief, ShareError } from '@/src/core/share';
 
 // Popup UI (SPEC §5.8): activate annotation mode on the active tab, open the options
@@ -110,9 +111,9 @@ function ImportSection(): JSX.Element {
       />
       {error !== null && <p className="popup__import-error">{error}</p>}
       {brief !== null && (
-        <button type="button" className="button--primary" onClick={() => void openShared(brief)}>
+        <Button variant="primary" onClick={() => void openShared(brief)}>
           Open &amp; place {count} mark{count === 1 ? '' : 's'}
-        </button>
+        </Button>
       )}
     </section>
   );
@@ -133,22 +134,22 @@ export default function App(): JSX.Element {
         <h1 className="brand">share&nbsp;the&nbsp;mark</h1>
       </header>
       <div className="popup__actions">
-        <button type="button" className="button--primary" onClick={() => void activate()}>
+        <Button variant="primary" onClick={() => void activate()}>
           Start annotating
-        </button>
-        <button type="button" onClick={() => void deactivate()}>
+        </Button>
+        <Button variant="secondary" onClick={() => void deactivate()}>
           Stop
-        </button>
+        </Button>
       </div>
       <ImportSection />
       <div className="popup__foot">
-        <button
-          type="button"
+        <Button
+          variant="ghost"
           className="popup__link"
           onClick={() => void browser.runtime.openOptionsPage()}
         >
           Options
-        </button>
+        </Button>
         <span className="popup__shortcut">⌥⇧M</span>
       </div>
     </main>

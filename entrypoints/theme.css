@@ -2,6 +2,8 @@
  * (popup, options). The in-page changelog panel re-declares the same palette on
  * its shadow host (src/panel/panel.css) because a closed shadow root on an
  * arbitrary page can't inherit these — keep the two palettes in sync. */
+@import '../src/ui/controls.css';
+
 :root {
   /* Dark is the base; light is layered on below (forced via [data-theme='light']
    * or, for 'auto', via a prefers-color-scheme query). Keep these in sync with the
@@ -106,17 +108,8 @@ button:focus-visible {
   outline-offset: 1px;
 }
 
-/* Primary action: filled with the accent. */
-.button--primary {
-  color: var(--accent-ink);
-  background: var(--accent);
-  border-color: var(--accent);
-}
-
-.button--primary:hover {
-  filter: brightness(1.08);
-  border-color: var(--accent);
-}
+/* The filled primary / secondary / ghost variants live in src/ui/controls.css
+ * (the shared `.stm-btn` system the <Button> component emits), imported above. */
 
 input,
 select,

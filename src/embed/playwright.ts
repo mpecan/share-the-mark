@@ -28,10 +28,13 @@ export interface EmbedExport {
 }
 
 export interface EmbedHandle {
-  /** Resolves with the first export delivered from the page. */
+  /** Resolves with the first export delivered from the page. Node-side only —
+   *  it awaits the `__stmDeliver` binding, so it has no in-page `StmHandle`
+   *  counterpart. */
   waitForExport(): Promise<EmbedExport>;
-  /** Trigger the embed's export programmatically (no panel click needed). */
-  triggerExport(): Promise<void>;
+  /** Trigger the embed's export programmatically (no panel click needed) — the
+   *  driver-side twin of the in-page `StmHandle.exportNow`. */
+  exportNow(): Promise<void>;
 }
 
 export async function attach(page: Page, opts: AttachOptions = {}): Promise<EmbedHandle> {
@@ -54,7 +57,7 @@ export async function attach(page: Page, opts: AttachOptions = {}): Promise<Embe
 
   return {
     waitForExport: () => exportPromise,
-    triggerExport: () =>
+    exportNow: () =>
       // eslint-disable-next-line unicorn/prefer-global-this -- page context: the handle is published on window
       page.evaluate(() => window.__stm?.exportNow()),
   };
