@@ -73,7 +73,7 @@ test('@cli the daemon serves a local artifact, injects the panel, and round-trip
 
   // The served page self-mounts the panel (the embedded bundle, injected by the daemon).
   await page.goto(reg.openUrl);
-  await page.locator('.stm-panel__export').waitFor({ state: 'visible' });
+  await page.locator('.stm-panel__actions .stm-btn').waitFor({ state: 'visible' });
 
   // Draw a callout with a real click (default tool), then export — the panel POSTs
   // the brief to /brief same-origin (loopback → loopback).
@@ -84,10 +84,9 @@ test('@cli the daemon serves a local artifact, injects the panel, and round-trip
   // Channel C wires one delivery path (POST /brief), so the panel shows a single
   // button labelled for what it does — not the extension's "Copy to clipboard" /
   // "Send to agent" / "Copy share link" trio.
-  await expect(page.locator('.stm-panel__export')).toHaveText('Send to agent');
-  await expect(page.locator('.stm-panel__send')).toHaveCount(0);
-  await expect(page.locator('.stm-panel__share')).toHaveCount(0);
-  await page.locator('.stm-panel__export').click();
+  await expect(page.locator('.stm-panel__actions .stm-btn')).toHaveCount(1);
+  await expect(page.locator('.stm-panel__actions .stm-btn')).toHaveText('Send to agent');
+  await page.locator('.stm-panel__actions .stm-btn').click();
 
   // The daemon fulfills the request by the artifact id parsed from the brief URL.
   await expect

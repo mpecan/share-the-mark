@@ -41,22 +41,35 @@ describe('ShareTheMark.init', () => {
     expect(document.querySelector('[data-stm-embed="true"]')).not.toBeNull();
   });
 
-  it('delivers the export to onSubmit', async () => {
-    const onSubmit = vi.fn<(payload: ExportPayload) => Promise<void>>(() => Promise.resolve());
+  it('delivers the export to onExport', async () => {
+    const onExport = vi.fn<(payload: ExportPayload) => Promise<void>>(() => Promise.resolve());
     await act(async () => {
-      active = start({ onSubmit });
+      active = start({ onExport });
       await Promise.resolve();
     });
     await act(async () => {
       await active?.exportNow();
     });
-    expect(onSubmit).toHaveBeenCalledTimes(1);
-    const payload = onSubmit.mock.calls[0]?.[0];
+    expect(onExport).toHaveBeenCalledTimes(1);
+    const payload = onExport.mock.calls[0]?.[0];
     expect(payload?.markdown).toContain('# Change brief');
     expect(payload?.image).toBeInstanceOf(Blob);
   });
 
-  it('copies the Markdown to the clipboard when no onSubmit is given', async () => {
+  it('delivers the export to an injected sink (over the clipboard default)', async () => {
+    const write = vi.fn(() => Promise.resolve({}));
+    const sink = { id: 'test', isAvailable: () => Promise.resolve(true), write };
+    await act(async () => {
+      active = start({ sink });
+      await Promise.resolve();
+    });
+    await act(async () => {
+      await active?.exportNow();
+    });
+    expect(write).toHaveBeenCalledTimes(1);
+  });
+
+  it('copies the Markdown to the clipboard when no onExport is given', async () => {
     const writeText = vi.fn<(text: string) => Promise<void>>(() => Promise.resolve());
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
     await act(async () => {

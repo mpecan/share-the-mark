@@ -17,8 +17,20 @@ import type { PanelActions } from '@/src/panel';
 // These are types only — the concrete, browser-coupled implementations live in
 // the entrypoint (`entrypoints/content.ts`), which is excluded from coverage.
 
-export interface HostAdapters {
-  getSettings(): Promise<Settings>;
+/**
+ * Capture the page as a PNG plus the document-space origin of the image's
+ * top-left. The single public capture port — an embedder passes one to
+ * `mount({ screenshot })`; the extension supplies its `captureVisibleTab` path.
+ */
+export type ScreenshotProvider = () => Promise<CapturedScreenshot>;
+
+/**
+ * The persistence an embedder can plug into `mount({ storage })`: per-URL
+ * changelog storage plus the single-slot cross-machine import handoff. Defaults
+ * to in-memory; `createLocalStorageStorage` persists across reloads. The
+ * extension supplies its own `browser.storage`-backed implementation.
+ */
+export interface StorageAdapter {
   /**
    * Per-tab+URL changelog persistence. Pre-bound to a tab id by the host (a tab
    * id is meaningless off-extension), so the session never sees one.
@@ -32,6 +44,10 @@ export interface HostAdapters {
     load(): Promise<PendingImport | null>;
     clear(): Promise<void>;
   };
+}
+
+export interface HostAdapters extends StorageAdapter {
+  getSettings(): Promise<Settings>;
   /**
    * Capture the page as a PNG plus the document-space origin of the image's
    * top-left (`{0,0}` viewport / `{scrollX,scrollY}` full-page); the session

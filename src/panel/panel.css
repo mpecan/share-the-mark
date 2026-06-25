@@ -7,6 +7,8 @@
 
 /* Text-annotation chip in the overlay SVG: a readable background that goes
  * transparent on hover so you can peek at the content beneath it. */
+@import '../ui/controls.css';
+
 .stm-text__bg {
   fill-opacity: 0.92;
   pointer-events: all;
@@ -96,8 +98,8 @@
  * for light. The dark base above wins for 'auto' under a dark OS, and an explicit
  * [data-theme='dark'] always keeps dark (the media query excludes it). */
 .stm-panel[data-theme='light'] {
-  --bg: #ffffff;
-  --surface: #f1f0ec;
+  --bg: #eceae3;
+  --surface: #ffffff;
   --surface-2: #f1f0ec;
   --hover: #e7e6e0;
   --line: rgba(20, 22, 26, 0.1);
@@ -113,8 +115,8 @@
 
 @media (prefers-color-scheme: light) {
   .stm-panel:not([data-theme='dark']) {
-    --bg: #ffffff;
-    --surface: #f1f0ec;
+    --bg: #eceae3;
+    --surface: #ffffff;
     --surface-2: #f1f0ec;
     --hover: #e7e6e0;
     --line: rgba(20, 22, 26, 0.1);
@@ -369,70 +371,16 @@
   border-top: 1px solid var(--line);
 }
 
-.stm-panel__export {
-  width: 100%;
-  padding: 9px 12px;
-  color: var(--accent-ink);
-  font: inherit;
-  font-weight: 600;
-  background: var(--accent);
-  border: 1px solid var(--accent);
-  border-radius: 9px;
-  cursor: pointer;
-  transition:
-    filter 120ms ease,
-    box-shadow 120ms ease;
-}
-
-.stm-panel__export:hover:not(:disabled) {
-  filter: brightness(1.08);
-  box-shadow: 0 6px 18px -6px rgba(241, 80, 63, 0.6);
-}
-
-.stm-panel__export:disabled {
-  color: var(--muted);
-  background: var(--surface-2);
-  border-color: var(--line);
-  cursor: not-allowed;
-}
-
+/* Footer actions are <Button> (src/ui/controls.css). The container handles
+ * layout; appearance comes from the shared `.stm-btn` variants. */
 .stm-panel__actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.stm-panel__actions .stm-panel__export,
-.stm-panel__send,
-.stm-panel__share {
+.stm-panel__actions .stm-btn {
   flex: 1;
-}
-
-/* Secondary actions: the "Send to agent" daemon sink and the share token. */
-.stm-panel__send,
-.stm-panel__share {
-  padding: 9px 12px;
-  color: var(--text);
-  font: inherit;
-  font-weight: 600;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  cursor: pointer;
-  transition:
-    filter 120ms ease,
-    border-color 120ms ease;
-}
-
-.stm-panel__send:hover:not(:disabled),
-.stm-panel__share:hover:not(:disabled) {
-  border-color: var(--accent);
-}
-
-.stm-panel__send:disabled,
-.stm-panel__share:disabled {
-  color: var(--muted);
-  cursor: not-allowed;
 }
 
 .stm-panel__handoff {
@@ -755,6 +703,8 @@
   text-overflow: ellipsis;
 }
 
+/* Sizing-only override of the shared secondary <Button> (a compact command chip);
+ * appearance + hover come from `.stm-btn--secondary` in controls.css. */
 .stm-agent__copy {
   flex: none;
   display: flex;
@@ -763,21 +713,8 @@
   min-width: 28px;
   height: 26px;
   padding: 0 7px;
-  color: var(--muted);
-  font: inherit;
   font-size: 11px;
-  background: var(--surface);
-  border: 1px solid var(--line);
   border-radius: 7px;
-  cursor: pointer;
-  transition:
-    color 120ms ease,
-    border-color 120ms ease;
-}
-
-.stm-agent__copy:hover {
-  color: var(--text);
-  border-color: var(--line-strong);
 }
 
 .stm-agent__status {
@@ -843,31 +780,11 @@
   color: var(--dim);
 }
 
+/* Full-width primary <Button>; appearance from `.stm-btn--primary`, layout here. */
 .stm-agent__send {
   width: 100%;
   padding: 11px;
-  color: var(--accent-ink);
-  font: inherit;
-  font-weight: 600;
-  background: var(--accent);
-  border: 1px solid var(--accent);
   border-radius: 10px;
-  cursor: pointer;
-  transition:
-    filter 120ms ease,
-    box-shadow 120ms ease;
-}
-
-.stm-agent__send:hover:not(:disabled) {
-  filter: brightness(1.08);
-  box-shadow: 0 6px 18px -6px rgba(241, 80, 63, 0.6);
-}
-
-.stm-agent__send:disabled {
-  color: var(--muted);
-  background: var(--surface-2);
-  border-color: var(--line);
-  cursor: not-allowed;
 }
 
 @keyframes stm-pulse {

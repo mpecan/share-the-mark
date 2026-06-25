@@ -1,10 +1,10 @@
-import { BindingSink, type ExportPayload } from '@/src/core/export';
+import { BindingSink, type ExportPayload, type ExportSink } from '@/src/core/export';
 import type { PanelActions } from '@/src/panel';
 import { DEFAULT_SETTINGS, type Settings } from '@/src/storage/settings-defaults';
-import type { Changelog } from '@/src/core/model';
-import type { CapturedScreenshot, CompositeDeps } from '@/src/capture/composite';
+import type { CompositeDeps } from '@/src/capture/composite';
 import { createAnnotationSession } from './session';
-import type { HostAdapters, AnnotationSession } from './ports';
+import { createInMemoryStorage } from './storage';
+import type { HostAdapters, AnnotationSession, ScreenshotProvider, StorageAdapter } from './ports';
 
 // The SPEC §13.2 convenience entry: a browser-free `mount()` that stands up the
 // annotation UI in any page, without the extension. It builds the real
@@ -16,9 +16,14 @@ import type { HostAdapters, AnnotationSession } from './ports';
 // `wxt/*`, the message bus, or the message-coupled capture sinks (a guard test
 // enforces it).
 
-// A made-up version for the daemon compat handshake; unused in practice because
-// the embed disables the daemon (`permitted: false` short-circuits send-to-agent).
-const EMBED_VERSION = '0.0.0-embed';
+// The package version, inlined at build time (esbuild `define`, like the panel
+// CSS); vitest stubs it. Reported on the daemon compat handshake — unused in
+// practice off-extension (`permitted: false` short-circuits send-to-agent). Read
+// lazily inside `getVersion` (not at module top level): the extension imports
+// this barrel without an `__STM_VERSION__` define, and only the embed channels
+// ever call it, so a deferred read avoids a load-time ReferenceError there —
+// the same deferral `widget.ts` uses for `__STM_PANEL_CSS__`.
+declare const __STM_VERSION__: string;
 
 /**
  * Footer preset for single-delivery, agent-bound channels (Playwright A, local-serve
@@ -34,9 +39,18 @@ export const AGENT_PANEL_ACTIONS: PanelActions = {
 
 export interface MountOptions {
   /** Capture the page (PNG data URL + image origin); the session composites the marks onto it. */
-  screenshot: () => Promise<CapturedScreenshot>;
-  /** Receive the composited export payload (Markdown + annotated PNG). */
-  onExport: (payload: ExportPayload) => Promise<void>;
+  screenshot: ScreenshotProvider;
+  /**
+   * Where the composited export (Markdown + annotated PNG) is delivered. Supply a
+   * full {@link ExportSink} to plug your own delivery (server POST, FileSystem,
+   * retries), or an `onExport` callback (wrapped in a `BindingSink`). `mount()`
+   * requires one of the two; `sink` wins if both are given.
+   */
+  sink?: ExportSink;
+  /** Receive the composited export payload — the callback form of `sink`. */
+  onExport?: (payload: ExportPayload) => Promise<void>;
+  /** Changelog persistence (default: in-memory). See `createLocalStorageStorage`. */
+  storage?: StorageAdapter;
   /** Panel CSS injected into the shadow root — the embed has no WXT cssInjectionMode. */
   styles?: string;
   /** Override the default annotation settings. */
@@ -47,6 +61,14 @@ export interface MountOptions {
   panelActions?: PanelActions;
   /** Test seam: canvas plumbing for compositing (default: the real OffscreenCanvas). */
   compositeDeps?: CompositeDeps;
+}
+
+// Resolve the one export sink from the options: an injected sink wins, else the
+// `onExport` callback is wrapped in a `BindingSink`. mount() needs one of them.
+function resolveSink(opts: MountOptions): ExportSink {
+  if (opts.sink) return opts.sink;
+  if (opts.onExport) return new BindingSink(opts.onExport);
+  throw new Error('share-the-mark mount(): provide `sink` or `onExport` to receive the export.');
 }
 
 export interface StmHandle {
@@ -64,18 +86,12 @@ export interface StmHandle {
 // so each adapter closure is directly unit-testable (the draw/export paths that
 // would exercise them can't all be driven under happy-dom).
 export function buildEmbedAdapters(opts: MountOptions): HostAdapters {
-  const changelogs = new Map<string, Changelog>();
-  const sink = new BindingSink(opts.onExport);
+  const storage = opts.storage ?? createInMemoryStorage();
+  const sink = resolveSink(opts);
   return {
     getSettings: () => Promise.resolve(opts.settings ?? DEFAULT_SETTINGS),
-    changelog: {
-      load: (url) => Promise.resolve(changelogs.get(url) ?? null),
-      save: (changelog) => {
-        changelogs.set(changelog.url, changelog);
-        return Promise.resolve();
-      },
-    },
-    pendingImport: { load: () => Promise.resolve(null), clear: () => Promise.resolve() },
+    changelog: storage.changelog,
+    pendingImport: storage.pendingImport,
     captureScreenshot: opts.screenshot,
     clipboard: { writeText: (text) => navigator.clipboard.writeText(text) },
     exportSink: sink,
@@ -85,7 +101,7 @@ export function buildEmbedAdapters(opts: MountOptions): HostAdapters {
       health: () => Promise.resolve({ reachable: false }),
       sink,
     },
-    getVersion: () => EMBED_VERSION,
+    getVersion: () => __STM_VERSION__,
     openOptions: () => {
       // No options page off-extension; nothing to open.
     },

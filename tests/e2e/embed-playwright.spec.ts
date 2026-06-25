@@ -34,7 +34,7 @@ test('injects the embed (no extension), draws a callout, and delivers the export
   expect(box).not.toBeNull();
   if (box) await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
 
-  await handle.triggerExport();
+  await handle.exportNow();
   const exported = await handle.waitForExport();
 
   expect(exported.markdown).toContain('Element: `[data-testid="primary-action"]`');

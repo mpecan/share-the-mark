@@ -1,6 +1,21 @@
 import { build } from 'esbuild';
 import { readFileSync } from 'node:fs';
 
+// Bundle panel.css into a single string — esbuild resolves its `@import`s (the
+// shared src/ui/controls.css), which a plain readFileSync would leave dangling.
+const cssBundle = await build({
+  entryPoints: ['src/panel/panel.css'],
+  bundle: true,
+  minify: true,
+  write: false,
+  loader: { '.css': 'css' },
+});
+const css = cssBundle.outputFiles[0].text;
+
+// The package version, inlined so the embed reports a real version on the daemon
+// compat handshake (mount.ts) instead of a placeholder.
+const { version } = JSON.parse(readFileSync('package.json', 'utf8'));
+
 // Bundles the browser-free embed UI into self-contained IIFEs:
 //   - standalone.ts  → embed.global.js          — Playwright injection (channel A, §13.4)
 //   - widget.ts      → share-the-mark.global.js — dev `<script>` widget (channel B, §13.5)
@@ -11,8 +26,6 @@ import { readFileSync } from 'node:fs';
 // The panel CSS is inlined as a `define` constant (the embed has no WXT
 // `cssInjectionMode`). NODE_ENV=production is load-bearing: without it React 19
 // ships dev-only warnings and bloats the bundle.
-
-const css = readFileSync('src/panel/panel.css', 'utf8');
 
 const shared = {
   bundle: true,
@@ -27,6 +40,7 @@ const shared = {
   define: {
     'process.env.NODE_ENV': '"production"',
     __STM_PANEL_CSS__: JSON.stringify(css),
+    __STM_VERSION__: JSON.stringify(version),
   },
 };
 

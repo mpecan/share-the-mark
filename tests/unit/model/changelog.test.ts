@@ -2,12 +2,25 @@ import { describe, expect, it } from 'vitest';
 import {
   changelogReducer,
   renumberCallouts,
+  DRAWING_TOOLS,
+  TOOL_KINDS,
   type Annotation,
   type CalloutAnnotation,
   type Changelog,
   type TextAnnotation,
 } from '@/src/core/model';
 import type { TargetRef } from '@/src/core/selector';
+
+describe('tool kind constants', () => {
+  it('DRAWING_TOOLS is the five drawing tools and excludes select', () => {
+    expect(DRAWING_TOOLS).toEqual(['callout', 'text', 'arrow', 'highlight', 'element']);
+    expect(DRAWING_TOOLS).not.toContain('select');
+  });
+
+  it('TOOL_KINDS leads with select then the drawing tools', () => {
+    expect(TOOL_KINDS).toEqual(['select', ...DRAWING_TOOLS]);
+  });
+});
 
 const target: TargetRef = {
   selector: '#x',
