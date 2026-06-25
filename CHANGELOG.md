@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.0.0](https://github.com/mpecan/share-the-mark/compare/extension-v1.1.0...extension-v2.0.0) (2026-06-25)
+
+
+### ⚠ BREAKING CHANGES
+
+* embed API renames (pre-release, no external consumers): WidgetConfig.onSubmit -> onExport; Channel-A EmbedHandle.triggerExport -> exportNow; MountOptions.onExport is now optional (provide sink or onExport).
+
+### Code Refactoring
+
+* audit & improve the embed/UI API surface ([3492525](https://github.com/mpecan/share-the-mark/commit/34925258e37c3f93fc3e1d9ed753897f7f6feac3))
+
 ## [1.1.0](https://github.com/mpecan/share-the-mark/compare/extension-v1.0.0...extension-v1.1.0) (2026-06-24)
 
 
