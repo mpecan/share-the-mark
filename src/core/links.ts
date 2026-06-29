@@ -3,11 +3,25 @@
 // (no daemon, no extension) points at the *other* half from here — one place to
 // edit. Pure data, browser-free, so it lives under the 100%-covered core.
 //
-// The hub is the GitHub repo for now; swap in the Chrome/Firefox store URLs here
-// once they're approved. The Rust side mirrors this in `cli/src/links.rs`.
+// The extension is published to both stores (`CHROME_STORE_URL` /
+// `FIREFOX_STORE_URL`); `HUB_URL` stays the GitHub repo as the project's home and
+// cross-browser landing page. The Rust side mirrors this in `cli/src/links.rs`.
 
-/** Where to get the browser extension (and the project's home). */
+/** The project's home and cross-browser landing page (links to both stores). */
 export const HUB_URL = 'https://github.com/mpecan/share-the-mark';
+
+/** The extension on the Chrome Web Store (also serves Chromium-based browsers). */
+export const CHROME_STORE_URL =
+  'https://chromewebstore.google.com/detail/share-the-mark/akliipgpjcaclhfmdbgcnfkliinnaiao';
+
+/** The extension on Firefox Add-ons (locale-agnostic path; AMO localizes it). */
+export const FIREFOX_STORE_URL = 'https://addons.mozilla.org/firefox/addon/share-the-mark/';
+
+/** Per-store "get the extension" links, surfaced on the Options page. */
+export const STORE_LINKS: readonly { label: string; url: string }[] = [
+  { label: 'Chrome / Chromium', url: CHROME_STORE_URL },
+  { label: 'Firefox', url: FIREFOX_STORE_URL },
+];
 
 /** The loopback address the `share-the-mark` daemon listens on (SPEC §5.4). The
  * single source of truth for host:port — the agent-setup view shows it verbatim and

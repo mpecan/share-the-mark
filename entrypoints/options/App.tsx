@@ -3,7 +3,7 @@ import { browser } from 'wxt/browser';
 import { DEFAULT_SETTINGS, getSettings, saveSettings, type Settings } from '@/src/storage';
 import type { CaptureMode, ThemeMode } from '@/src/storage/settings-defaults';
 import { DAEMON_ORIGIN } from '@/src/capture';
-import { CLI_INSTALL, HUB_URL } from '@/src/core/links';
+import { CLI_INSTALL, HUB_URL, STORE_LINKS } from '@/src/core/links';
 import { applyDocumentTheme } from '@/src/theme/apply-theme';
 import { useCopy } from '@/src/ui/use-copy';
 import { Button } from '@/src/ui/Button';
@@ -223,9 +223,23 @@ export default function App() {
             </li>
           ))}
         </ul>
-        <a className="options__cli-link" href={HUB_URL} target="_blank" rel="noreferrer">
-          Get the extension &amp; docs ↗
-        </a>
+        <div className="options__store-links">
+          <span className="options__store-label">Get the extension:</span>
+          {STORE_LINKS.map(({ label, url }) => (
+            <a
+              key={label}
+              className="options__cli-link"
+              href={url}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {label} ↗
+            </a>
+          ))}
+          <a className="options__cli-link" href={HUB_URL} target="_blank" rel="noreferrer">
+            Docs ↗
+          </a>
+        </div>
       </section>
     </main>
   );
