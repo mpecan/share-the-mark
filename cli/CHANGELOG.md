@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.0](https://github.com/mpecan/share-the-mark/compare/cli-v0.3.0...cli-v0.4.0) (2026-06-29)
+
+
+### Features
+
+* **cli:** point the request install hint at the published stores ([4d06c7b](https://github.com/mpecan/share-the-mark/commit/4d06c7bfadc531e8fb5f271c24da0af290bb5840))
+* **cli:** point the request install hint at the published stores ([#31](https://github.com/mpecan/share-the-mark/issues/31)) ([f0b0f27](https://github.com/mpecan/share-the-mark/commit/f0b0f27d9f16a6a1ce93f9cf8bd8f4534045d695))
+
 ## [0.3.0](https://github.com/mpecan/share-the-mark/compare/cli-v0.2.0...cli-v0.3.0) (2026-06-24)
 
 

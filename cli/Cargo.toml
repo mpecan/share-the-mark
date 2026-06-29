@@ -1,6 +1,6 @@
 [package]
 name = "share-the-mark"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 description = "share-the-mark CLI: receive design-feedback change-briefs from the browser extension and expose them to a coding agent"
 license = "MIT"
