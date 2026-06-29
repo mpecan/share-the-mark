@@ -26,8 +26,10 @@ fn report(skill_path: &Path, daemon_up: bool, port: u16) -> String {
             skill_path.display()
         ),
         format!(
-            "Get the share-the-mark browser extension (the other half):\n  {}",
-            links::HUB_URL
+            "Get the share-the-mark browser extension (the other half):\n  \
+             Chrome / Chromium: {}\n  Firefox: {}",
+            links::CHROME_STORE_URL,
+            links::FIREFOX_STORE_URL,
         ),
         daemon,
     ]
@@ -57,9 +59,10 @@ mod tests {
     use std::path::PathBuf;
 
     #[test]
-    fn report_names_the_skill_hub_and_start_hint_when_down() {
+    fn report_names_the_skill_stores_and_start_hint_when_down() {
         let out = report(&PathBuf::from("/tmp/skill"), false, 8787);
-        assert!(out.contains(links::HUB_URL));
+        assert!(out.contains(links::CHROME_STORE_URL));
+        assert!(out.contains(links::FIREFOX_STORE_URL));
         assert!(out.contains("/tmp/skill"));
         assert!(out.contains("share-the-mark start"));
     }

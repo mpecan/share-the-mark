@@ -582,9 +582,12 @@ halves never drift in their install story.
 
 ### 11.2 Entry points (shipped)
 
-The cross-linking is implemented; the canonical hub is the GitHub repo
-(`HUB_URL` in `src/core/links.ts` / `cli/src/links.rs`) until the store URLs are
-approved, after which they swap into those two constants.
+The cross-linking is implemented. The extension is published to both stores —
+`CHROME_STORE_URL` / `FIREFOX_STORE_URL` (mirrored in `src/core/links.ts` /
+`cli/src/links.rs`) — and the canonical `HUB_URL` stays the GitHub repo as the
+project home / cross-browser landing. Store-direct surfaces (Options page "Get the
+extension", `share-the-mark setup`) point at the per-store URLs; banners and the
+panel's version-mismatch handoff use the cross-browser hub.
 
 - **Extension-first → wants the agent.** The Options page carries an "Install the
   CLI" block (copy-paste brew / binstall / curl commands + the hub link); the

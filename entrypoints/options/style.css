@@ -145,3 +145,15 @@
   font-size: 12px;
   color: var(--accent);
 }
+
+.options__store-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+}
+
+.options__store-label {
+  font-size: 12px;
+  opacity: 0.75;
+}

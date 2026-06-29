@@ -8,10 +8,14 @@ hero:
   image:
     file: ./assets/annotated.png
   actions:
-    - text: Get started
-      link: ./installation/
-      icon: right-arrow
+    - text: Add to Chrome
+      link: https://chromewebstore.google.com/detail/share-the-mark/akliipgpjcaclhfmdbgcnfkliinnaiao
+      icon: external
       variant: primary
+    - text: Add to Firefox
+      link: https://addons.mozilla.org/firefox/addon/share-the-mark/
+      icon: external
+      variant: secondary
     - text: View on GitHub
       link: https://github.com/mpecan/share-the-mark
       icon: external
