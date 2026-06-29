@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.0](https://github.com/mpecan/share-the-mark/compare/extension-v2.0.0...extension-v2.1.0) (2026-06-29)
+
+
+### Features
+
+* **embed:** capability-driven panel footer actions ([658021e](https://github.com/mpecan/share-the-mark/commit/658021e46784675aaba982939984a601e872cdc9))
+* **embed:** capability-driven panel footer actions ([#29](https://github.com/mpecan/share-the-mark/issues/29)) ([08177a4](https://github.com/mpecan/share-the-mark/commit/08177a44a88b4e86fc54bb7e84bd05e7ced0586d))
+
 ## [2.0.0](https://github.com/mpecan/share-the-mark/compare/extension-v1.1.0...extension-v2.0.0) (2026-06-25)
 
 
