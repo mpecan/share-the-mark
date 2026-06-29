@@ -1,6 +1,6 @@
 /* eslint-disable unicorn/prefer-global-this -- this script runs injected in the
    page; `window` is the page global the idempotency guard lives on. */
-import { mount, AGENT_PANEL_ACTIONS, type StmHandle } from './mount';
+import { mount, AGENT_CAPABILITIES, type StmHandle } from './mount';
 import { capturePage } from './screenshot';
 import { submitBrief } from './local-submit';
 
@@ -29,9 +29,9 @@ function boot(): void {
       styles: __STM_PANEL_CSS__,
       screenshot: capturePage,
       onExport: submitBrief,
-      // The export sink *is* the agent submit here (POST /brief), so show one button
-      // labelled for what it does (the daemon-less embed would render the others inert).
-      panelActions: AGENT_PANEL_ACTIONS,
+      // The export sink *is* the agent submit here (POST /brief), so declare only the
+      // export capability — one button labelled for what it does, no inert handoffs.
+      capabilities: AGENT_CAPABILITIES,
     });
     // eslint-disable-next-line unicorn/no-global-object-property-assignment -- idempotency guard
     window.__stm = handle;

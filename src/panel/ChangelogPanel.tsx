@@ -6,7 +6,8 @@ import type { AgentConnection } from '@/src/core/agent';
 import type { ThemeMode } from '@/src/storage/settings-defaults';
 import { DAEMON_START_COMMAND, HUB_URL } from '@/src/core/links';
 import type { PlacementSummary } from '@/src/share';
-import type { Handoff, HandoffAction, PanelActions, ShareNotice } from './PanelApp';
+import type { Handoff, HandoffAction, ShareNotice } from './PanelApp';
+import { DEFAULT_CAPABILITIES, type PanelCapabilities } from './capabilities';
 
 // In-page changelog panel (SPEC §5.8). Rendered with React into the closed
 // shadow root alongside the overlay. Static-ish UI only — the hot drawing path
@@ -34,9 +35,18 @@ export interface ChangelogPanelProps {
   onSubmitToAgent: () => void;
   onCopyShareLink?: (() => void) | undefined;
   onOpenOptions?: (() => void) | undefined;
-  actions?: PanelActions | undefined;
+  /** Host capabilities that gate the footer actions; omit for the full set. */
+  capabilities?: PanelCapabilities | undefined;
   /** UI appearance; `auto`/undefined defers to the OS via prefers-color-scheme. */
   theme?: ThemeMode | undefined;
+}
+
+/** A footer button derived from a declared capability (SPEC §13.6). */
+interface FooterAction {
+  id: string;
+  label: string;
+  variant: 'primary' | 'secondary';
+  onInvoke: () => void;
 }
 
 const ICONS: Record<ToolKind, JSX.Element> = {
@@ -285,14 +295,42 @@ export function ChangelogPanel({
   onSubmitToAgent,
   onCopyShareLink,
   onOpenOptions,
-  actions,
+  capabilities,
   theme,
 }: ChangelogPanelProps): JSX.Element {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
   const [view, setView] = useState<'list' | 'agent'>('list');
-  const exportLabel = actions?.exportLabel ?? 'Copy to clipboard';
   const themeAttr = theme === undefined || theme === 'auto' ? undefined : theme;
+
+  // The footer is a declarative action list: one entry per declared capability
+  // (SPEC §13.6). Adding an action is one entry here, not a flag threaded through
+  // mount → session → panel. Each channel supplies its own capability set.
+  const caps = capabilities ?? DEFAULT_CAPABILITIES;
+  const footerActions: FooterAction[] = [
+    { id: 'export', label: caps.exportLabel, variant: 'primary', onInvoke: onExport },
+  ];
+  if (caps.agentHandoff) {
+    footerActions.push({
+      id: 'agent',
+      label: 'Send to agent',
+      variant: 'secondary',
+      onInvoke: () => {
+        setView('agent');
+        onShowAgentSetup();
+      },
+    });
+  }
+  if (caps.shareLink) {
+    footerActions.push({
+      id: 'share',
+      label: 'Copy share link',
+      variant: 'secondary',
+      // Declaring the capability implies a wired handler (session.ts always passes
+      // one); guard anyway so a bare ChangelogPanel can't throw on click.
+      onInvoke: () => onCopyShareLink?.(),
+    });
+  }
 
   if (view === 'agent') {
     return (
@@ -479,30 +517,16 @@ export function ChangelogPanel({
 
       <footer className="stm-panel__foot">
         <div className="stm-panel__actions">
-          <Button variant="primary" onClick={onExport} disabled={annotations.length === 0}>
-            {exportLabel}
-          </Button>
-          {(actions?.showSendToAgent ?? true) && (
+          {footerActions.map((action) => (
             <Button
-              variant="secondary"
-              onClick={() => {
-                setView('agent');
-                onShowAgentSetup();
-              }}
+              key={action.id}
+              variant={action.variant}
+              onClick={action.onInvoke}
               disabled={annotations.length === 0}
             >
-              Send to agent
+              {action.label}
             </Button>
-          )}
-          {(actions?.showShareLink ?? true) && (
-            <Button
-              variant="secondary"
-              onClick={onCopyShareLink}
-              disabled={annotations.length === 0}
-            >
-              Copy share link
-            </Button>
-          )}
+          ))}
         </div>
         {handoff !== null && <HandoffLine handoff={handoff} onOpenOptions={onOpenOptions} />}
         {share != null &&

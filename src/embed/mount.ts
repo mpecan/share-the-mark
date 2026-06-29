@@ -1,5 +1,5 @@
 import { BindingSink, type ExportPayload, type ExportSink } from '@/src/core/export';
-import type { PanelActions } from '@/src/panel';
+import type { PanelCapabilities } from '@/src/panel';
 import { DEFAULT_SETTINGS, type Settings } from '@/src/storage/settings-defaults';
 import type { CompositeDeps } from '@/src/capture/composite';
 import { createAnnotationSession } from './session';
@@ -26,15 +26,15 @@ import type { HostAdapters, AnnotationSession, ScreenshotProvider, StorageAdapte
 declare const __STM_VERSION__: string;
 
 /**
- * Footer preset for single-delivery, agent-bound channels (Playwright A, local-serve
- * C): one button labelled for what it does, since the export sink *is* the agent
- * submit. The extension and the dev widget omit `panelActions` and get the full set.
- * (The deeper capability-driven model is tracked in #14.)
+ * Capability preset for single-delivery, agent-bound channels (Playwright A,
+ * local-serve C): the export sink *is* the agent submit, so it declares neither the
+ * daemon handoff nor share links — one button, labelled for what it does. The
+ * extension and the dev widget omit `capabilities` and get the full set (SPEC §13.6).
  */
-export const AGENT_PANEL_ACTIONS: PanelActions = {
+export const AGENT_CAPABILITIES: PanelCapabilities = {
   exportLabel: 'Send to agent',
-  showSendToAgent: false,
-  showShareLink: false,
+  agentHandoff: false,
+  shareLink: false,
 };
 
 export interface MountOptions {
@@ -57,8 +57,8 @@ export interface MountOptions {
   settings?: Settings;
   /** Where to attach the shadow host (default: `document.body`). */
   parent?: HTMLElement;
-  /** Footer button config; omit for the full set, override for a single-button channel. */
-  panelActions?: PanelActions;
+  /** Declared footer capabilities; omit for the full set, override for a single-button channel. */
+  capabilities?: PanelCapabilities;
   /** Test seam: canvas plumbing for compositing (default: the real OffscreenCanvas). */
   compositeDeps?: CompositeDeps;
 }
@@ -105,7 +105,7 @@ export function buildEmbedAdapters(opts: MountOptions): HostAdapters {
     openOptions: () => {
       // No options page off-extension; nothing to open.
     },
-    panelActions: opts.panelActions,
+    capabilities: opts.capabilities,
   };
 }
 
