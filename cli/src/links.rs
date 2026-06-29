@@ -15,7 +15,30 @@ pub const CHROME_STORE_URL: &str =
 /// The extension on Firefox Add-ons (locale-agnostic path; AMO localizes it).
 pub const FIREFOX_STORE_URL: &str = "https://addons.mozilla.org/firefox/addon/share-the-mark/";
 
-/// One-line pointer to the extension, printed by the daemon banners.
+/// One-line pointer to the extension, printed by the daemon banners (terse: these
+/// print on every `serve`/`start`, so they stay a single cross-browser line).
 pub fn extension_hint() -> String {
     format!("Annotate pages with the extension: {HUB_URL}")
+}
+
+/// Store-direct install pointer for the moment a user needs the extension *now* —
+/// the `request <url>` dead-end ("nothing showing up?"). Lists both published
+/// stores so there's no extra hop through the repo to find the right one.
+pub fn install_hint() -> String {
+    format!(
+        "Install the share-the-mark extension:\n  \
+         Chrome / Chromium: {CHROME_STORE_URL}\n  Firefox: {FIREFOX_STORE_URL}"
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn install_hint_lists_both_published_stores() {
+        let hint = install_hint();
+        assert!(hint.contains(CHROME_STORE_URL));
+        assert!(hint.contains(FIREFOX_STORE_URL));
+    }
 }

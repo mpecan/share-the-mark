@@ -67,10 +67,7 @@ pub fn run(
         // A served local artifact injects the panel itself; only the URL flow relies on
         // the extension being installed, so the install hint is scoped to it.
         if opening_url {
-            eprintln!(
-                "Nothing showing up? Install the share-the-mark extension: {}",
-                crate::links::HUB_URL
-            );
+            eprintln!("Nothing showing up? {}", crate::links::install_hint());
         }
     }
 
