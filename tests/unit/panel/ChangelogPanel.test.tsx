@@ -76,15 +76,26 @@ describe('ChangelogPanel', () => {
     expect(document.querySelector('.stm-panel')).not.toHaveAttribute('data-theme');
   });
 
-  it('applies a panelActions override: relabels export and hides the other buttons', () => {
+  it('derives the full footer from the default capabilities', () => {
+    renderPanel({ annotations: [callout('a', 1)], onCopyShareLink: vi.fn() });
+    expect(screen.getByRole('button', { name: /copy to clipboard/i })).toHaveClass(
+      'stm-btn--primary',
+    );
+    expect(screen.getByRole('button', { name: 'Send to agent' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /copy share link/i })).toBeInTheDocument();
+    expect(document.querySelectorAll('.stm-panel__actions .stm-btn')).toHaveLength(3);
+  });
+
+  it('renders one footer action per declared capability', () => {
     renderPanel({
       annotations: [callout('a', 1)],
-      actions: { exportLabel: 'Send to agent', showSendToAgent: false, showShareLink: false },
+      onCopyShareLink: vi.fn(),
+      capabilities: { exportLabel: 'Send to agent', agentHandoff: false, shareLink: false },
     });
     expect(screen.getByRole('button', { name: 'Send to agent' })).toHaveClass('stm-btn--primary');
     expect(screen.queryByRole('button', { name: /copy to clipboard/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /copy share link/i })).toBeNull();
-    // Exactly one footer action remains (the relabeled export).
+    // Only the export capability was declared, so only that button renders.
     expect(document.querySelectorAll('.stm-panel__actions .stm-btn')).toHaveLength(1);
   });
 

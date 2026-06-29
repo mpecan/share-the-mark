@@ -1,5 +1,6 @@
 import { Component, useSyncExternalStore, type ErrorInfo, type JSX, type ReactNode } from 'react';
 import { ChangelogPanel } from './ChangelogPanel';
+import type { PanelCapabilities } from './capabilities';
 import type { Annotation, ToolKind } from '@/src/core/model';
 import type { AgentConnection } from '@/src/core/agent';
 import type { ThemeMode } from '@/src/storage/settings-defaults';
@@ -59,26 +60,10 @@ export interface PanelHandlers {
   onOpenOptions?: () => void;
 }
 
-/**
- * Per-channel footer button configuration. Defaults reproduce the extension's
- * full set: a "Copy to clipboard" export plus "Send to agent" and "Copy share
- * link". A channel with a single delivery path — e.g. local-serve, where the
- * export sink *is* the agent submit — overrides these to surface one button
- * labelled for what it actually does.
- */
-export interface PanelActions {
-  /** Label for the primary export/submit button (default "Copy to clipboard"). */
-  exportLabel?: string;
-  /** Render the daemon-handoff "Send to agent" button (default true). */
-  showSendToAgent?: boolean;
-  /** Render the cross-machine "Copy share link" button (default true). */
-  showShareLink?: boolean;
-}
-
 export interface PanelAppProps extends PanelHandlers {
   store: PanelStore;
-  /** Footer button config; omit for the extension's full set. */
-  actions?: PanelActions | undefined;
+  /** Host capabilities that gate the footer; omit for the extension's full set. */
+  capabilities?: PanelCapabilities | undefined;
   /** UI appearance; `auto` defers to the OS. Static (not part of the snapshot). */
   theme?: ThemeMode | undefined;
 }
@@ -111,7 +96,7 @@ export class PanelErrorBoundary extends Component<{ children: ReactNode }, { has
 
 export function PanelApp({
   store,
-  actions,
+  capabilities,
   theme,
   onSelectTool,
   onEditNote,
@@ -134,7 +119,7 @@ export function PanelApp({
         share={snapshot.share ?? null}
         placement={snapshot.placement ?? null}
         connection={snapshot.connection ?? null}
-        actions={actions}
+        capabilities={capabilities}
         theme={theme}
         onSelectTool={onSelectTool}
         onEditNote={onEditNote}

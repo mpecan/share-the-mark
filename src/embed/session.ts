@@ -269,7 +269,7 @@ export async function createAnnotationSession(
     panelRoot.render(
       createElement(PanelApp, {
         store,
-        actions: adapters.panelActions,
+        capabilities: adapters.capabilities,
         theme: settings.theme,
         onSelectTool: (tool) => {
           activeTool = tool;

@@ -116,9 +116,9 @@ describe('mount', () => {
     expect(host?.shadowRoot?.querySelector('.stm-panel')).not.toBeNull();
   });
 
-  it('threads panelActions through to the footer', async () => {
+  it('threads declared capabilities through to the footer', async () => {
     await mountEmbed({
-      panelActions: { exportLabel: 'Send to agent', showSendToAgent: false, showShareLink: false },
+      capabilities: { exportLabel: 'Send to agent', agentHandoff: false, shareLink: false },
     });
     const shadow = document.querySelector<HTMLElement>('[data-stm-embed="true"]')?.shadowRoot;
     const actions = shadow?.querySelector('.stm-panel__actions')?.querySelectorAll('.stm-btn');

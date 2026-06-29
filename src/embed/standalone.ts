@@ -1,6 +1,6 @@
 /* eslint-disable unicorn/prefer-global-this -- this script runs injected in the
    page; `window` is the page global the Playwright bindings + the handle live on. */
-import { mount, AGENT_PANEL_ACTIONS, type StmHandle } from './mount';
+import { mount, AGENT_CAPABILITIES, type StmHandle } from './mount';
 import { blobToBase64 } from './base64';
 import type { ExportPayload } from '@/src/core/export';
 import type { CapturedScreenshot } from '@/src/capture/composite';
@@ -51,10 +51,10 @@ function boot(): void {
       styles: __STM_PANEL_CSS__,
       screenshot: captureScreenshot,
       onExport,
-      // One delivery path (the binding → driver/daemon), so show a single button
-      // labelled for it (matches the `request --playwright` banner); the automation
-      // `attach()` path drives `exportNow()` and ignores the buttons.
-      panelActions: AGENT_PANEL_ACTIONS,
+      // One delivery path (the binding → driver/daemon), so declare only the export
+      // capability — a single button labelled for it (matches the `request --playwright`
+      // banner); the automation `attach()` path drives `exportNow()` and ignores it.
+      capabilities: AGENT_CAPABILITIES,
     });
     // Publish the handle on the page global so the channel driver can call it.
     // eslint-disable-next-line unicorn/no-global-object-property-assignment -- intentional page↔driver handoff

@@ -4,7 +4,7 @@ import type { ExportSink } from '@/src/core/export';
 import type { PendingImport } from '@/src/share';
 import type { Settings } from '@/src/storage/settings-defaults';
 import type { DaemonHealth } from '@/src/messaging';
-import type { PanelActions } from '@/src/panel';
+import type { PanelCapabilities } from '@/src/panel';
 
 // The host ports the browser-free annotation session (SPEC §13.2) depends on.
 // Every extension-specific capability — storage, screenshot capture, the message
@@ -72,11 +72,11 @@ export interface HostAdapters extends StorageAdapter {
   /** Open the host's setup surface (the extension Options page). */
   openOptions(): void;
   /**
-   * Per-channel footer button config (labels + visibility). Omit for the
-   * extension's full set; a single-delivery channel (local-serve) overrides it
-   * so the one wired button reads for what it does (SPEC §13.6).
+   * The host's declared footer capabilities (SPEC §13.6). Omit for the extension's
+   * full set; a single-delivery channel (local-serve) declares only `exportLabel`
+   * so its one wired button reads for what it does.
    */
-  panelActions?: PanelActions | undefined;
+  capabilities?: PanelCapabilities | undefined;
   /** Injectable clock/id for tests; default to `Date.now`/`crypto.randomUUID`. */
   now?: () => number;
   createId?: () => string;

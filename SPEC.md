@@ -784,6 +784,18 @@ already sit on.
 > in-page `StmHandle.exportNow`. The reported version comes from a build-time
 > `__STM_VERSION__` define (read lazily in `getVersion` so the extension, which
 > imports the barrel without that define, doesn't trip a load-time reference).
+>
+> **As-built (capability-driven footer, resolves #14):** the panel footer is now a
+> declarative action list derived from a host-declared **`PanelCapabilities`** set
+> (`src/panel/capabilities.ts`: `{ exportLabel, agentHandoff, shareLink }`) — *not*
+> the earlier `PanelActions` show-flags (`showSendToAgent`/`showShareLink`). Each
+> channel declares what it can do in one place: the extension and dev widget omit
+> `capabilities` and get `DEFAULT_CAPABILITIES` (the full set); single-delivery
+> channels (Playwright A, local-serve C) declare `AGENT_CAPABILITIES`
+> (`{ exportLabel: 'Send to agent', agentHandoff: false, shareLink: false }`) so one
+> correctly-labelled button renders with no inert handoffs. `ChangelogPanel` maps
+> capabilities → footer actions (`id`/`label`/`variant`/`onInvoke`); adding an action
+> is one registry entry, not a boolean threaded through `mount → session → panel`.
 
 ### 13.1 The enabling fact — the UI is already browser-free
 
